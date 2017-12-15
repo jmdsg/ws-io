@@ -13,7 +13,6 @@ public final class WsIOUtil {
 
 	private WsIOUtil() {  }
 
-
 	public static final String NAME_SEPARATOR = ".";
 
 	public static String addSuffixOf(String name, String suffix, String separator) {
