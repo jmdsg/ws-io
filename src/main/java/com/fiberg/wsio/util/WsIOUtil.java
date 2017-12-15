@@ -12,7 +12,6 @@ import static java.lang.String.format;
 public final class WsIOUtil {
 
 	private WsIOUtil() {  }
-
 	
 	public static final String NAME_SEPARATOR = ".";
 
