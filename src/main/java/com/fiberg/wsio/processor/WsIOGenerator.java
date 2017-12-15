@@ -1,0 +1,1534 @@
+package com.fiberg.wsio.processor;
+
+import com.fiberg.wsio.annotation.WsIOQualifier;
+import com.fiberg.wsio.handler.state.*;
+import com.fiberg.wsio.handler.time.WsIOInstant;
+import com.fiberg.wsio.handler.time.WsIOTime;
+import com.fiberg.wsio.util.WsIOUtil;
+import com.squareup.javapoet.*;
+import com.squareup.javapoet.TypeSpec.Builder;
+import io.vavr.*;
+import io.vavr.collection.*;
+import io.vavr.collection.HashMap;
+import io.vavr.collection.HashSet;
+import io.vavr.collection.List;
+import io.vavr.collection.Map;
+import io.vavr.collection.Set;
+import io.vavr.control.Option;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.WordUtils;
+
+import javax.annotation.processing.Filer;
+import javax.annotation.processing.Messager;
+import javax.lang.model.element.*;
+import javax.lang.model.type.*;
+import javax.tools.JavaFileObject;
+import javax.xml.bind.annotation.*;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+import static com.fiberg.wsio.processor.WsIOConstant.*;
+
+/**
+ * Class that generates all classes from WsIO, it generates the clones, the messages and wrappers.
+ */
+class WsIOGenerator {
+
+	/** Handles the report of errors, warnings and anothers */
+	private Messager messager;
+
+	/** Receives the generated class files */
+	private Filer filer;
+
+	/**
+	 * @param messager handles the report of errors, warnings and anothers
+	 * @param filer receives the generated class files
+	 */
+	WsIOGenerator(Messager messager, Filer filer) {
+		this.messager = messager;
+		this.filer = filer;
+	}
+
+	/**
+	 * Method that generates all classes from WsIO, it generates the clones, the messages and wrappers.
+	 *
+	 * @param messageByType map containing type element and destination package
+	 * @param cloneByGroup map containing the identifier { prefix name - suffix name } and a set of type elements
+	 * @param cloneMessageByGroup map containing type element and a inner map with method name and a tuple of { method info - destination package }
+	 * @param wrapperByType map containing type element and a inner map with method name and a tuple of { method info - destination package }
+	 * @return {@code true} when all classes were generated ok, {@code false} otherwise
+	 */
+	boolean generateClasses(Map<TypeElement, String> messageByType,
+	                        Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneByGroup,
+	                        Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneMessageByGroup,
+	                        Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> wrapperByType) {
+
+		/* Get all class names that are message annotated */
+		Map<String, String> messageClasses = messageByType.mapKeys(element ->
+				element.getQualifiedName().toString());
+
+		/* Map of types by name */
+		Map<String, TypeElement> typeByName = cloneByGroup.values()
+				.flatMap(e -> e)
+				.map(Tuple2::_1)
+				.appendAll(messageByType.keySet())
+				.appendAll(wrapperByType.keySet())
+				.toSet()
+				.toMap(element -> element.getQualifiedName().toString(), e -> e);
+
+		/* Process and create each clone by group */
+		List<Tuple3<TypeSpec, String, String>> cloneTypes = cloneByGroup.flatMap((clone) -> {
+
+			/* Get identifier key and set of elements */
+			Tuple2<String, String> key = clone._1();
+			Set<Tuple2<TypeElement, String>> elements = clone._2();
+
+			/* Get prefix and suffix of identifier */
+			String prefixName = key._1();
+			String suffixName = key._2();
+
+			/* Get identifier, clone classes types and names */
+			Tuple2<String, String> identifier = Tuple.of(prefixName, suffixName);
+			Map<String, String> cloneClasses = cloneByGroup.getOrElse(identifier, HashSet.empty())
+					.toMap(tuple -> tuple.map1(type -> type.getQualifiedName().toString()));
+
+			/* Context of the generation */
+			WsIOContext context = new WsIOContext(prefixName, suffixName,
+					StringUtils.EMPTY, StringUtils.EMPTY, messageClasses, cloneClasses,
+					HashMap.empty(), typeByName, WsIOGenerate.CLONE);
+
+			/* Create a delegate for each group and type element */
+			return elements.map((tuple) -> {
+
+				/* Extract type lement and package name */
+				TypeElement element = tuple._1();
+				String packageName = tuple._2();
+
+				/* Create each delegate */
+				TypeSpec typeSpec = generateDelegateType(element, context);
+
+				/* Class Name */
+				String classInnerName = WsIOUtils.getFullSimpleInnerName(element);
+				String className = WsIOUtil.addWrap(classInnerName, prefixName, suffixName);
+
+				/* Tuple of type spec and package name */
+				return Tuple.of(typeSpec, packageName, className);
+
+			});
+
+		}).filter(tuple -> Objects.nonNull(tuple._1())).toList();
+
+		/* Process and create each message by group */
+		List<Tuple3<TypeSpec, String, String>> messageTypes = messageByType.flatMap((message) -> {
+
+			/* Get type element and package name */
+			TypeElement element = message._1();
+			String packageName = message._2();
+
+			/* Prefix and suffix of request and response */
+			List<Tuple2<String, String>> names = List.of(
+					Tuple.of(RESPONSE_PREFIX, RESPONSE_SUFFIX),
+					Tuple.of(REQUEST_PREFIX, REQUEST_SUFFIX)
+			);
+
+			/* Return the type spec for responses and requests */
+			return names.map(name -> {
+
+				/* Get prefix and suffix names */
+				String prefixName = name._1();
+				String suffixName = name._2();
+
+				/* Get identifier, clone classes types and names */
+				Tuple2<String, String> identifier = Tuple.of(prefixName, suffixName);
+				Map<String, String> cloneClasses = cloneByGroup.getOrElse(identifier, HashSet.empty())
+						.toMap(tuple -> tuple.map1(type -> type.getQualifiedName().toString()));
+
+				/* Context of the generation */
+				WsIOContext context = new WsIOContext(StringUtils.EMPTY, StringUtils.EMPTY, prefixName, suffixName,
+						messageClasses, cloneClasses, HashMap.empty(), typeByName, WsIOGenerate.MESSAGE);
+
+				/* Create each delegate */
+				TypeSpec typeSpec = generateDelegateType(element, context);
+
+				/* Class Name */
+				String classInnerName = WsIOUtils.getFullSimpleInnerName(element);
+				String className = WsIOUtil.addWrap(classInnerName, prefixName, suffixName);
+
+				/* Tuple of type spec and package name */
+				return Tuple.of(typeSpec, packageName, className);
+
+			});
+
+		}).filter(tuple -> Objects.nonNull(tuple._1())).toList();
+
+		/* Process and create each clone message by group */
+		List<Tuple3<TypeSpec, String, String>> cloneMessageTypes = cloneMessageByGroup.flatMap((clone) -> {
+
+			/* Get identifier key and set of elements */
+			Tuple2<String, String> key = clone._1();
+			Set<Tuple2<TypeElement, String>> elements = clone._2();
+
+			/* Get prefix and suffix of identifier */
+			String prefixClassName = key._1();
+			String suffixClassName = key._2();
+
+			/* Get identifier, clone classes types and names */
+			Tuple2<String, String> identifier = Tuple.of(prefixClassName, suffixClassName);
+			Map<String, String> cloneClasses = cloneByGroup.getOrElse(identifier, HashSet.empty())
+					.toMap(tuple -> tuple.map1(type -> type.getQualifiedName().toString()));
+			Map<String, String> cloneMessageClasses = cloneMessageByGroup.getOrElse(identifier, HashSet.empty())
+					.toMap(tuple -> tuple.map1(type -> type.getQualifiedName().toString()));
+
+			/* Create a delegate for each group and type element */
+			return elements.flatMap((tuple) -> {
+
+				/* Extract type lement and package name */
+				TypeElement element = tuple._1();
+				String packageName = tuple._2();
+
+				/* Prefix and suffix wrapper names of request and response */
+				List<Tuple2<String, String>> wrappers = List.of(
+						Tuple.of(RESPONSE_PREFIX, RESPONSE_SUFFIX),
+						Tuple.of(REQUEST_PREFIX, REQUEST_SUFFIX)
+				);
+
+				/* Return the tuple of spec package name and class name of each wrapper */
+				return wrappers.map(wrapper -> {
+
+					/* Get prefix and suffix of identifier */
+					String prefixWrapperName = wrapper._1();
+					String suffixWrapperName = wrapper._2();
+
+					/* Context of the generation */
+					WsIOContext context = new WsIOContext(prefixClassName, suffixClassName, prefixWrapperName,
+							suffixWrapperName, messageClasses, cloneClasses,
+							cloneMessageClasses, typeByName, WsIOGenerate.CLONE_MESSAGE);
+
+					/* Create each delegate */
+					TypeSpec typeSpec = generateDelegateType(element, context);
+
+					/* Check if elements are in sets and get name by generate */
+					String elementName = element.getQualifiedName().toString();
+					Tuple2<String, String> names = context.getNameByGenerate(elementName);
+
+					/* Suffix and prefix names */
+					String prefixName = names._1();
+					String suffixName = names._2();
+
+					/* Class Name */
+					String classInnerName = WsIOUtils.getFullSimpleInnerName(element);
+					String className = WsIOUtil.addWrap(classInnerName, prefixName, suffixName);
+
+					/* Tuple of type spec and package name */
+					return Tuple.of(typeSpec, packageName, className);
+
+				});
+
+			});
+
+		}).filter(tuple -> Objects.nonNull(tuple._1())).toList();
+
+		/* Iterate for each type spec of clones, requests and reponses */
+		cloneTypes.appendAll(messageTypes).appendAll(cloneMessageTypes).forEach(tuple -> {
+
+			/* Get type spec, package name and class name */
+			TypeSpec typeSpec = tuple._1();
+			String packageName = tuple._2();
+			String className = tuple._3();
+
+			/* Generate the java class */
+			createJavaClass(typeSpec, packageName, className);
+
+		});
+
+		/* Function used to transform clone maps */
+		Function1<Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>>,
+				Map<String, Map<Tuple2<String, String>, String>>> transformClones =
+				(clone) -> clone.flatMap(tuple -> tuple._2().map(info
+						-> Tuple.of(tuple._1()._1(), tuple._1()._2(), info._1(), info._2())))
+						.groupBy(Tuple4::_3)
+						.mapKeys(TypeElement::getQualifiedName)
+						.mapKeys(Name::toString)
+						.mapValues(values -> values.toMap(tuple -> Tuple.of(tuple._1(), tuple._2()), Tuple4::_4));
+
+		/* Set with the names of the clones classes */
+		Map<String, Map<Tuple2<String, String>, String>> cloneClasses = transformClones.apply(cloneByGroup);
+
+		/* Set with the names of the clones message classes */
+		Map<String, Map<Tuple2<String, String>, String>> cloneMessageClasses = transformClones.apply(cloneMessageByGroup);
+
+		/* Iterate for each wrapper and generate the classes */
+		wrapperByType.forEach((element, wrapper) -> {
+
+			/* Iterate for each method name and info */
+			wrapper.forEach((name, infos) -> {
+
+				/* Info and package name */
+				WsIOInfo info = infos._1();
+				String packageName = infos._2();
+
+				/* Generate request and response type spec */
+				TypeSpec request = generateWrapperType(WsIOType.REQUEST, info,
+						messageClasses, cloneClasses, cloneMessageClasses, typeByName);
+				TypeSpec response = generateWrapperType(WsIOType.RESPONSE, info,
+						messageClasses, cloneClasses, cloneMessageClasses, typeByName);
+
+				/* Get upper name of the method and class */
+				String upperName = WordUtils.capitalize(name);
+
+				/* Get final class names */
+				String responseClassName = WsIOUtil.addWrap(upperName, RESPONSE_WRAPPER_PREFIX, RESPONSE_WRAPPER_SUFFIX);
+				String requestClassName = WsIOUtil.addWrap(upperName, REQUEST_WRAPPER_PREFIX, REQUEST_WRAPPER_SUFFIX);
+
+				/* Create each java class */
+				createJavaClass(request, packageName, requestClassName);
+				createJavaClass(response, packageName, responseClassName);
+
+			});
+
+		});
+
+		/* Returns true to the processor */
+		return true;
+
+	}
+
+	/**
+	 * Method that generates the delegate types of messages and clones.
+	 *
+	 * @param element type element
+	 * @param context context of the process
+	 * @return delegate types of messages and clones.
+	 */
+	private TypeSpec generateDelegateType(TypeElement element,
+	                                      WsIOContext context) {
+
+		/* Full prefix and suffix names */
+		String fullPrefixName = context.getPrefixWrapperName() + context.getPrefixClassName();
+		String fullSuffixName = context.getSuffixClassName() + context.getSuffixWrapperName();
+
+		/* Full class name and full inner class name */
+		String fullInnerClassName = WsIOUtils.getFullSimpleInnerName(element);
+		String fullClassName = WsIOUtil.addWrap(fullInnerClassName, fullPrefixName, fullSuffixName);
+
+		/* Get current type variables */
+		java.util.List<TypeVariableName> types = element.getTypeParameters().stream()
+				.map(Object::toString)
+				.map(TypeVariableName::get)
+				.collect(Collectors.toList());
+
+		/* Check the type of the type element and generate the class according to the type */
+		if (ElementKind.ENUM.equals(element.getKind())) {
+
+			/* Create empty array of methods, enum type delegate does not delegate methods just enum constants */
+			java.util.List<MethodSpec> methods = new java.util.ArrayList<>();
+
+			/* Generate the inheritance structure */
+			Map<WsIOLevel, Set<DeclaredType>> inheritance = resolveInheritance(element, context);
+
+			/* Generate the method priotity from the inheritance structure */
+			Map<WsIOLevel, Map<WsIOProperty, Map<String, ExecutableElement>>> methodPriorities =
+					resolveMethodPriority(inheritance);
+
+			/* Extract getters and setters from all methods with priority */
+			Map<WsIOLevel, Map<String, ExecutableElement>> setterPriorities = methodPriorities
+					.mapValues(map -> map.getOrElse(WsIOProperty.SETTER, HashMap.empty()));
+			Map<WsIOLevel, Map<String, ExecutableElement>> getterPriorities = methodPriorities
+					.mapValues(map -> map.getOrElse(WsIOProperty.GETTER, HashMap.empty()));
+
+			/* List with all internal fields */
+			List<FieldSpec> fields = inheritance.filterKeys(level -> WsIOLevel.LOCAL.equals(level)
+					|| WsIOLevel.INTERFACE_EXTERNAL.equals(level)
+					|| WsIOLevel.CLASS_EXTERNAL.equals(level))
+					.values()
+					.flatMap(e -> e)
+					.map(declaredType -> FieldSpec.builder(TypeName.get(declaredType),
+							FIELD_DELEGATOR, Modifier.PRIVATE).build())
+					.toList();
+
+			/* Option with super class, only used for message generate */
+			Option<TypeName> superClass = inheritance.get(WsIOLevel.CLASS_INTERNAL)
+					.flatMap(Set::headOption)
+					.map(declaredType -> context.getRecursiveFullTypeName(declaredType,
+							false, true));
+
+			/* Generate the delegate methods and add them to the set */
+			List<MethodSpec> delegateMethods = generateDelegatorMethods(element,
+					superClass.isDefined(), checkDelegatorOverride(getterPriorities, setterPriorities));
+			methods.addAll(delegateMethods.toJavaSet());
+
+			/* Add the modifiers to the enum */
+			Predicate<Modifier> checkAbstract = Modifier.FINAL::equals;
+			Modifier[] modifiers = element.getModifiers()
+					.stream()
+					.filter(checkAbstract.negate())
+					.toArray(Modifier[]::new);
+
+			/* Create builder with methods and modifiers */
+			Builder builder = TypeSpec.enumBuilder(fullClassName)
+					.addModifiers(modifiers)
+					.addMethods(methods)
+					.addFields(fields);
+
+			/* Create counter to avoid creation of invalid empty enums and add each contant to the builder */
+			int constants = 0;
+			for (Element enclosed : element.getEnclosedElements()) {
+				if (ElementKind.ENUM_CONSTANT.equals(enclosed.getKind())) {
+					builder = builder.addEnumConstant(enclosed.getSimpleName().toString());
+					constants++;
+				}
+			}
+
+			/* Return the enum only when is valid (not empty) */
+			return constants > 0 ? builder.build() : null;
+
+		} else if (ElementKind.INTERFACE.equals(element.getKind())
+				|| ElementKind.CLASS.equals(element.getKind())) {
+
+			/* Generate the inheritance structure */
+			Map<WsIOLevel, Set<DeclaredType>> inheritance = resolveInheritance(element, context);
+
+			/* Generate the method priotity from the inheritance structure */
+			Map<WsIOLevel, Map<WsIOProperty, Map<String, ExecutableElement>>> methodPriorities =
+					resolveMethodPriority(inheritance);
+
+			/* Extract getters and setters from all methods with priority */
+			Map<WsIOLevel, Map<String, ExecutableElement>> setterPriorities = methodPriorities
+					.mapValues(map -> map.getOrElse(WsIOProperty.SETTER, HashMap.empty()));
+			Map<WsIOLevel, Map<String, ExecutableElement>> getterPriorities = methodPriorities
+					.mapValues(map -> map.getOrElse(WsIOProperty.GETTER, HashMap.empty()));
+
+			/* Option with super class */
+			Option<TypeName> superClass = inheritance.get(WsIOLevel.CLASS_INTERNAL)
+					.flatMap(Set::headOption)
+					.map(declaredType -> context.getRecursiveFullTypeName(declaredType,
+							false, true));
+
+			/* Super interfaces set */
+			List<TypeName> superInterfaces = inheritance.getOrElse(WsIOLevel.INTERFACE_INTERNAL, HashSet.empty())
+					.map(declaredType -> context.getRecursiveFullTypeName(declaredType,
+							false, true))
+					.toList();
+
+			/* List with all internal fields */
+			List<FieldSpec> fields = inheritance.filterKeys(level -> WsIOLevel.LOCAL.equals(level)
+					|| WsIOLevel.INTERFACE_EXTERNAL.equals(level)
+					|| WsIOLevel.CLASS_EXTERNAL.equals(level))
+					.values()
+					.flatMap(e -> e)
+					.map(declaredType -> FieldSpec.builder(TypeName.get(declaredType),
+							FIELD_DELEGATOR, Modifier.PRIVATE).build())
+					.toList();
+
+			/* Generate the property methods */
+			List<MethodSpec> propertyMethods = generatePropertyMethods(getterPriorities, setterPriorities, context);
+
+			/* Generate the override main methods */
+			List<MethodSpec> overrideMethods = generateOverrideMethods(element, context);
+
+			/* Generate the constructor methods */
+			List<MethodSpec> constructorMethods = generateConstructorMethods(element, superClass.isDefined());
+
+			/* Generate the delegate methods */
+			List<MethodSpec> delegateMethods = generateDelegatorMethods(element,
+					superClass.isDefined(), checkDelegatorOverride(getterPriorities, setterPriorities));
+
+			/* All methods of the delegate */
+			List<MethodSpec> methods = propertyMethods.appendAll(overrideMethods)
+					.appendAll(constructorMethods)
+					.appendAll(delegateMethods);
+
+			/* Declare builder and check abstract predicate */
+			Builder builder;
+			Predicate<Modifier> checkAbstract;
+
+			/* Check if element is of kind class */
+			if (ElementKind.CLASS.equals(element.getKind())) {
+
+				/* Create class builder and initialize predicate */
+				builder = TypeSpec.classBuilder(fullClassName)
+						.addFields(fields);
+				checkAbstract = ign -> false;
+
+			} else {
+
+				/* Create intrface builder and initialize predicate */
+				builder = TypeSpec.interfaceBuilder(fullClassName);
+				checkAbstract = Modifier.ABSTRACT::equals;
+
+			}
+
+			/* Create modifiers array */
+			Modifier[] modifiers = element.getModifiers()
+					.stream()
+					.filter(checkAbstract.negate())
+					.filter(Predicates.noneOf(Modifier.STATIC::equals))
+					.toArray(Modifier[]::new);
+
+			/* Add modifiers, type variables, fields, methods and interfaces */
+			builder.addModifiers(modifiers)
+					.addTypeVariables(types)
+					.addSuperinterfaces(superInterfaces)
+					.addMethods(methods);
+
+			/* Add super class */
+			if (superClass.isDefined()) {
+				builder = builder.superclass(superClass.get());
+			}
+
+			/* Build and return the class builder */
+			return builder.build();
+
+		} else {
+
+			/* Print error when the element kind is unknown */
+			WsIOHandler.error(messager, element, "Unhandled element type %s", element.getKind());
+
+		}
+
+		/* Return null when an error occurs */
+		return null;
+
+	}
+
+	/**
+	 * Method that generate the property methods of internal classes and interfaces.
+	 *
+	 * @param getters map containing the getters with level
+	 * @param setters map containing the setters with level
+	 * @param context context of the process
+	 * @return property methods of internal classes and interfaces.
+	 */
+	private List<MethodSpec> generatePropertyMethods(Map<WsIOLevel, Map<String, ExecutableElement>> getters,
+	                                                 Map<WsIOLevel, Map<String, ExecutableElement>> setters,
+	                                                 WsIOContext context) {
+
+		/* Function to transform the name of a getter to setter */
+		Function1<String, String> getterToSetter = getter -> getter.replaceAll("^get", "set");
+		Function1<String, String> getterToProperty = getter -> {
+
+			/* Remove get from the method name and replace first char with lower */
+			String name = getter.replaceAll("^get", "");
+			return WordUtils.uncapitalize(name);
+
+		};
+
+		/* Getter and setter names */
+		Set<String> getterNames = getters.values()
+				.flatMap(Map::keySet)
+				.toSet();
+
+		/* Property names matching names and level */
+		List<Tuple3<ExecutableElement, ExecutableElement, WsIOLevel>> properties = getterNames.toList()
+				.flatMap(getterName -> {
+
+					/* Maximun level of the getter */
+					WsIOLevel level = WsIOUtils.getPriorityLevelByName(getters, getterName);
+
+					/* Setter name contructed from the getter name */
+					String setterName = getterToSetter.apply(getterName);
+
+					/* Return the tuple of executables only when exist a setter in the matching in same level */
+					return setters.getOrElse(level, HashMap.empty())
+							.get(setterName)
+							.flatMap(setter -> getters.getOrElse(level, HashMap.empty())
+									.get(getterName)
+									.map(getter -> Tuple.of(getter, setter, level)));
+
+				});
+
+		/* Function to create method specs */
+		Function3<ExecutableElement, ExecutableElement, WsIOLevel, List<MethodSpec>> createMethodSpecs = (getter, setter, level) -> {
+
+			/* Getter, setter and property name */
+			String getterName = getter.getSimpleName().toString();
+			String setterName = setter.getSimpleName().toString();
+			String propertyName = getterToProperty.apply(getterName);
+
+			/* Get return mirror type */
+			TypeMirror returnType = getter.getReturnType();
+
+			/* Get parameter mirror type */
+			VariableElement parameter = setter.getParameters().get(0);
+			TypeMirror parameterType = parameter.asType();
+
+			/* Check if type mirrors are instacen of declared types */
+			if (returnType instanceof ReferenceType
+					&& parameterType instanceof ReferenceType) {
+
+				/* Initialize declared types */
+				ReferenceType returnReference = (ReferenceType) returnType;
+				ReferenceType parameterReference = (ReferenceType) parameterType;
+
+				/* Return the methods generated recursively */
+				return WsIODelegator.generatePropertyDelegates(returnReference, parameterReference,
+						getter, setter, getterName, setterName, propertyName, level, context, messager);
+
+			}
+
+			/* Return empty list */
+			return List.empty();
+
+		};
+
+		/* Return all the methods */
+		return properties.flatMap(createMethodSpecs.tupled());
+
+	}
+
+	/**
+	 * Method that generate the main override methods.
+	 *
+	 * @param element type element
+	 * @param context context of the process
+	 * @return main override methods
+	 */
+	private List<MethodSpec> generateOverrideMethods(TypeElement element,
+			                                        WsIOContext context) {
+
+		/* Initialize empty set of method specs */
+		List<MethodSpec> methods = List.empty();
+
+		/* Check is the element is a class */
+		if (ElementKind.CLASS.equals(element.getKind())) {
+
+			/* Get declared type and type name */
+			DeclaredType declaredType = (DeclaredType) element.asType();
+			TypeName typeName = context.getRecursiveFullTypeName(declaredType, false, true);
+
+			/* Get raw type without parameter types */
+			TypeName className = typeName;
+			if (className instanceof ParameterizedTypeName) {
+				className = ((ParameterizedTypeName) className).rawType;
+			}
+
+			/* Generate the hash method and add it to the set */
+			MethodSpec hashCode = MethodSpec.methodBuilder("hashCode")
+					.addAnnotation(Override.class)
+					.addModifiers(Modifier.PUBLIC)
+					.returns(TypeName.INT)
+					.addStatement("return $L() != null ? $L().hashCode() : 0", GET_DELEGATOR, GET_DELEGATOR)
+					.build();
+			methods = methods.append(hashCode);
+
+			/* Generate the equals method and add it to the set */
+			MethodSpec equals = MethodSpec.methodBuilder("equals")
+					.addAnnotation(Override.class)
+					.addModifiers(Modifier.PUBLIC)
+					.returns(TypeName.BOOLEAN)
+					.addParameter(TypeName.OBJECT, "obj")
+					.beginControlFlow("if (obj != null && obj instanceof $T)", className)
+					.beginControlFlow("if ($L() == null)", GET_DELEGATOR)
+					.addStatement("return (($T) obj).$L() == null", typeName, GET_DELEGATOR)
+					.endControlFlow()
+					.beginControlFlow("else")
+					.addStatement("return $L().equals((($T) obj).$L())", GET_DELEGATOR, typeName, GET_DELEGATOR)
+					.endControlFlow()
+					.endControlFlow()
+					.addStatement("return false")
+					.build();
+			methods = methods.append(equals);
+
+			/* Generate the toString method and add it to the set */
+			MethodSpec toString = MethodSpec.methodBuilder("toString")
+					.addAnnotation(Override.class)
+					.addModifiers(Modifier.PUBLIC)
+					.returns(ClassName.get(String.class))
+					.addStatement("return $L() != null ? $L().toString() : \"\"", GET_DELEGATOR, GET_DELEGATOR)
+					.build();
+			methods = methods.append(toString);
+
+		}
+
+		/* Return the overrided methods */
+		return methods;
+
+	}
+
+	/**
+	 * Method that generates the constructor methods
+	 *
+	 * @param element element type
+
+	 * @param hasSuper indicates if the element has a super class or not
+	 * @return constructor methods
+	 */
+	private List<MethodSpec> generateConstructorMethods(TypeElement element,
+	                                                   boolean hasSuper) {
+
+		/* Initialize empty set of method specs */
+		List<MethodSpec> methods = List.empty();
+
+		/* Check if the element is a class */
+		if (ElementKind.CLASS.equals(element.getKind())) {
+
+			/* Get type name from type mirror */
+			TypeMirror typeMirror = element.asType();
+			DeclaredType declaredType = (DeclaredType) typeMirror;
+			TypeName fieldType = TypeName.get(declaredType);
+
+			/* Get the generic literal */
+			String generic = Option.of(declaredType)
+					.filter(ParameterizedTypeName.class::isInstance)
+					.map(ParameterizedTypeName.class::cast)
+					.map(parameterized -> parameterized.typeArguments)
+					.filter(Objects::nonNull)
+					.map(java.util.List::size)
+					.filter(integer -> integer > 0)
+					.map(integer -> "<>")
+					.getOrElse(StringUtils.EMPTY);
+
+			/* Create the empty constructor */
+			MethodSpec.Builder emptyConstructor = MethodSpec.constructorBuilder()
+					.addStatement("$L(new $T$L())", SET_DELEGATOR, fieldType, generic)
+					.addModifiers(Modifier.PUBLIC);
+
+			/* Create the parametrized contructor and add super call when the class has super */
+			MethodSpec.Builder parameterConstructor = MethodSpec.constructorBuilder();
+			if (hasSuper) {
+				parameterConstructor.addStatement("super($L)", FIELD_DELEGATOR);
+			}
+
+			/* Objects class */
+			Class<?> objectsClass = java.util.Objects.class;
+
+			/* Add the statement code to the construcotr */
+			parameterConstructor
+					.addStatement("$T.requireNonNull($L, \"$L is null\")",
+							objectsClass, FIELD_DELEGATOR, FIELD_DELEGATOR)
+					.addStatement("$L($L)", SET_DELEGATOR, FIELD_DELEGATOR)
+					.addModifiers(Modifier.PUBLIC)
+					.addParameter(fieldType, FIELD_DELEGATOR);
+
+			/* Build constructors and add them to method set */
+			methods = methods.append(emptyConstructor.build());
+			methods = methods.append(parameterConstructor.build());
+
+		}
+
+		/* Return the methods */
+		return methods;
+
+	}
+
+	/**
+	 * Method that generates the delegator methods
+	 *
+	 * @param element type element
+	 * @param hasSuper indicates if the class has super or not
+	 * @param mustOverride indicates if the method delegator must be overrided or not
+	 * @return delegator methods
+	 */
+	private List<MethodSpec> generateDelegatorMethods(TypeElement element, boolean hasSuper, boolean mustOverride) {
+
+		/* Initialize empty set of method specs */
+		List<MethodSpec> methods = List.empty();
+
+		/* Type name of the element */
+		TypeMirror typeMirror = element.asType();
+		TypeName fieldType = TypeName.get(typeMirror);
+
+		/* Annotations to the get delegate method */
+		java.util.List<AnnotationSpec> getAnnotations = new java.util.ArrayList<>();
+		if (mustOverride || hasSuper) {
+			getAnnotations.add(AnnotationSpec.builder(Override.class).build());
+		}
+
+		/* Delegate type and method spec builders */
+		TypeName delegateType = TypeName.get(element.asType());
+		MethodSpec.Builder getDelegator = MethodSpec.methodBuilder(GET_DELEGATOR)
+				.returns(delegateType)
+				.addAnnotations(getAnnotations)
+				.addModifiers(Modifier.PUBLIC);
+		MethodSpec.Builder setDelegator = MethodSpec.methodBuilder(SET_DELEGATOR)
+				.addParameter(delegateType, FIELD_DELEGATOR);
+
+		/* Check the kind of the element */
+		if (ElementKind.CLASS.equals(element.getKind())
+				|| ElementKind.ENUM.equals(element.getKind())) {
+
+			/* Check if the element has super or not */
+			if (hasSuper) {
+
+				/* Add getter and setter statements */
+				getDelegator.addStatement("return ($T) super.$L()", fieldType, GET_DELEGATOR);
+				setDelegator.addStatement("super.$L($L)", SET_DELEGATOR, FIELD_DELEGATOR);
+
+			} else {
+
+				/* Add getter and setter statements */
+				getDelegator.addStatement("return $L", FIELD_DELEGATOR);
+				setDelegator.addStatement("this.$L = $L", FIELD_DELEGATOR, FIELD_DELEGATOR);
+
+			}
+
+		} else {
+
+			/* Add the abstract modifiers when the element is not a class */
+			setDelegator.addModifiers(Modifier.ABSTRACT);
+			getDelegator.addModifiers(Modifier.ABSTRACT);
+
+		}
+
+		/* Add the setter when the type is class or enum and add the getter */
+		if (ElementKind.CLASS.equals(element.getKind())
+				|| ElementKind.ENUM.equals(element.getKind())) {
+			methods = methods.append(setDelegator.addModifiers(Modifier.PROTECTED).build());
+		}
+		methods = methods.append(getDelegator.build());
+
+		/* Return the methods specs */
+		return methods;
+
+	}
+
+	/**
+	 * Method that generates the wrapper type
+	 *
+	 * @param type indicates if is a response or request wrapper
+	 * @param info all wrapper info
+	 * @param messageClasses map of message classes and package name
+	 * @param cloneClassesByName map of cloned classes and package name by name
+	 * @param cloneMessageClassesByName map of cloned message classes and package name by name
+	 * @param typeByName map of types by full name
+	 * @return generated wrapper type
+	 */
+	private TypeSpec generateWrapperType(WsIOType type,
+	                                     WsIOInfo info,
+	                                     Map<String, String> messageClasses,
+	                                     Map<String, Map<Tuple2<String, String>, String>> cloneClassesByName,
+	                                     Map<String, Map<Tuple2<String, String>, String>> cloneMessageClassesByName,
+	                                     Map<String, TypeElement> typeByName) {
+
+		/* Main executable element */
+		ExecutableElement executableElement = info.getExecutableElement();
+
+		/* Method and operation names */
+		String methodName = executableElement.getSimpleName().toString();
+		String operationName = info.getOperationName();
+
+		/* Simple and full class name */
+		String classSimpleName = StringUtils.isNotBlank(operationName) ? operationName : methodName;
+		String prefixTypeName = WsIOType.RESPONSE.equals(type) ? RESPONSE_WRAPPER_PREFIX : REQUEST_WRAPPER_PREFIX;
+		String suffixTypeName = WsIOType.RESPONSE.equals(type) ? RESPONSE_WRAPPER_SUFFIX : REQUEST_WRAPPER_SUFFIX;
+		String fullClassName = WsIOUtil.addWrap(WordUtils.capitalize(classSimpleName), prefixTypeName, suffixTypeName);
+
+		/* List of descriptors with types, elements and names */
+		List<Tuple3<ReferenceType, String, Tuple2<String, String>>> descriptors = getWrapperDescriptors(type, info);
+
+		/* Add jaxb annotations to the class */
+		List<AnnotationSpec> annotations = List.empty();
+		annotations = annotations.append(AnnotationSpec.builder(XmlRootElement.class).build());
+		annotations = annotations.append(AnnotationSpec.builder(XmlAccessorType.class)
+				.addMember("value", "$T.$L", XmlAccessType.class,
+						XmlAccessType.PROPERTY.name()).build());
+
+		/* Field, method and interface lists */
+		List<FieldSpec> fields = List.empty();
+		List<MethodSpec> methods = List.empty();
+		List<TypeName> interfaces = List.empty();
+
+		/* Iterate for each parameter and return type */
+		for (Tuple3<ReferenceType, String, Tuple2<String, String>> descriptor : descriptors) {
+
+			/* Get declared type, type element and name */
+			ReferenceType referenceType = descriptor._1();
+			String name = descriptor._2();
+
+			/* Qualifier, prefixes and suffixes */
+			Tuple2<String, String> qualifier = descriptor._3();
+			String prefixClassName = Objects.nonNull(qualifier) ? qualifier._1() : StringUtils.EMPTY;
+			String suffixClassName = Objects.nonNull(qualifier) ? qualifier._2() : StringUtils.EMPTY;
+			String prefixWrapperName = WsIOType.RESPONSE.equals(type) ? RESPONSE_PREFIX : REQUEST_PREFIX;
+			String suffixWrapperName = WsIOType.RESPONSE.equals(type) ? RESPONSE_SUFFIX : REQUEST_SUFFIX;
+			WsIOGenerate generate = Objects.nonNull(qualifier) ? WsIOGenerate.CLONE_MESSAGE : WsIOGenerate.MESSAGE;
+
+			/* Get identifier and get clone classes and clone message classes */
+			Tuple2<String, String> identifier = Tuple.of(prefixClassName, suffixClassName);
+			Map<String, String> cloneClasses = cloneClassesByName.flatMap((key, map) ->
+					map.get(identifier).map(packageName -> Tuple.of(key, packageName)));
+			Map<String, String> cloneMessageClasses = cloneMessageClassesByName.flatMap((key, map) ->
+					map.get(identifier).map(packageName -> Tuple.of(key, packageName)));
+
+			/* Context of the generation */
+			WsIOContext context = new WsIOContext(prefixClassName, suffixClassName,
+					prefixWrapperName, suffixWrapperName, messageClasses, cloneClasses,
+					cloneMessageClasses, typeByName, generate);
+
+			/* Recursive full type name */
+			TypeName internalType = context.getRecursiveFullTypeName(referenceType, false, true);
+
+			/* Lower and upper names */
+			String lowerName = WordUtils.uncapitalize(name);
+			String upperName = WordUtils.capitalize(name);
+
+			/* Internal and external getter and setter names */
+			String internalGetName = String.format("get%s_", upperName);
+			String internalSetName = String.format("set%s_", upperName);
+			String externalGetName = String.format("get%s", upperName);
+			String externalSetName = String.format("set%s", upperName);
+
+			/* Internal and external field and property names */
+			String internalParameterName = String.format("%s_", lowerName);
+			String externalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
+					String.format("%s_", lowerName) : lowerName;
+			String fieldName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
+					String.format("%s_", lowerName) : lowerName;
+
+			/* List with the internal get annotations */
+			List<AnnotationSpec> internalGetAnnotations = List.empty();
+			internalGetAnnotations = internalGetAnnotations.append(AnnotationSpec.builder(XmlElement.class)
+					.addMember("name", "$S", lowerName).build());
+
+			/* List with the external get annotations */
+			List<AnnotationSpec> externalGetAnnotations = List.of(
+					AnnotationSpec.builder(XmlTransient.class).build()
+			);
+
+			/* Create internal get accessor and code block */
+			String internalGetAccessor = String.format("%s()", externalGetName);
+			CodeBlock internalGetBlock = WsIODelegator.generateRecursiveTransformToInternal(referenceType,
+					internalType, context, internalGetAccessor);
+
+			/* Create the internal get method spec and add it to the methods set */
+			MethodSpec internalGet = MethodSpec.methodBuilder(internalGetName)
+					.returns(internalType)
+					.addAnnotations(internalGetAnnotations)
+					.addModifiers(Modifier.PUBLIC)
+					.addCode("return $L() != null ? ", externalGetName)
+					.addCode(internalGetBlock)
+					.addCode(" : null").addCode(";").addCode("\n")
+					.build();
+			methods = methods.append(internalGet);
+
+			/* Create external set block code */
+			CodeBlock internalSetBlock = WsIODelegator.generateRecursiveTransformToExternal(internalType,
+					referenceType, context, internalParameterName);
+
+			/* Create parameter and method spec and add it to the methods */
+			ParameterSpec internalParameter = ParameterSpec.builder(internalType, internalParameterName).build();
+			MethodSpec internalSet = MethodSpec.methodBuilder(internalSetName)
+					.addParameter(internalParameter)
+					.addModifiers(Modifier.PUBLIC)
+					.beginControlFlow("if ($L != null)", internalParameterName)
+					.addCode("$L(", externalSetName)
+					.addCode(internalSetBlock)
+					.addCode(")").addCode(";").addCode("\n")
+					.endControlFlow()
+					.build();
+			methods = methods.append(internalSet);
+
+			/* Create fiend and add it to the set */
+			TypeName fieldType = TypeName.get(referenceType);
+			FieldSpec fieldSpec = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE).build();
+			fields = fields.append(fieldSpec);
+
+			/* Create return type name and get method and add it to the set */
+			MethodSpec externalGet = MethodSpec.methodBuilder(externalGetName)
+					.returns(fieldType)
+					.addAnnotations(externalGetAnnotations)
+					.addModifiers(Modifier.PUBLIC)
+					.addStatement("return $L", fieldName)
+					.build();
+			methods = methods.append(externalGet);
+
+			/* Create external parameter, build the method spec and add it to the set */
+			ParameterSpec externalParameter = ParameterSpec.builder(fieldType, externalParameterName).build();
+			MethodSpec externalSet = MethodSpec.methodBuilder(externalSetName)
+					.addParameter(externalParameter)
+					.addModifiers(Modifier.PUBLIC)
+					.addStatement("this.$L = $L", fieldName, externalParameterName)
+					.build();
+			methods = methods.append(externalSet);
+
+		}
+
+		/* Check if the type is response and the wrapper size is greater than 0 */
+		if (WsIOType.RESPONSE.equals(type) && info.getWrappers().size() > 0) {
+
+			/* Declare function to create the menbers */
+			Function5<String, TypeName, String, List<AnnotationSpec>, List<AnnotationSpec>,
+					Tuple2<List<FieldSpec>, List<MethodSpec>>> createMember =
+					(fieldName, typeName, getCheck, getAnnotations, setAnnotations) -> {
+
+						/* Declare current sets to hold the fields and methods */
+						List<FieldSpec> currentFields = List.empty();
+						List<MethodSpec> currentMethods = List.empty();
+
+						/* Get the upper name */
+						String upperName = WordUtils.capitalize(fieldName);
+
+						/* Create the field and add it to the set */
+						currentFields = currentFields.append(FieldSpec.builder(typeName, fieldName, Modifier.PRIVATE).build());
+
+						/* Declare the code block and check if get check is empty or not */
+						CodeBlock getCode;
+						if (StringUtils.isNotBlank(getCheck)) {
+
+							/* Create the upper check name and initialize the get code block */
+							String upperCheck = WordUtils.capitalize(getCheck);
+							getCode = CodeBlock.builder()
+									.beginControlFlow("if ($T.$L.equals(get$L()))", Boolean.class, "TRUE", upperCheck)
+									.addStatement("return $L", fieldName)
+									.endControlFlow()
+									.beginControlFlow("else")
+									.addStatement("return null")
+									.endControlFlow()
+									.build();
+
+						} else {
+
+							/* Initialize the get code block */
+							getCode = CodeBlock.builder()
+									.addStatement("return $L", fieldName)
+									.build();
+
+						}
+
+						/* Add get method to the set */
+						currentMethods = currentMethods.append(MethodSpec.methodBuilder("get" + upperName)
+								.addAnnotation(Override.class)
+								.addAnnotations(getAnnotations)
+								.addModifiers(Modifier.PUBLIC)
+								.returns(typeName)
+								.addCode(getCode)
+								.build());
+
+						/* Add set method to the set */
+						currentMethods = currentMethods.append(MethodSpec.methodBuilder("set" + upperName)
+								.addAnnotations(setAnnotations)
+								.addAnnotation(Override.class)
+								.addModifiers(Modifier.PUBLIC)
+								.addParameter(typeName, fieldName)
+								.addStatement("this.$L = $L", fieldName, fieldName)
+								.build());
+
+						/* Return the tuple with current fields and methods and the flag in true */
+						return Tuple.of(currentFields, currentMethods);
+
+					};
+
+			/* Function to create member without set */
+			Function4<String, TypeName, String, List<AnnotationSpec>, Tuple2<List<FieldSpec>, List<MethodSpec>>>
+					createMemberNoSet = createMember.reversed()
+					.apply(List.empty())
+					.reversed();
+
+			/* Function to create member without set and checks */
+			Function3<String, TypeName, List<AnnotationSpec>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createMemberNoSetCheck =
+					(fieldName, typeName, getAnnotations) ->
+							createMemberNoSet.apply(fieldName, typeName, null, getAnnotations);
+
+			/* List with time names */
+			List<Tuple2<String, String>> timeNames = List.of(
+					Tuple.of("dateTimes", "dateTime"));
+
+			/* List with state names */
+			List<Tuple2<String, String>> stateNames = List.of(
+					Tuple.of("identifiers", "identifier"),
+					Tuple.of("messages", "message"),
+					Tuple.of("descriptions", "description"),
+					Tuple.of("types", "type"),
+					Tuple.of("status", "status"),
+					Tuple.of("details", "detail"),
+					Tuple.of("successfuls", "successful"),
+					Tuple.of("failures", "failure"),
+					Tuple.of("warnings", "warning"),
+					Tuple.of("showSuccessfuls", "showSuccessful"),
+					Tuple.of("showFailures", "showFailure"),
+					Tuple.of("showWarnings", "showWarning"));
+
+			/* Next line counter to format the code */
+			Integer nextLine = 0;
+
+			/* Declare the list of orders */
+			List<String> orders = List.empty();
+
+			/* Check if the time wrapper is defined and add it to orders */
+			if (info.getWrappers().contains(WsIOWrapper.TIME_WRAPPER)) {
+				nextLine++;
+				orders = orders.appendAll(timeNames.map(Tuple2::_1));
+			}
+
+			/* Check if the state wrapper is defined and add the first 6 to orders */
+			if (info.getWrappers().contains(WsIOWrapper.STATE_WRAPPER)) {
+				nextLine += 6;
+				orders = orders.appendAll(stateNames.map(Tuple2::_2).take(6));
+			}
+
+			/* Check if descriptors size is greater than 0 and add the field to orders */
+			if (descriptors.size() > 0) {
+				String result = descriptors.get(0)._2();
+				String field = String.format("%s_", result.substring(0, 1).toLowerCase() + result.substring(1));
+				orders = orders.append(field);
+			}
+
+			/* Check if the state wrapper is defined, skip the first 6 and add the next 3 elements to the orders */
+			if (info.getWrappers().contains(WsIOWrapper.STATE_WRAPPER)) {
+				orders = orders.appendAll(stateNames.map(Tuple2::_1).drop(6).take(3));
+			}
+
+			/* Create the name format */
+			String format = Stream.of("$S")
+					.cycle(orders.size())
+					.intersperse(", ")
+					.prepend("{ ")
+					.append(" }")
+					.insert(2 * nextLine + 1, info.getWrappers().contains(WsIOWrapper.STATE_WRAPPER) ? "\n" :"")
+					.mkString();
+
+			/* Add the annotation to the list */
+			annotations = annotations.append(AnnotationSpec.builder(XmlType.class)
+					.addMember("propOrder", format, orders.toArray()).build());
+
+			/* Chck if time wrapper is going to be added or not */
+			if (info.getWrappers().contains(WsIOWrapper.TIME_WRAPPER)) {
+
+				/* Declare the index and call the function to generate the fields and methods */
+				Integer index = -1;
+				Tuple2<List<FieldSpec>, List<MethodSpec>> fieldsAndMethods = createMemberNoSetCheck
+						.apply(timeNames.get(++index)._1(), ParameterizedTypeName.get(ClassName.get(List.class),
+								ClassName.get(WsIOInstant.class)), List.of(
+								AnnotationSpec.builder(XmlElement.class)
+										.addMember("name", "$S", timeNames.get(index)._2()).build(),
+								AnnotationSpec.builder(XmlElementWrapper.class)
+										.addMember("name", "$S", timeNames.get(index)._1()).build()));
+
+				/* Add the fields and methods */
+				fields = fields.appendAll(fieldsAndMethods._1());
+				methods = methods.appendAll(fieldsAndMethods._2());
+
+				/* Add the annotation */
+				interfaces.append(ClassName.get(WsIOTime.class));
+
+			}
+
+			/* Chck if state wrapper is going to be added or not */
+			if (info.getWrappers().contains(WsIOWrapper.STATE_WRAPPER)) {
+
+				/* Declare the tuple to hold the results and the index */
+				Tuple2<List<FieldSpec>, List<MethodSpec>> result;
+				Integer index = -1;
+
+				/* Create the methods and fields for each elements */
+				result = createMemberNoSetCheck.apply(stateNames.get(++index)._2(), ClassName.get(String.class),
+						List.of(AnnotationSpec.builder(XmlElement.class).build()));
+				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
+				result = createMemberNoSetCheck.apply(stateNames.get(++index)._2(), ClassName.get(WsIOText.class),
+						List.of(AnnotationSpec.builder(XmlElement.class).build()));
+				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
+				result = createMemberNoSetCheck.apply(stateNames.get(++index)._2(), ClassName.get(WsIOText.class),
+						List.of(AnnotationSpec.builder(XmlElement.class).build()));
+				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
+				result = createMemberNoSetCheck.apply(stateNames.get(++index)._2(), ClassName.get(String.class),
+						List.of(AnnotationSpec.builder(XmlElement.class).build()));
+				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
+				result = createMemberNoSetCheck.apply(stateNames.get(++index)._2(), ClassName.get(WsIOStatus.class),
+						List.of(AnnotationSpec.builder(XmlAttribute.class).build()));
+				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
+				result = createMemberNoSetCheck.apply(stateNames.get(++index)._2(), ClassName.get(WsIODetail.class),
+						List.of(AnnotationSpec.builder(XmlAttribute.class).build()));
+				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
+
+				/* Create the methods and fields for each elements */
+				result = createMemberNoSet.apply(stateNames.get(++index)._1(), ParameterizedTypeName.get(ClassName.get(List.class),
+						ClassName.get(WsIOElement.class)), stateNames.get(index + 3)._1(), List.of(
+						AnnotationSpec.builder(XmlElement.class)
+								.addMember("name", "$S", stateNames.get(index)._2()).build(),
+						AnnotationSpec.builder(XmlElementWrapper.class)
+								.addMember("name", "$S", stateNames.get(index)._1()).build()));
+				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
+				result = createMemberNoSet.apply(stateNames.get(++index)._1(), ParameterizedTypeName.get(ClassName.get(List.class),
+						ClassName.get(WsIOElement.class)), stateNames.get(index + 3)._1(), List.of(
+						AnnotationSpec.builder(XmlElement.class)
+								.addMember("name", "$S", stateNames.get(index)._2()).build(),
+						AnnotationSpec.builder(XmlElementWrapper.class)
+								.addMember("name", "$S", stateNames.get(index)._1()).build()));
+				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
+				result = createMemberNoSet.apply(stateNames.get(++index)._1(), ParameterizedTypeName.get(ClassName.get(List.class),
+						ClassName.get(WsIOElement.class)), stateNames.get(index + 3)._1(), List.of(
+						AnnotationSpec.builder(XmlElement.class)
+								.addMember("name", "$S", stateNames.get(index)._2()).build(),
+						AnnotationSpec.builder(XmlElementWrapper.class)
+								.addMember("name", "$S", stateNames.get(index)._1()).build()));
+				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
+
+				/* Create the methods and fields for each elements */
+				result = createMemberNoSetCheck.apply(stateNames.get(++index)._1(), ClassName.get(Boolean.class),
+						List.of(AnnotationSpec.builder(XmlTransient.class).build()));
+				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
+				result = createMemberNoSetCheck.apply(stateNames.get(++index)._1(), ClassName.get(Boolean.class),
+						List.of(AnnotationSpec.builder(XmlTransient.class).build()));
+				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
+				result = createMemberNoSetCheck.apply(stateNames.get(++index)._1(), ClassName.get(Boolean.class),
+						List.of(AnnotationSpec.builder(XmlTransient.class).build()));
+				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
+
+				/* Add the interface to the set */
+				interfaces.append(ClassName.get(WsIOState.class));
+
+			}
+
+		}
+
+		/* Check if the field or method size if greater than zero to add the type spec */
+		if (fields.size() > 0 || methods.size() > 0) {
+
+			/* Build and return the type spec and add it to the list */
+			return TypeSpec.classBuilder(fullClassName)
+					.addAnnotations(annotations)
+					.addModifiers(Modifier.PUBLIC)
+					.addSuperinterfaces(interfaces)
+					.addFields(fields)
+					.addMethods(methods)
+					.build();
+
+		}
+
+		/* Return null */
+		return null;
+
+	}
+
+	/**
+	 * Method that create the descriptors of reponse and request types.
+	 *
+	 * @param type indicates if is a response or request wrapper
+	 * @param info all wrapper info
+	 * @return descriptors of reponse and request types.
+	 */
+	private List<Tuple3<ReferenceType, String, Tuple2<String, String>>> getWrapperDescriptors(WsIOType type,
+	                                                                                          WsIOInfo info) {
+
+		/* Main executable element */
+		ExecutableElement executableElement = info.getExecutableElement();
+
+		/* List to fill with types, elements and names */
+		List<Tuple3<ReferenceType, String, Tuple2<String, String>>> descriptors = List.empty();
+
+		/* Check if the type is response or request */
+		if (WsIOType.RESPONSE.equals(type)) {
+
+			/* Check if the type mirror is a declared type */
+			TypeMirror typeMirror = info.getReturnType();
+			if (executableElement.getReturnType() instanceof ReferenceType) {
+
+				/* Declared type and element type */
+				ReferenceType returnType = (ReferenceType) typeMirror;
+
+				/* Return name if present otherwise default value*/
+				String returnName = info.getReturnName();
+				String result = StringUtils.isNotBlank(returnName) ? returnName : DEFAULT_RESULT;
+
+				/* Get qualifier from annotation */
+				Tuple2<String, String> qualifier = Option.of(typeMirror.getAnnotation(WsIOQualifier.class))
+						.map(qualifiers -> Tuple.of(qualifiers.prefix(), qualifiers.suffix()))
+						.getOrNull();
+
+				/* Fill the type, element and name */
+				Tuple3<ReferenceType, String, Tuple2<String, String>> descriptor =
+						Tuple.of(returnType, result, qualifier);
+				descriptors = descriptors.append(descriptor);
+
+			}
+
+		} else if (WsIOType.REQUEST.equals(type)) {
+
+			/* Iterate for each parameter */
+			for (int index = 0; index < info.getParameterTypes().size(); index++) {
+
+				/* Check if the type mirror is a declared type */
+				TypeMirror typeMirror = info.getParameterTypes().get(index);
+				if (typeMirror != null && typeMirror instanceof DeclaredType) {
+
+					/* Reference type and element type */
+					ReferenceType declaredType = (ReferenceType) typeMirror;
+
+					/* Parameter name if present otherwise default value */
+					String defaultName = DEFAULT_PARAMETER + index;
+					String parameterName = info.getParameterNames().get(index);
+					String argument = StringUtils.isNotBlank(parameterName) ? parameterName : defaultName;
+
+					/* Get qualifier from annotation */
+					Tuple2<String, String> qualifier = Option.of(typeMirror.getAnnotation(WsIOQualifier.class))
+							.map(qualifiers -> Tuple.of(qualifiers.prefix(), qualifiers.suffix()))
+							.getOrNull();
+
+					/* Fill the type, element and name */
+					Tuple3<ReferenceType, String, Tuple2<String, String>> descriptor =
+							Tuple.of(declaredType, argument, qualifier);
+					descriptors = descriptors.append(descriptor);
+
+				}
+
+			}
+
+		}
+
+		/* Return descriptors */
+		return descriptors;
+
+	}
+
+	/**
+	 * Method that return if the delegator should be overriden or not
+	 *
+	 * @param getters map of getters with priority levels
+	 * @param setters map of setters with priority levels
+	 * @return {@code true} if the delegator should be overriden {@code false} otherwise
+	 */
+	private boolean checkDelegatorOverride(Map<WsIOLevel, Map<String, ExecutableElement>> getters,
+	                                       Map<WsIOLevel, Map<String, ExecutableElement>> setters) {
+
+		/* Predicate that filter the map keys */
+		Predicate<WsIOLevel> filterKey = key -> WsIOLevel.CLASS_INTERNAL.equals(key)
+				|| WsIOLevel.INTERFACE_INTERNAL.equals(key);
+
+		/* Getter names */
+		Set<String> getterNames = getters.filterKeys(filterKey)
+				.values()
+				.flatMap(Map::keySet)
+				.toSet();
+
+		/* Check if the delegator getter is present */
+		if (getterNames.contains(GET_DELEGATOR)) {
+
+			/* Get delegator maximun level */
+			WsIOLevel level = WsIOUtils.getPriorityLevelByNameFromExclusive(getters, GET_DELEGATOR, WsIOLevel.LOCAL);
+
+			/* Getter and setter executable options */
+			Option<ExecutableElement> getterOpt = getters.getOrElse(level, HashMap.empty())
+					.get(GET_DELEGATOR);
+			Option<ExecutableElement> setterOpt = setters.getOrElse(level, HashMap.empty())
+					.get(SET_DELEGATOR);
+
+			/* Check if the getter and setter are defined */
+			if (getterOpt.isDefined() && setterOpt.isDefined()) {
+
+				/* Getter and setters */
+				ExecutableElement getter = getterOpt.get();
+				ExecutableElement setter = setterOpt.get();
+
+				/* Get type mirrors of return and parameter type */
+				TypeMirror returnType = getter.getReturnType();
+				VariableElement parameter = setter.getParameters().get(0);
+				TypeMirror parameterType = parameter.asType();
+
+				/* Check that types are declared types */
+				if (returnType instanceof DeclaredType
+						&& parameterType instanceof DeclaredType) {
+
+					/* Get declared types */
+					DeclaredType returnDeclaredType = (DeclaredType) returnType;
+					DeclaredType parameterDeclaredType = (DeclaredType) parameterType;
+
+					/* Return true if the return and parameter types are compatible */
+					if (WsIODelegator.isRecursiveCompatible(returnDeclaredType, parameterDeclaredType)) {
+						return true;
+					}
+
+				}
+
+			}
+
+		}
+
+		/* Return false if the types are not found or does not match */
+		return false;
+
+	}
+
+	/**
+	 * Method that generates a map containing the inheritance structure
+	 *
+	 * @param element element to extract the types
+	 * @param context context of the generation
+	 * @return map containing the inheritance structure
+	 */
+	private Map<WsIOLevel, Set<DeclaredType>> resolveInheritance(TypeElement element,
+	                                                             WsIOContext context) {
+
+		/* Get root type, super class and super interfaces */
+		TypeMirror rootType = element.asType();
+		TypeMirror superType = element.getSuperclass();
+		List<TypeMirror> interTypes = List.ofAll(element.getInterfaces());
+
+		Map<WsIOLevel, Set<DeclaredType>> inheritances = HashMap.empty();
+
+		/* Create the root delegate element */
+		Option<DeclaredType> rootOpt = Option.of(rootType)
+				.filter(DeclaredType.class::isInstance)
+				.map(DeclaredType.class::cast);
+
+		/* Add the element if is non null and instance of declared type */
+		inheritances = inheritances.merge(rootOpt.toMap(val -> WsIOLevel.LOCAL, HashSet::of));
+
+		/* Create the super delegate element */
+		Option<DeclaredType> superOpt = Option.of(superType)
+				.filter(DeclaredType.class::isInstance)
+				.map(DeclaredType.class::cast)
+				.filter(declaredType -> Option.of(declaredType)
+						.map(DeclaredType::asElement)
+						.filter(TypeElement.class::isInstance)
+						.map(TypeElement.class::cast)
+						.map(TypeElement::getQualifiedName)
+						.map(Name::toString)
+						.exists(Predicates.noneOf(Object.class.getCanonicalName()::equals,
+								Enum.class.getCanonicalName()::equals)));
+
+		/* Function that checks if the class is external of internal */
+		Function2<Boolean, DeclaredType, WsIOLevel> extractDeclaredClassInterface = (isClass, type) -> {
+			if (type.asElement() instanceof TypeElement) {
+
+				/* Type element and name */
+				TypeElement typeElement = (TypeElement) type.asElement();
+				String name = typeElement.getQualifiedName().toString();
+
+				/* Check if the element class name is in clone and message classes */
+				boolean inMessage = context.getMessageClasses().keySet().contains(name);
+				boolean inClone = context.getCloneClasses().keySet().contains(name);
+
+				/* Check generate type and in message in clone */
+				if ((WsIOGenerate.MESSAGE.equals(context.getGenerate()) && inMessage)
+						|| (WsIOGenerate.CLONE_MESSAGE.equals(context.getGenerate()) && inMessage && inClone)) {
+
+					/* Check if is a class or interface */
+					if (isClass) {
+
+						/* Return class internal */
+						return WsIOLevel.CLASS_INTERNAL;
+
+					} else {
+
+						/* Return interface internal */
+						return WsIOLevel.INTERFACE_INTERNAL;
+
+					}
+
+				} else {
+
+					/* Check if is a class or interface */
+					if (isClass) {
+
+						/* Return class external */
+						return WsIOLevel.CLASS_EXTERNAL;
+
+					} else {
+
+						/* Return interface external */
+						return WsIOLevel.INTERFACE_EXTERNAL;
+
+					}
+
+				}
+
+			}
+
+			/* Return none by default */
+			return WsIOLevel.NONE;
+
+		};
+
+		/* Add the element if is non null and instance of declared type */
+		inheritances = inheritances.merge(superOpt.toMap(extractDeclaredClassInterface.apply(true), HashSet::of));
+
+		/* Return current local and super class merged with non null super interfaces instance of declared type */
+		return inheritances.merge(interTypes
+				.filter(DeclaredType.class::isInstance)
+				.map(DeclaredType.class::cast)
+				.toSet()
+				.groupBy(extractDeclaredClassInterface.apply(false)));
+
+	}
+
+	/**
+	 * Method that returns a map with getters and setters by priority.
+	 *
+	 * @param inheritance map containing the inheritance structure
+	 * @return a map with getters and setters by priority
+	 */
+	private Map<WsIOLevel, Map<WsIOProperty, Map<String, ExecutableElement>>> resolveMethodPriority(Map<WsIOLevel, Set<DeclaredType>> inheritance) {
+
+		/* Return the map with getters and setters by priority */
+		return inheritance.filterKeys(Predicates.noneOf(WsIOLevel.NONE::equals))
+				.mapValues(types -> types.map(DeclaredType::asElement)
+						.filter(TypeElement.class::isInstance)
+						.map(TypeElement.class::cast))
+				.mapValues(types -> {
+
+					/* All methods of the type recursively */
+					Map<Integer, Set<ExecutableElement>> methods = types.map(WsIOUtils::getRecursiveExecutableElementsWithLevel)
+							.fold(HashMap.empty(), (map1, map2) -> map1.merge(map2, Set::addAll));
+
+					/* Functions to flat the map */
+					Function2<Integer, Set<ExecutableElement>, Set<Tuple2<Integer, ExecutableElement>>> toFlatTupleStream =
+							(priority, executables) -> executables.map(executable -> Tuple.of(priority, executable));
+
+					/* Fcuntion to group by executable name */
+					Function2<Integer, ExecutableElement, String> groupByName = (priority, executable) ->
+							executable.getSimpleName().toString();
+
+					Set<Tuple2<Integer, ExecutableElement>> properties = methods.flatMap(toFlatTupleStream.tupled()).toSet();
+
+					/* Function to extract executables by priority */
+					Function1<Predicate<ExecutableElement>, Map<String, ExecutableElement>> getProperty = (filter) ->
+							properties.filter(tuple -> filter.test(tuple._2()))
+							.groupBy(groupByName.tupled())
+							.mapValues(executables -> executables.toSortedSet(Comparator.comparing(Tuple2::_1)).head())
+							.mapValues(Tuple2::_2);
+
+					/* Extract getters and setters by priority */
+					Map<String, ExecutableElement> setters = getProperty.apply(WsIOUtils::isSetter);
+					Map<String, ExecutableElement> getters = getProperty.apply(WsIOUtils::isGetter);
+
+					/* Return the map of getters and setters */
+					return HashMap.of(WsIOProperty.SETTER, setters, WsIOProperty.GETTER, getters);
+
+				});
+
+	}
+
+	/**
+	 * Method that generates the type spec
+	 *
+	 * @param typeSpec type spec
+	 * @param packageName package name of the class
+	 * @param className class name of the class
+	 */
+	private void createJavaClass(TypeSpec typeSpec,
+	                            String packageName,
+	                            String className) {
+
+		/* Check if non of the parameters is null */
+		if (Objects.nonNull(typeSpec)
+				&& Objects.nonNull(packageName)
+				&& Objects.nonNull(className)) {
+
+			try {
+
+				/* Create source file and open the writer */
+				JavaFileObject jfo = filer.createSourceFile(className);
+				Writer writer = jfo.openWriter();
+
+				/* Build the class and write to the file */
+				JavaFile javaFile = JavaFile.builder(packageName, typeSpec).build();
+				javaFile.writeTo(writer);
+
+				/* Close the writer */
+				writer.close();
+
+			} catch (IOException e) {
+
+				/* Print the error when the class could not be generated */
+				WsIOHandler.error(messager, e, "Class could not be writed");
+
+			}
+
+		}
+
+	}
+
+}
