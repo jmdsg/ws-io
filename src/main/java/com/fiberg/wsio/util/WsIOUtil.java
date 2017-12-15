@@ -7,8 +7,6 @@ import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import static java.lang.String.format;
-
 public final class WsIOUtil {
 
 	private WsIOUtil() {  }
