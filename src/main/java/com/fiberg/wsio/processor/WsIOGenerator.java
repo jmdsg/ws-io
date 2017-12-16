@@ -860,7 +860,7 @@ class WsIOGenerator {
 		List<TypeName> interfaces = List.empty();
 
 		/* Iterate for each parameter and return type */
-		String fieldName = null;
+		List<String> fieldNames = List.empty();
 		for (Tuple3<ReferenceType, String, Tuple2<String, String>> descriptor : descriptors) {
 
 			/* Get declared type, type element and name */
@@ -906,9 +906,10 @@ class WsIOGenerator {
 			String externalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
 					String.format("%s_", lowerName) : lowerName;
 
-			/* Assign field name */
-			fieldName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
+			/* Assign field name and add it to the fields */
+			String fieldName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
 					String.format("%s_", lowerName) : lowerName;
+			fieldNames = fieldNames.append(fieldName);
 
 			/* List with the external get annotations */
 			List<AnnotationSpec> externalGetAnnotations = List.of(
@@ -981,23 +982,24 @@ class WsIOGenerator {
 				Map<WsIOLevel, Map<String, ExecutableElement>> setterPriorities = methodPriorities
 						.mapValues(map -> map.getOrElse(WsIOProperty.SETTER, HashMap.empty()));
 
-				/* Getter annotations */
-				Map<String, List<AnnotationSpec>> getterAnnotations = getterPriorities.values()
-						.flatMap(Map::values)
-						.filter(Objects::nonNull)
+				/* Property names matching names and level */
+				List<Tuple3<ExecutableElement, ExecutableElement, WsIOLevel>> properties =
+						getMatchingProperties(getterPriorities, setterPriorities);
+
+				/* Map identifier by getter name and containing property name */
+				Map<String, String> getterProperties = properties.map(Tuple3::_1)
 						.map(ExecutableElement::getSimpleName)
 						.map(Name::toString)
-						.toMap(getter -> {
+						.toMap(getter -> Tuple.of(getter, WordUtils.uncapitalize(
+								getter.replaceAll("^get", ""))));
 
-							/* Get the name of the property */
-							String propertyName = WordUtils.uncapitalize(
-									getter.replaceAll("^get", ""));
+				/* Getter annotations */
+				Map<String, List<AnnotationSpec>> getterAnnotations = getterProperties
+						.mapValues(propertyName -> List.of(AnnotationSpec.builder(XmlElement.class)
+								.addMember("name", "$S", propertyName).build()));
 
-							/* Return the tuple of getter name and element annotation with property name */
-							return Tuple.of(getter, List.of(AnnotationSpec.builder(XmlElement.class)
-									.addMember("name", "$S", propertyName).build()));
-
-						});
+				/* Change the field names to the class inner fields */
+				fieldNames = getterProperties.map(Tuple2::_2).toList();
 
 				/* Add method of the property methods */
 				methods = methods.appendAll(generatePropertyMethods(getterPriorities,
@@ -1052,7 +1054,7 @@ class WsIOGenerator {
 
 			/* Get additionals */
 			Tuple4<List<FieldSpec>, List<MethodSpec>, List<TypeName>, List<AnnotationSpec>> additionals =
-					generateAdditionals(info.getWrappers(), fieldName);
+					generateAdditionals(info.getWrappers(), fieldNames);
 
 			/* Add all fields, methods, interfaces and annotations */
 			fields = fields.appendAll(additionals._1());
@@ -1085,11 +1087,11 @@ class WsIOGenerator {
 	 * Method that generates the fields, methods, interfaces and annotations of wrapper additionals.
 	 *
 	 * @param wrappers list of wrapper enums
-	 * @param field name of the field
+	 * @param fieldNames names of the fields
 	 * @return fields, methods, interfaces and annotations of wrapper additionals
 	 */
 	private Tuple4<List<FieldSpec>, List<MethodSpec>, List<TypeName>, List<AnnotationSpec>> generateAdditionals(Set<WsIOWrapper> wrappers,
-	                                                                                                           String field) {
+	                                                                                                            List<String> fieldNames) {
 
 		/* Fields, methods and interfaces */
 		List<FieldSpec> fields = List.empty();
@@ -1225,10 +1227,8 @@ class WsIOGenerator {
 			orders = orders.appendAll(stateNames.map(Tuple2::_2).take(6));
 		}
 
-		/* Check if descriptors size is greater than 0 and add the field to orders */
-		if (Objects.nonNull(field)) {
-			orders = orders.append(field);
-		}
+		/* Add all field names */
+		orders = orders.appendAll(fieldNames);
 
 		/* Check if the state wrapper is defined, skip the first 6 and add the next 3 elements to the orders */
 		if (wrappers.contains(WsIOWrapper.STATE_WRAPPER)) {
@@ -1246,7 +1246,7 @@ class WsIOGenerator {
 
 		/* Add the annotation to the list */
 		annotations = annotations.append(AnnotationSpec.builder(XmlType.class)
-				.addMember("propOrder", format, orders.toArray()).build());
+				.addMember("propOrder", format, orders.toJavaArray()).build());
 
 		/* Chck if time wrapper is going to be added or not */
 		if (wrappers.contains(WsIOWrapper.TIME_WRAPPER)) {
