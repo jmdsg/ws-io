@@ -80,7 +80,7 @@ class WsIOAdditional {
 	private static Map<WsIOWrapper, Annotation> extractUse(Element element) {
 		return ADDITIONALS.mapValues(Tuple2::_1)
 				.mapValues(annotation -> Objects.nonNull(element) ?
-						element.getEnclosingElement().getAnnotation(annotation) : null);
+						element.getAnnotation(annotation) : null);
 	}
 
 	/**
@@ -92,7 +92,7 @@ class WsIOAdditional {
 	private static Map<WsIOWrapper, Annotation> extractIgnore(Element element) {
 		return ADDITIONALS.mapValues(Tuple2::_2)
 				.mapValues(annotation -> Objects.nonNull(element) ?
-						element.getEnclosingElement().getAnnotation(annotation) : null);
+						element.getAnnotation(annotation) : null);
 	}
 
 	/**
