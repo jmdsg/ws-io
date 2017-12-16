@@ -117,11 +117,13 @@ class WsIODelegator {
 	 *
 	 * @param referenceType reference type
 	 * @param useInternalTypes indicates if internal types are going to be used or not
+	 * @param useWildcards indicates if wildcard types should be used or not
 	 * @param context context of the process
 	 * @return first collection implementation and the rest just internals
 	 */
 	private static TypeName ensureFirstConcreteClass(ReferenceType referenceType,
 	                                                 Boolean useInternalTypes,
+	                                                 Boolean useWildcards,
 	                                                 WsIOContext context) {
 
 		/* Check the type of reference */
@@ -138,7 +140,7 @@ class WsIODelegator {
 
 				/* Get the recursive type name with implementations on collection and map classes */
 				TypeName implementation = context.getRecursiveFullTypeName(referenceType,
-						true, useInternalTypes);
+						useInternalTypes, true, useWildcards);
 
 				/* Check if type name is parameterized */
 				if (implementation instanceof ParameterizedTypeName) {
@@ -148,7 +150,7 @@ class WsIODelegator {
 
 					/* Get the recursive type name without implementations only internals */
 					ParameterizedTypeName internal = (ParameterizedTypeName) context.getRecursiveFullTypeName(
-							referenceType, false, useInternalTypes);
+							referenceType, useInternalTypes, false, useWildcards);
 
 					/* Return first implementation */
 					return ParameterizedTypeName.get(parameterized.rawType,
@@ -167,7 +169,7 @@ class WsIODelegator {
 
 		/* Return recursive name when type is not declared */
 		return context.getRecursiveFullTypeName(referenceType,
-				false, useInternalTypes);
+				useInternalTypes, false, useWildcards);
 
 	}
 
@@ -202,9 +204,9 @@ class WsIODelegator {
 
 			/* Get full names when the class is in message or clones classes */
 			TypeName returnTypeName = context.getRecursiveFullTypeName(returnReference,
-					false, true);
+					true, false, true);
 			TypeName parameterTypeName = context.getRecursiveFullTypeName(parameterReference,
-					false, true);
+					true, false, true);
 
 			/* Create getter builder */
 			MethodSpec.Builder getterSpecBuilder = MethodSpec.methodBuilder(getterName)
@@ -335,7 +337,7 @@ class WsIODelegator {
 
 						/* Get class to cast of dimension - 1 */
 						TypeName typeName = context.getRecursiveFullTypeName(referenceType,
-								false, toInternal);
+								toInternal, false, false);
 						TypeName castTypeName = WsIOUtils.getArrayType(typeName, dimension - 1);
 
 						/* Declare destiny class name and check if is parameterized or not */
@@ -416,7 +418,7 @@ class WsIODelegator {
 
 								/* Cast class type name */
 								TypeName castClass = ensureFirstConcreteClass(externalDeclared,
-										toInternal, context);
+										toInternal, false, context);
 
 								/* Build and return the code block for collection types */
 								return CodeBlock.builder()
@@ -465,7 +467,7 @@ class WsIODelegator {
 
 								/* Cast class type name */
 								TypeName castClass = ensureFirstConcreteClass(externalDeclared,
-										toInternal, context);
+										toInternal, false, context);
 
 								/* Entry class to create simple entries */
 								Class<?> entryClass = java.util.AbstractMap.SimpleEntry.class;

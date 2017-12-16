@@ -353,7 +353,7 @@ class WsIOGenerator {
 			Option<TypeName> superClass = inheritance.get(WsIOLevel.CLASS_INTERNAL)
 					.flatMap(Set::headOption)
 					.map(declaredType -> context.getRecursiveFullTypeName(declaredType,
-							false, true));
+							true, false, true));
 
 			/* Generate the delegate methods and add them to the set */
 			List<MethodSpec> delegateMethods = generateDelegatorMethods(element,
@@ -405,12 +405,12 @@ class WsIOGenerator {
 			Option<TypeName> superClass = inheritance.get(WsIOLevel.CLASS_INTERNAL)
 					.flatMap(Set::headOption)
 					.map(declaredType -> context.getRecursiveFullTypeName(declaredType,
-							false, true));
+							true, false, true));
 
 			/* Super interfaces set */
 			List<TypeName> superInterfaces = inheritance.getOrElse(WsIOLevel.INTERFACE_INTERNAL, HashSet.empty())
 					.map(declaredType -> context.getRecursiveFullTypeName(declaredType,
-							false, true))
+							true, false, true))
 					.toList();
 
 			/* List with all internal fields */
@@ -597,7 +597,8 @@ class WsIOGenerator {
 
 			/* Get declared type and type name */
 			DeclaredType declaredType = (DeclaredType) element.asType();
-			TypeName typeName = context.getRecursiveFullTypeName(declaredType, false, true);
+			TypeName typeName = context.getRecursiveFullTypeName(declaredType,
+					true, false, true);
 
 			/* Get raw type without parameter types */
 			TypeName className = typeName;
@@ -859,7 +860,8 @@ class WsIOGenerator {
 					cloneMessageClasses, typeByName, generate);
 
 			/* Recursive full type name */
-			TypeName internalType = context.getRecursiveFullTypeName(referenceType, false, true);
+			TypeName internalType = context.getRecursiveFullTypeName(referenceType,
+					true, false, true);
 
 			/* Lower and upper names */
 			String lowerName = WordUtils.uncapitalize(name);

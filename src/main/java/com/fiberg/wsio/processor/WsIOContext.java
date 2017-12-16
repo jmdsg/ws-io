@@ -392,13 +392,15 @@ class WsIOContext {
 	 * Method that create a recursively generic type
 	 *
 	 * @param reference reference type
-	 * @param useCollectionImpl indicates if collection interfaces should be replaced by implementations
 	 * @param useInternalTypes indicates if internal types are going to be used or not
+	 * @param useCollectionImplementations indicates if collection interfaces should be replaced by implementations
+	 * @param useWildcards indicates if wildcard types should be used or not
 	 * @return recursively generic type
 	 */
 	TypeName getRecursiveFullTypeName(ReferenceType reference,
-	                                  boolean useCollectionImpl,
-	                                  boolean useInternalTypes) {
+	                                  boolean useInternalTypes,
+	                                  boolean useCollectionImplementations,
+	                                  boolean useWildcards) {
 
 		/* Get array info */
 		Tuple2<ReferenceType, Integer> info = WsIOUtils.getArrayInfo(reference);
@@ -435,18 +437,24 @@ class WsIOContext {
 
 					/* Recursively call full type name and add result to list */
 					ReferenceType wildReferenceType = (ReferenceType) wildMirror;
-					TypeName typeName = getRecursiveFullTypeName(wildReferenceType, useCollectionImpl, useInternalTypes);
+					TypeName typeName = getRecursiveFullTypeName(wildReferenceType, useInternalTypes,
+							useCollectionImplementations, useWildcards);
 
-					/* Check the wild type */
-					if (WsIOWild.EXTENDS.equals(wildType)) {
+					/* Check the use of wildcards */
+					if (useWildcards) {
 
-						/* Create a subtype wild card name */
-						typeName = WildcardTypeName.subtypeOf(typeName);
+						/* Check the wild type */
+						if (WsIOWild.EXTENDS.equals(wildType)) {
 
-					} else if (WsIOWild.SUPER.equals(wildType)) {
+							/* Create a subtype wild card name */
+							typeName = WildcardTypeName.subtypeOf(typeName);
 
-						/* Create a supertype wild card name */
-						typeName = WildcardTypeName.supertypeOf(typeName);
+						} else if (WsIOWild.SUPER.equals(wildType)) {
+
+							/* Create a supertype wild card name */
+							typeName = WildcardTypeName.supertypeOf(typeName);
+
+						}
 
 					}
 
@@ -507,7 +515,7 @@ class WsIOContext {
 			} else {
 
 				/* Declare the class name and check if is a collection */
-				if (useCollectionImpl && WsIOCollection.IMPLEMENTATIONS.containsKey(elementName)) {
+				if (useCollectionImplementations && WsIOCollection.IMPLEMENTATIONS.containsKey(elementName)) {
 
 					/* Assign the class name of the collection */
 					className = WsIOUtils.getClassName(WsIOCollection.IMPLEMENTATIONS.get(elementName));
