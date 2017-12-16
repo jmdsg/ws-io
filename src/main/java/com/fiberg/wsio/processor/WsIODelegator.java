@@ -326,48 +326,43 @@ class WsIODelegator {
 					/* Get array info */
 					Tuple2<ReferenceType, Integer> arrayInfo = WsIOUtils.getArrayInfo(external);
 
-					/* Check array info is not null */
-					if (Objects.nonNull(arrayInfo)) {
+					/* Get declared type and array count */
+					ReferenceType referenceType = arrayInfo._1();
+					Integer dimension = arrayInfo._2();
 
-						/* Get declared type and array count */
-						ReferenceType referenceType = arrayInfo._1();
-						Integer dimension = arrayInfo._2();
+					/* Check array count is greater than zero */
+					if (dimension > 0) {
 
-						/* Check array count is greater than zero */
-						if (dimension > 0) {
+						/* Get class to cast of dimension - 1 */
+						TypeName typeName = context.getRecursiveFullTypeName(referenceType,
+								false, toInternal);
+						TypeName castTypeName = WsIOUtils.getArrayType(typeName, dimension - 1);
 
-							/* Get class to cast of dimension - 1 */
-							TypeName typeName = context.getRecursiveFullTypeName(referenceType,
-									false, toInternal);
-							TypeName castTypeName = WsIOUtils.getArrayType(typeName, dimension - 1);
+						/* Declare destiny class name and check if is parameterized or not */
+						TypeName destinyClassName;
+						if (typeName instanceof ParameterizedTypeName) {
 
-							/* Declare destiny class name and check if is parameterized or not */
-							TypeName destinyClassName;
-							if (typeName instanceof ParameterizedTypeName) {
+							/* Extract the raw type of a parameterized type */
+							destinyClassName = ((ParameterizedTypeName) typeName).rawType;
 
-								/* Extract the raw type of a parameterized type */
-								destinyClassName = ((ParameterizedTypeName) typeName).rawType;
+						} else {
 
-							} else {
-
-								/* Destiny type name when is not parameterized */
-								destinyClassName = typeName;
-
-							}
-
-							/* Get destiny array */
-							TypeName destinyTypeName = WsIOUtils.getArrayType(destinyClassName, dimension - 1);
-
-							/* Build and return the code block for array types */
-							return CodeBlock.builder()
-									.add("($L != null ? $T.stream($L)", accessor, arraysClass, accessor).add("\n")
-									.add(".map($L -> ", componentAccessor)
-									.add(componentBlock)
-									.add(")").add("\n")
-									.add(".<$T>toArray($T[]::new) : null)", castTypeName, destinyTypeName)
-									.build();
+							/* Destiny type name when is not parameterized */
+							destinyClassName = typeName;
 
 						}
+
+						/* Get destiny array */
+						TypeName destinyTypeName = WsIOUtils.getArrayType(destinyClassName, dimension - 1);
+
+						/* Build and return the code block for array types */
+						return CodeBlock.builder()
+								.add("($L != null ? $T.stream($L)", accessor, arraysClass, accessor).add("\n")
+								.add(".map($L -> ", componentAccessor)
+								.add(componentBlock)
+								.add(")").add("\n")
+								.add(".<$T>toArray($T[]::new) : null)", castTypeName, destinyTypeName)
+								.build();
 
 					}
 
@@ -403,41 +398,35 @@ class WsIODelegator {
 
 							/* Type name and mirror of the element */
 							TypeName internalElement = internalGenerics.get(0);
-							TypeMirror externalElement = externalGenerics.get(0);
+							ReferenceType externalElement = externalGenerics.get(0);
 
-							/* Check external element is a reference type */
-							if (externalElement instanceof ReferenceType) {
+							/* Create next accesor name and get recursive code block */
+							String accessorName = "element";
+							String elementAccessor = String.format("%s_%d_", accessorName, level);
+							CodeBlock elementBlock = generateRecursiveTransform(externalElement, internalElement,
+									context, elementAccessor, level + 1, toInternal);
 
-								/* Create next accesor name and get recursive code block */
-								String accessorName = "element";
-								String elementAccessor = String.format("%s_%d_", accessorName, level);
-								ReferenceType externalElementReference = (ReferenceType) externalElement;
-								CodeBlock elementBlock = generateRecursiveTransform(externalElementReference, internalElement,
-										context, elementAccessor, level + 1, toInternal);
+							/* Check code block is not null */
+							if (Objects.nonNull(elementBlock)) {
 
-								/* Check code block is not null */
-								if (Objects.nonNull(elementBlock)) {
+								/* Get the implementation class name */
+								String implementationName = WsIOCollection.IMPLEMENTATIONS
+										.getOrDefault(externalElementName, externalElementName);
+								ClassName implementationClass = ClassName.bestGuess(implementationName);
 
-									/* Get the implementation class name */
-									String implementationName = WsIOCollection.IMPLEMENTATIONS
-											.getOrDefault(externalElementName, externalElementName);
-									ClassName implementationClass = ClassName.bestGuess(implementationName);
+								/* Cast class type name */
+								TypeName castClass = ensureFirstConcreteClass(externalDeclared,
+										toInternal, context);
 
-									/* Cast class type name */
-									TypeName castClass = ensureFirstConcreteClass(externalDeclared,
-											toInternal, context);
-
-									/* Build and return the code block for collection types */
-									return CodeBlock.builder()
-											.add("($L != null ? $L.stream()", accessor, accessor).add("\n")
-											.add(".map($L -> ", elementAccessor)
-											.add(elementBlock)
-											.add(")").add("\n")
-											.add(".<$T>collect($T::new, $T::add, $T::addAll) : null)", castClass,
-													implementationClass, implementationClass, implementationClass)
-											.build();
-
-								}
+								/* Build and return the code block for collection types */
+								return CodeBlock.builder()
+										.add("($L != null ? $L.stream()", accessor, accessor).add("\n")
+										.add(".map($L -> ", elementAccessor)
+										.add(elementBlock)
+										.add(")").add("\n")
+										.add(".<$T>collect($T::new, $T::add, $T::addAll) : null)", castClass,
+												implementationClass, implementationClass, implementationClass)
+										.build();
 
 							}
 
@@ -449,57 +438,50 @@ class WsIODelegator {
 							TypeName internalValue = internalGenerics.get(1);
 
 							/* Type mirrors of key and value */
-							TypeMirror externalKey = externalGenerics.get(0);
-							TypeMirror externalValue = externalGenerics.get(1);
+							ReferenceType externalKey = externalGenerics.get(0);
+							ReferenceType externalValue = externalGenerics.get(1);
 
-							/* Check external key and value are reference types */
-							if (externalKey instanceof ReferenceType && externalValue instanceof ReferenceType) {
+							/* Accessor name and general accessor */
+							String accessorName = "entry";
+							String generalAccessor = String.format("%s_%d_", accessorName, level);
 
-								/* Accessor name and general accessor */
-								String accessorName = "entry";
-								String generalAccessor = String.format("%s_%d_", accessorName, level);
+							/* Create next accesor key name and get recursive code block */
+							String keyAccessor = generalAccessor + ".getKey()";
+							CodeBlock keyBlock = generateRecursiveTransform(externalKey, internalKey,
+									context, keyAccessor, level + 1, toInternal);
 
-								/* Create next accesor key name and get recursive code block */
-								String keyAccessor = generalAccessor + ".getKey()";
-								ReferenceType externalKeyReference = (ReferenceType) externalKey;
-								CodeBlock keyBlock = generateRecursiveTransform(externalKeyReference, internalKey,
-										context, keyAccessor, level + 1, toInternal);
+							/* Create next accesor value name and get recursive code block */
+							String valueAccessor = generalAccessor + ".getValue()";
+							CodeBlock valueBlock = generateRecursiveTransform(externalValue, internalValue,
+									context, valueAccessor, level + 1, toInternal);
 
-								/* Create next accesor value name and get recursive code block */
-								String valueAccessor = generalAccessor + ".getValue()";
-								ReferenceType externalValueReference = (ReferenceType) externalValue;
-								CodeBlock valueBlock = generateRecursiveTransform(externalValueReference, internalValue,
-										context, valueAccessor, level + 1, toInternal);
+							/* Check code blocks are not null */
+							if (Objects.nonNull(keyBlock) && Objects.nonNull(valueBlock)) {
 
-								/* Check code blocks are not null */
-								if (Objects.nonNull(keyBlock) && Objects.nonNull(valueBlock)) {
+								/* Get the implementation class name */
+								String implementationName = WsIOCollection.IMPLEMENTATIONS
+										.getOrDefault(externalElementName, externalElementName);
+								ClassName implementationClass = ClassName.bestGuess(implementationName);
 
-									/* Get the implementation class name */
-									String implementationName = WsIOCollection.IMPLEMENTATIONS
-											.getOrDefault(externalElementName, externalElementName);
-									ClassName implementationClass = ClassName.bestGuess(implementationName);
+								/* Cast class type name */
+								TypeName castClass = ensureFirstConcreteClass(externalDeclared,
+										toInternal, context);
 
-									/* Cast class type name */
-									TypeName castClass = ensureFirstConcreteClass(externalDeclared,
-											toInternal, context);
+								/* Entry class to create simple entries */
+								Class<?> entryClass = java.util.AbstractMap.SimpleEntry.class;
 
-									/* Entry class to create simple entries */
-									Class<?> entryClass = java.util.AbstractMap.SimpleEntry.class;
-
-									/* Build and return the code block for map types */
-									return CodeBlock.builder()
-											.add("($L != null ? $L.entrySet().stream()", accessor, accessor).add("\n")
-											.add(".map($L -> new $T<>(", generalAccessor, entryClass)
-											.add(keyBlock)
-											.add(", ").add("\n")
-											.add(valueBlock)
-											.add(")").add(")").add("\n")
-											.add(".<$T>collect($T::new, (map__, entry__) -> ", castClass, implementationClass).add("\n")
-											.add("map__.put(entry__.getKey(), entry__.getValue()), $T::putAll) : null)",
-													implementationClass)
-											.build();
-
-								}
+								/* Build and return the code block for map types */
+								return CodeBlock.builder()
+										.add("($L != null ? $L.entrySet().stream()", accessor, accessor).add("\n")
+										.add(".map($L -> new $T<>(", generalAccessor, entryClass)
+										.add(keyBlock)
+										.add(", ").add("\n")
+										.add(valueBlock)
+										.add(")").add(")").add("\n")
+										.add(".<$T>collect($T::new, (map__, entry__) -> ", castClass, implementationClass).add("\n")
+										.add("map__.put(entry__.getKey(), entry__.getValue()), $T::putAll) : null)",
+												implementationClass)
+										.build();
 
 							}
 
