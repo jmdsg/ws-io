@@ -20,8 +20,6 @@ public final class WsIOConstant {
 
 	public static final String SET_DELEGATOR = "delegate";
 
-	public static final String GENERATOR_CLASS = "GeneratorUtil";
-
 	public static final String GENERATOR_FORCE = "forceDelegate";
 
 	public static final String RESPONSE_PREFIX = "";
@@ -43,7 +41,5 @@ public final class WsIOConstant {
 	public static final String DEFAULT_RESULT = "return";
 
 	public static final String DEFAULT_PARAMETER = "arg";
-
-	public static final String GENERATE_MAP_ENTRY = "mapEntry";
 
 }

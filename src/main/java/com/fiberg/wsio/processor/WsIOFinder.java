@@ -137,14 +137,15 @@ class WsIOFinder {
 
 	static Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> findWrapperRecursively(Set<TypeElement> elements) {
 
-		return elements.map(element -> findWrapperRecursively(element,
-				WsIOAnnotation.ofNull(element.getEnclosingElement().getAnnotation(WsIOMessageWrapper.class))))
+		return elements.map(element -> findWrapperRecursively(element, WsIOAnnotation.ofNull(element.getEnclosingElement()
+						.getAnnotation(WsIOMessageWrapper.class)), WsIOAdditional.of(element)))
 				.fold(HashMap.empty(), Map::merge);
 
 	}
 
 	private static Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> findWrapperRecursively(TypeElement element,
-	                                                                                              WsIOAnnotation annotation) {
+	                                                                                              WsIOAnnotation annotation,
+	                                                                                              WsIOAdditional additional) {
 
 		WsIOSkipMessageWrapper skip = element.getAnnotation(WsIOSkipMessageWrapper.class);
 		boolean skipped = Objects.nonNull(skip);
@@ -190,7 +191,7 @@ class WsIOFinder {
 									annot.getPackageSuffix(), annot.getPackageStart(), annot.getPackageMiddle(),
 									annot.getPackageEnd(), annot.getPackageJs());
 
-							WsIOInfo info = WsIOUtils.extractInfo(element, executable);
+							WsIOInfo info = WsIOUtils.extractInfo(executable, additional);
 
 							return Tuple.of(info, finalPackage);
 
@@ -202,7 +203,7 @@ class WsIOFinder {
 					.filter(TypeElement.class::isInstance)
 					.map(TypeElement.class::cast)
 					.filter(type -> !(skipped && SkipType.CHILDS.equals(skip.skip())))
-					.map(next -> findWrapperRecursively(next, actualWrapper))
+					.map(next -> findWrapperRecursively(next, actualWrapper, additional.update(next)))
 					.fold(wrappers, Map::merge);
 
 		}

@@ -1,9 +1,5 @@
 package com.fiberg.wsio.processor;
 
-import com.fiberg.wsio.annotation.WsIOIgnoreUseState;
-import com.fiberg.wsio.annotation.WsIOIgnoreUseTime;
-import com.fiberg.wsio.annotation.WsIOUseState;
-import com.fiberg.wsio.annotation.WsIOUseTime;
 import com.fiberg.wsio.util.WsIOUtil;
 import com.squareup.javapoet.*;
 import io.vavr.Tuple;
@@ -28,7 +24,7 @@ import java.util.Objects;
 final class WsIOUtils {
 
 	/**
-	 * Private empty contructor
+	 * Private empty contructor.
 	 */
 	private WsIOUtils() {}
 
@@ -42,81 +38,126 @@ final class WsIOUtils {
 			WsIOLevel.INTERFACE_EXTERNAL
 	);
 
+	/**
+	 * Method that extract recursively all enclosing type elements of a type element.
+	 *
+	 * @param element type element
+	 * @return empty list when a type element is a root element or a list with all recursive
+	 * enclosing type elements when is not. The first element is the root element and the last is the parent pf the element.
+	 */
 	static List<TypeElement> extractTypes(TypeElement element) {
+
+		/* Check enclosing element is instance of type element (is not root element) */
 		if (element.getEnclosingElement() instanceof TypeElement) {
+
+			/* Extract the enclosing element and return the recursive call with current type appended */
 			TypeElement type = (TypeElement) element.getEnclosingElement();
 			return extractTypes(type).append(type);
+
 		} else {
+
+			/* Return an empty list when type element is root element */
 			return List.empty();
+
 		}
 	}
 
-	static PackageElement extractPackage(TypeElement element) {
-		if (element != null) {
-			if (element.getEnclosingElement() instanceof PackageElement) {
-				return (PackageElement) element.getEnclosingElement();
-			} else if (element.getEnclosingElement() instanceof TypeElement){
-				return extractPackage((TypeElement) element.getEnclosingElement());
-			}
-		}
-		throw new IllegalArgumentException(String.format("The type element %s is not valid", element));
-	}
-	
-	static WsIOInfo extractInfo(TypeElement type, ExecutableElement executable) {
+	/**
+	 * Method that extracts the package element of a type element.
+	 *
+	 * @param element type element
+	 * @return package element of a type element
+	 * @throws IllegalStateException when enclosing element type is unknown
+	 */
+	static PackageElement extractPackage(TypeElement element) throws IllegalStateException {
+		Objects.requireNonNull(element, "element is null");
 
+		/* Check the instance type of the enclosing element */
+		if (element.getEnclosingElement() instanceof PackageElement) {
+
+			/* Return the enclosing package element */
+			return (PackageElement) element.getEnclosingElement();
+
+		} else if (element.getEnclosingElement() instanceof TypeElement){
+
+			/* Return the recursive call the function */
+			return extractPackage((TypeElement) element.getEnclosingElement());
+
+		} else {
+
+			/* Throw exception when enclosing element type is unknown */
+			throw new IllegalStateException(String.format("Unknow type of the element %s", element));
+		}
+
+	}
+
+	/**
+	 * Method that extracts the method and additionals info.
+	 *
+	 * @param executable excecutable element
+	 * @param additional info of the additional annotations
+	 * @return object containing all the info required for the generation of a wrapper element.
+	 */
+	static WsIOInfo extractInfo(ExecutableElement executable, WsIOAdditional additional) {
+
+		/* Extract the executable annotations */
 		WebMethod webMethod = executable.getAnnotation(WebMethod.class);
 		XmlElementWrapper elementWrapper = executable.getAnnotation(XmlElementWrapper.class);
 		WebResult webResult = executable.getAnnotation(WebResult.class);
 
+		/* Get the parameters of the executable */
 		List<TypeMirror> parameterTypes = Stream.ofAll(executable.getParameters())
 				.map(VariableElement::asType)
 				.toList();
 
+		/* Get the parameter names of the executable */
 		List<String> parameterNames = Stream.ofAll(executable.getParameters())
 				.map(variable -> variable.getAnnotation(WebParam.class))
 				.map(webParam -> webParam != null ? webParam.name() : null)
 				.toList();
 
+		/* Get the parameter name spaces of the executable */
 		List<String> parameterNameSpaces = Stream.ofAll(executable.getParameters())
 				.map(variable -> variable.getAnnotation(WebParam.class))
 				.map(webParam -> webParam != null ? webParam.targetNamespace() : null)
 				.toList();
 
-		Set<WsIOWrapper> wrappers = HashSet.empty();
+		/* Extract the use annotations that are not ignored */
+		Set<WsIOWrapper> wrappers = HashSet.of(WsIOWrapper.values())
+				.flatMap(wrapper -> additional.getAnnotated().get(wrapper)
+						.filter(annotation -> additional.getIgnored().get(wrapper).isEmpty())
+						.map(annotation -> wrapper));
 
-		WsIOUseTime typeTimeWrapper = type.getAnnotation(WsIOUseTime.class);
-		WsIOUseTime methodTimeWrapper = executable.getAnnotation(WsIOUseTime.class);
-		WsIOIgnoreUseTime ignoreTimeWrapper = executable.getAnnotation(WsIOIgnoreUseTime.class);
-		if ((typeTimeWrapper != null || methodTimeWrapper != null) && ignoreTimeWrapper == null) {
-			wrappers = wrappers.add(WsIOWrapper.TIME_WRAPPER);
-		}
-
-		WsIOUseState typeStateWrapper = type.getAnnotation(WsIOUseState.class);
-		WsIOUseState methodStateWrapper = executable.getAnnotation(WsIOUseState.class);
-		WsIOIgnoreUseState ignoreStateWrapper = executable.getAnnotation(WsIOIgnoreUseState.class);
-		if ((typeStateWrapper != null || methodStateWrapper != null) && ignoreStateWrapper == null) {
-			wrappers = wrappers.add(WsIOWrapper.STATE_WRAPPER);
-		}
-
+		/* Get return name, namespace and type */
 		String returnName = webResult != null ? webResult.name() : "";
 		String returnNameSpace = webResult != null ? webResult.targetNamespace() : "";
 		TypeMirror returnType = executable.getReturnType();
 
+		/* Get wrapper name nad namespace type */
 		String wrapperName = elementWrapper != null ? elementWrapper.name() : "";
 		String wrapperNameSpace = elementWrapper != null ? elementWrapper.namespace() : "";
 
+		/* Get operation and method names */
 		String operationName = webMethod != null ? webMethod.operationName() : "";
-
 		String methodName = executable.getSimpleName().toString();
 
+		/* Return the info */
 		return WsIOInfo.of(methodName, operationName, executable,
 				parameterNames, parameterNameSpaces, parameterTypes, returnName, returnNameSpace, returnType,
 				wrapperName, wrapperNameSpace, wrappers);
 
 	}
 
+	/**
+	 * Method that extracts the delegator type of a delegate or clone class.
+	 *
+	 * @param element type element ot extract the delegator
+	 * @return delegator type of a delegate or clone class
+	 */
 	static TypeElement extractDelegatorType(TypeElement element) {
 
+		/* Check if the element has a method named as getter delegator
+		 * and return its type element or null when not found*/
 		return List.ofAll(element.getEnclosedElements())
 				.filter(elem -> ElementKind.METHOD.equals(elem.getKind()))
 				.filter(method -> WsIOConstant.GET_DELEGATOR.equals(method.getSimpleName().toString()))
@@ -134,9 +175,17 @@ final class WsIOUtils {
 
 	}
 
-	static boolean implementsSuperType(TypeElement typeClass, TypeElement typeInterface) {
+	/**
+	 * Method that checks if an element implements a interface or extends a class
+	 *
+	 * @param subclass class to check if is sub class of the super class
+	 * @param superclass super class
+	 * @return {@code true} if an element implements a interface or extends a class {@code false} otherwise.
+	 */
+	static boolean implementsSuperType(TypeElement subclass, TypeElement superclass) {
 
-		List<TypeElement> supers = List.of(typeClass.getSuperclass()).appendAll(typeClass.getInterfaces())
+		/* List of all super classes and interfaces of the current class */
+		List<TypeElement> supers = List.of(subclass.getSuperclass()).appendAll(subclass.getInterfaces())
 				.filter(Objects::nonNull)
 				.filter(DeclaredType.class::isInstance)
 				.map(DeclaredType.class::cast)
@@ -144,13 +193,28 @@ final class WsIOUtils {
 				.filter(TypeElement.class::isInstance)
 				.map(TypeElement.class::cast);
 
-		boolean contains = supers.contains(typeInterface);
+		/* Check if super classes contain the searched super class */
+		if (supers.contains(superclass)) {
 
-		for (TypeElement type : supers) {
-			contains |= implementsSuperType(type, typeInterface);
+			/* Return true when the super class is present */
+			return true;
+
+		} else {
+
+			/* Iterate for each super class */
+			for (TypeElement type : supers) {
+
+				/* Check if one of the super classes has an inheritate superclass */
+				if (implementsSuperType(type, superclass)) {
+					return true;
+				}
+
+			}
+
 		}
 
-		return contains;
+		/* Return false by default */
+		return false;
 
 	}
 
