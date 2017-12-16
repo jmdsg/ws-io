@@ -352,47 +352,39 @@ class WsIOContext {
 		/* Get array info */
 		Tuple2<ReferenceType, Integer> info = WsIOUtils.getArrayInfo(referenceType);
 
-		/* Check array info is not null */
-		if (Objects.nonNull(info)) {
+		/* Get clear reference type */
+		ReferenceType clearReference = info._1();
 
-			/* Get clear reference type */
-			ReferenceType clearReference = info._1();
+		/* Check clear reference is declared */
+		if (clearReference instanceof DeclaredType) {
 
-			/* Check clear reference is declared */
-			if (clearReference instanceof DeclaredType) {
+			/* Get declared type, element and name */
+			DeclaredType declaredType = (DeclaredType) clearReference;
+			TypeElement typeElement = (TypeElement) declaredType.asElement();
+			String elementName = typeElement.getQualifiedName().toString();
 
-				/* Get declared type, element and name */
-				DeclaredType declaredType = (DeclaredType) clearReference;
-				TypeElement typeElement = (TypeElement) declaredType.asElement();
-				String elementName = typeElement.getQualifiedName().toString();
-
-				/* Return true if this element is internal */
-				if (isInternalType(elementName)) {
-					return true;
-				}
-
+			/* Return true if this element is internal */
+			if (isInternalType(elementName)) {
+				return true;
 			}
-
-			/* Get current level cleared generics */
-			List<ReferenceType> firstLevelGenerics = WsIOUtils.getClearedGenericTypes(clearReference);
-
-			/* Get current level cleared generic names */
-			List<String> firstLevelGenericNames = firstLevelGenerics.filter(DeclaredType.class::isInstance)
-					.map(DeclaredType.class::cast)
-					.map(DeclaredType::asElement)
-					.filter(TypeElement.class::isInstance)
-					.map(TypeElement.class::cast)
-					.map(TypeElement::getQualifiedName)
-					.map(Name::toString);
-
-			/* Return true when type of current level is internal or recursively check the next levels */
-			return firstLevelGenericNames.exists(this::isInternalType)
-					|| firstLevelGenerics.exists(this::isRecursiveGenericInternalType);
 
 		}
 
-		/* Return false by default */
-		return false;
+		/* Get current level cleared generics */
+		List<ReferenceType> firstLevelGenerics = WsIOUtils.getClearedGenericTypes(clearReference);
+
+		/* Get current level cleared generic names */
+		List<String> firstLevelGenericNames = firstLevelGenerics.filter(DeclaredType.class::isInstance)
+				.map(DeclaredType.class::cast)
+				.map(DeclaredType::asElement)
+				.filter(TypeElement.class::isInstance)
+				.map(TypeElement.class::cast)
+				.map(TypeElement::getQualifiedName)
+				.map(Name::toString);
+
+		/* Return true when type of current level is internal or recursively check the next levels */
+		return firstLevelGenericNames.exists(this::isInternalType)
+				|| firstLevelGenerics.exists(this::isRecursiveGenericInternalType);
 
 	}
 
@@ -411,171 +403,161 @@ class WsIOContext {
 		/* Get array info */
 		Tuple2<ReferenceType, Integer> info = WsIOUtils.getArrayInfo(reference);
 
-		/* Check info is not null */
-		if (Objects.nonNull(info)) {
+		/* Declared type and array count */
+		ReferenceType type = info._1();
+		int arrayCount = info._2();
 
-			/* Declared type and array count */
-			ReferenceType type = info._1();
-			int arrayCount = info._2();
+		/* Declare empty list for generic types */
+		List<TypeName> genericTypes = List.empty();
 
-			/* Declare empty list for generic types */
-			List<TypeName> genericTypes = List.empty();
+		/* Check type is declared type */
+		if (type instanceof DeclaredType) {
 
-			/* Check type is declared type */
-			if (type instanceof DeclaredType) {
+			/* Declared type */
+			DeclaredType declaredType = (DeclaredType) type;
 
-				/* Declared type */
-				DeclaredType declaredType = (DeclaredType) type;
+			/* Get all type arguments of declared type and type element*/
+			List<TypeMirror> generics = List.ofAll(declaredType.getTypeArguments());
+			TypeElement element = (TypeElement) declaredType.asElement();
 
-				/* Get all type arguments of declared type and type element*/
-				List<TypeMirror> generics = List.ofAll(declaredType.getTypeArguments());
-				TypeElement element = (TypeElement) declaredType.asElement();
+			/* Get the element simple class name */
+			String elementName = element.getQualifiedName().toString();
 
-				/* Get the element simple class name */
-				String elementName = element.getQualifiedName().toString();
+			/* Iterate for each generic type */
+			for (TypeMirror typeMirror : generics) {
 
-				/* Iterate for each generic type */
-				for (TypeMirror typeMirror : generics) {
+				/* Unwild the generic and check if is instance of declared type */
+				Tuple2<TypeMirror, WsIOWild> unwildType = WsIOUtils.getUnwildTypeWithBounds(typeMirror);
+				TypeMirror wildMirror = unwildType._1();
+				WsIOWild wildType = unwildType._2();
 
-					/* Unwild the generic and check if is instance of declared type */
-					Tuple2<TypeMirror, WsIOWild> unwildType = WsIOUtils.getUnwildTypeWithBounds(typeMirror);
-					TypeMirror wildMirror = unwildType._1();
-					WsIOWild wildType = unwildType._2();
+				if (wildMirror instanceof ReferenceType) {
 
-					if (wildMirror instanceof ReferenceType) {
+					/* Recursively call full type name and add result to list */
+					ReferenceType wildReferenceType = (ReferenceType) wildMirror;
+					TypeName typeName = getRecursiveFullTypeName(wildReferenceType, useCollectionImpl, useInternalTypes);
 
-						/* Recursively call full type name and add result to list */
-						ReferenceType wildReferenceType = (ReferenceType) wildMirror;
-						TypeName typeName = getRecursiveFullTypeName(wildReferenceType, useCollectionImpl, useInternalTypes);
+					/* Check the wild type */
+					if (WsIOWild.EXTENDS.equals(wildType)) {
 
-						/* Check the wild type */
-						if (WsIOWild.EXTENDS.equals(wildType)) {
+						/* Create a subtype wild card name */
+						typeName = WildcardTypeName.subtypeOf(typeName);
 
-							/* Create a subtype wild card name */
-							typeName = WildcardTypeName.subtypeOf(typeName);
+					} else if (WsIOWild.SUPER.equals(wildType)) {
 
-						} else if (WsIOWild.SUPER.equals(wildType)) {
-
-							/* Create a supertype wild card name */
-							typeName = WildcardTypeName.supertypeOf(typeName);
-
-						}
-
-						/* Add the generic to list */
-						genericTypes = genericTypes.append(typeName);
-
-					} else {
-
-						/* Add type name to list */
-						TypeName typeName = TypeName.get(typeMirror);
-						genericTypes = genericTypes.append(typeName);
+						/* Create a supertype wild card name */
+						typeName = WildcardTypeName.supertypeOf(typeName);
 
 					}
 
-				}
-
-				/* Get the generic array */
-				TypeName[] genericsArray = genericTypes.toJavaArray(TypeName.class);
-
-				/* Check if is internal type or not */
-				ClassName className;
-				if (useInternalTypes && isInternalType(elementName)) {
-
-					/* Name by generate */
-					WsIOGenerate realType = getTypeByGenerate(elementName);
-					Tuple2<String, String> nameByGenerate = getNameByGenerate(elementName);
-
-					/* Prefix and suffix names */
-					String prefixName = nameByGenerate._1();
-					String suffixName = nameByGenerate._2();
-
-					/* Package class name */
-					String packageName = StringUtils.EMPTY;
-					if (WsIOGenerate.MESSAGE.equals(realType)) {
-
-						/* Package name of the message */
-						packageName = messageClasses.get(elementName).getOrNull();
-
-					} else if (WsIOGenerate.CLONE.equals(realType)) {
-
-						/* Package name of the clone */
-						packageName = cloneClasses.get(elementName).getOrNull();
-
-					} else if (WsIOGenerate.CLONE_MESSAGE.equals(realType)) {
-
-						/* Package name of the clone message */
-						packageName = cloneMessageClasses.get(elementName).getOrNull();
-
-					}
-
-					/* Full class name and class name with package */
-					String fullName = WsIOUtils.getFullSimpleInnerName(element);
-					String fullWrapperName = WsIOUtil.addWrap(fullName, prefixName, suffixName);
-
-					/* Assign class name */
-					className = ClassName.get(packageName, fullWrapperName);
+					/* Add the generic to list */
+					genericTypes = genericTypes.append(typeName);
 
 				} else {
 
-					/* Declare the class name and check if is a collection */
-					if (useCollectionImpl && WsIOCollection.IMPLEMENTATIONS.containsKey(elementName)) {
-
-						/* Assign the class name of the collection */
-						className = WsIOUtils.getClassName(WsIOCollection.IMPLEMENTATIONS.get(elementName));
-
-					} else {
-
-						/* Assign the class name */
-						className = ClassName.get(element);
-
-					}
+					/* Add type name to list */
+					TypeName typeName = TypeName.get(typeMirror);
+					genericTypes = genericTypes.append(typeName);
 
 				}
 
-				/* Declare type name and check if has generics */
-				TypeName typeName;
-				if (genericsArray.length > 0) {
+			}
 
-					/* A parametrized type name when generics is present */
-					typeName = ParameterizedTypeName.get(className, genericsArray);
+			/* Get the generic array */
+			TypeName[] genericsArray = genericTypes.toJavaArray(TypeName.class);
 
-				} else {
+			/* Check if is internal type or not */
+			ClassName className;
+			if (useInternalTypes && isInternalType(elementName)) {
 
-					/* Set class name as type name */
-					typeName = className;
+				/* Name by generate */
+				WsIOGenerate realType = getTypeByGenerate(elementName);
+				Tuple2<String, String> nameByGenerate = getNameByGenerate(elementName);
+
+				/* Prefix and suffix names */
+				String prefixName = nameByGenerate._1();
+				String suffixName = nameByGenerate._2();
+
+				/* Package class name */
+				String packageName = StringUtils.EMPTY;
+				if (WsIOGenerate.MESSAGE.equals(realType)) {
+
+					/* Package name of the message */
+					packageName = messageClasses.get(elementName).getOrNull();
+
+				} else if (WsIOGenerate.CLONE.equals(realType)) {
+
+					/* Package name of the clone */
+					packageName = cloneClasses.get(elementName).getOrNull();
+
+				} else if (WsIOGenerate.CLONE_MESSAGE.equals(realType)) {
+
+					/* Package name of the clone message */
+					packageName = cloneMessageClasses.get(elementName).getOrNull();
 
 				}
 
-				/* Check if type is an array */
-				if (arrayCount > 0) {
+				/* Full class name and class name with package */
+				String fullName = WsIOUtils.getFullSimpleInnerName(element);
+				String fullWrapperName = WsIOUtil.addWrap(fullName, prefixName, suffixName);
 
-					/* Return the array of the type name */
-					TypeName array = typeName;
-					for (int index = 0; index < arrayCount; index++) {
-						array = ArrayTypeName.of(array);
-					}
-
-					/* Return array */
-					return array;
-
-				} else {
-
-					/* Return type name when is not an array */
-					return typeName;
-
-				}
+				/* Assign class name */
+				className = ClassName.get(packageName, fullWrapperName);
 
 			} else {
 
-				/* Return the type name when type is not declared nor array */
-				return TypeName.get(reference);
+				/* Declare the class name and check if is a collection */
+				if (useCollectionImpl && WsIOCollection.IMPLEMENTATIONS.containsKey(elementName)) {
+
+					/* Assign the class name of the collection */
+					className = WsIOUtils.getClassName(WsIOCollection.IMPLEMENTATIONS.get(elementName));
+
+				} else {
+
+					/* Assign the class name */
+					className = ClassName.get(element);
+
+				}
+
+			}
+
+			/* Declare type name and check if has generics */
+			TypeName typeName;
+			if (genericsArray.length > 0) {
+
+				/* A parametrized type name when generics is present */
+				typeName = ParameterizedTypeName.get(className, genericsArray);
+
+			} else {
+
+				/* Set class name as type name */
+				typeName = className;
+
+			}
+
+			/* Check if type is an array */
+			if (arrayCount > 0) {
+
+				/* Return the array of the type name */
+				TypeName array = typeName;
+				for (int index = 0; index < arrayCount; index++) {
+					array = ArrayTypeName.of(array);
+				}
+
+				/* Return array */
+				return array;
+
+			} else {
+
+				/* Return type name when is not an array */
+				return typeName;
 
 			}
 
 		} else {
 
-			/* Return null when reference is nor a declared type nor an array */
-			return null;
+			/* Return the type name when type is not declared nor array */
+			return TypeName.get(reference);
 
 		}
 
