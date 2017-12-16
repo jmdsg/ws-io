@@ -5,6 +5,7 @@ import com.fiberg.wsio.annotation.WsIOMessageWrapper;
 
 class WsIOAnnotation {
 
+
 	private String packageName;
 
 	private String packagePath;
