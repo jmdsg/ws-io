@@ -1,9 +1,14 @@
 package com.fiberg.wsio.processor;
 
-public enum WsIOProperty {
+/**
+ * Enum containing the possible values for a property.
+ */
+enum WsIOProperty {
 
+	/** Getter property */
 	GETTER,
 
+	/** Setter property */
 	SETTER
 
 }

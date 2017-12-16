@@ -131,6 +131,9 @@ class WsIOAnnotation {
 		this.packageJs = packageJs;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
@@ -151,6 +154,9 @@ class WsIOAnnotation {
 		return packageJs != null ? packageJs.equals(that.packageJs) : that.packageJs == null;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public int hashCode() {
 		int result = packageName != null ? packageName.hashCode() : 0;
@@ -164,6 +170,9 @@ class WsIOAnnotation {
 		return result;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String toString() {
 		return "WsIOAnnotation{" +

@@ -29,7 +29,7 @@ class WsIOFinder {
 					WsIOClone clone = getPriorityClone(element, prefix, suffix);
 					if (Objects.nonNull(clone)) {
 
-						String packageName = WsIOJsEngine.obtainPackage(StringUtils.EMPTY, element.getSimpleName().toString(), currentPackage,
+						String packageName = WsIOEngine.obtainPackage(StringUtils.EMPTY, element.getSimpleName().toString(), currentPackage,
 								clone.packageName(), clone.packagePath(), clone.packagePrefix(),
 								clone.packageSuffix(), clone.packageStart(), clone.packageMiddle(),
 								clone.packageEnd(), clone.packageJs());
@@ -110,7 +110,7 @@ class WsIOFinder {
 
 		Function3<String, String, WsIOClone, Tuple2<TypeElement, String>> transformToTuple = (prefix, suffix, clone) -> {
 
-			String packageName = WsIOJsEngine.obtainPackage(StringUtils.EMPTY, element.getSimpleName().toString(),
+			String packageName = WsIOEngine.obtainPackage(StringUtils.EMPTY, element.getSimpleName().toString(),
 					WsIOUtils.extractPackage(element).getQualifiedName().toString(),
 					clone.packageName(), clone.packagePath(), clone.packagePrefix(),
 					clone.packageSuffix(), clone.packageStart(), clone.packageMiddle(),
@@ -186,7 +186,7 @@ class WsIOFinder {
 							String className = element.getSimpleName().toString();
 							String packageName = WsIOUtils.extractPackage(element).getQualifiedName().toString();
 
-							String finalPackage = WsIOJsEngine.obtainPackage(methodName, className, packageName,
+							String finalPackage = WsIOEngine.obtainPackage(methodName, className, packageName,
 									annot.getPackageName(), annot.getPackagePath(), annot.getPackagePrefix(),
 									annot.getPackageSuffix(), annot.getPackageStart(), annot.getPackageMiddle(),
 									annot.getPackageEnd(), annot.getPackageJs());
@@ -242,7 +242,7 @@ class WsIOFinder {
 					String className = elem.getSimpleName().toString();
 					String packageName = WsIOUtils.extractPackage(elem).getQualifiedName().toString();
 
-					return WsIOJsEngine.obtainPackage(methodName, className, packageName,
+					return WsIOEngine.obtainPackage(methodName, className, packageName,
 							annot.getPackageName(), annot.getPackagePath(), annot.getPackagePrefix(),
 							annot.getPackageSuffix(), annot.getPackageStart(), annot.getPackageMiddle(),
 							annot.getPackageEnd(), annot.getPackageJs());

@@ -4,7 +4,7 @@ import com.fiberg.wsio.annotation.WsIOAnnotate;
 import com.fiberg.wsio.annotation.WsIOMessageWrapper;
 import com.fiberg.wsio.annotation.WsIOSkipMessageWrapper;
 import com.fiberg.wsio.processor.WsIOConstant;
-import com.fiberg.wsio.processor.WsIOJsEngine;
+import com.fiberg.wsio.processor.WsIOEngine;
 import com.fiberg.wsio.util.WsIOUtil;
 import io.github.lukehutch.fastclasspathscanner.FastClasspathScanner;
 import io.vavr.Tuple;
@@ -118,7 +118,7 @@ public final class WsIOAuto {
 
 						if (skip == null && annotation != null) {
 
-							String finalPackage = WsIOJsEngine.obtainPackage(methodName, classSimpleName, packageName,
+							String finalPackage = WsIOEngine.obtainPackage(methodName, classSimpleName, packageName,
 									annotation.packageName(), annotation.packagePath(), annotation.packagePrefix(),
 									annotation.packageSuffix(), annotation.packageStart(), annotation.packageMiddle(),
 									annotation.packageEnd(), annotation.packageJs());

@@ -26,7 +26,7 @@ class WsIOAdditional {
 	/**
 	 * Private constructor of the class
 	 */
-	private WsIOAdditional() { }
+	private WsIOAdditional() {  }
 
 	/** Annotations of the additionals */
 	private Map<WsIOWrapper, Annotation> annotated;

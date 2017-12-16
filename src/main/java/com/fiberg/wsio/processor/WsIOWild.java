@@ -3,7 +3,7 @@ package com.fiberg.wsio.processor;
 /**
  * Enum containing the possible values of a wild type.
  */
-public enum WsIOWild {
+enum WsIOWild {
 
 	/** Wildcard with extends */
 	EXTENDS,

@@ -7,9 +7,14 @@ import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.Set;
 
-
+/**
+ *
+ */
 public final class WsIOUtil {
 
+	/**
+	 * Private empty constructor.
+	 */
 	private WsIOUtil() {  }
 
 	public static final String NAME_SEPARATOR = ".";
