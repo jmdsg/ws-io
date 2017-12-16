@@ -1,9 +1,11 @@
 package com.fiberg.wsio.processor;
 
-import com.fiberg.wsio.annotation.*;
+import com.fiberg.wsio.annotation.WsIOIgnoreState;
+import com.fiberg.wsio.annotation.WsIOIgnoreTime;
+import com.fiberg.wsio.annotation.WsIOUseState;
+import com.fiberg.wsio.annotation.WsIOUseTime;
 import com.fiberg.wsio.util.WsIOUtil;
 import com.squareup.javapoet.*;
-import io.vavr.Function1;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.*;
@@ -14,6 +16,7 @@ import javax.jws.WebMethod;
 import javax.jws.WebParam;
 import javax.jws.WebResult;
 import javax.lang.model.element.*;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.*;
 import javax.xml.bind.annotation.XmlElementWrapper;
 import java.util.Objects;

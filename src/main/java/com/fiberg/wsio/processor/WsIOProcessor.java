@@ -7,12 +7,15 @@ import com.google.auto.service.AutoService;
 import io.vavr.Function1;
 import io.vavr.Predicates;
 import io.vavr.Tuple2;
-import io.vavr.Tuple3;
-import io.vavr.collection.*;
+import io.vavr.collection.HashSet;
+import io.vavr.collection.Map;
+import io.vavr.collection.Set;
+import io.vavr.collection.Stream;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
-import javax.lang.model.element.*;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
 
 @AutoService(Processor.class)
 public class WsIOProcessor extends AbstractProcessor {

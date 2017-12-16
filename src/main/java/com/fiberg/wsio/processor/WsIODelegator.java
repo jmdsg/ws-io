@@ -10,7 +10,10 @@ import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.processing.Messager;
 import javax.lang.model.element.*;
-import javax.lang.model.type.*;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ReferenceType;
+import javax.lang.model.type.TypeMirror;
 import java.util.Objects;
 
 /**

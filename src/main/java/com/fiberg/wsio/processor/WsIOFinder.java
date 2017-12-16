@@ -10,7 +10,10 @@ import org.apache.commons.lang3.StringUtils;
 
 import javax.jws.WebMethod;
 import javax.jws.WebService;
-import javax.lang.model.element.*;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Name;
+import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
 import java.util.Objects;
 
 class WsIOFinder {
