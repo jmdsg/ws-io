@@ -999,12 +999,9 @@ class WsIOGenerator {
 
 						});
 
-				/* Get delegator name */
-				String delegator = String.format("%s()", externalGetName);
-
 				/* Add method of the property methods */
 				methods = methods.appendAll(generatePropertyMethods(getterPriorities,
-						setterPriorities, getterAnnotations, delegator, context));
+						setterPriorities, getterAnnotations, externalGetName, context));
 
 			} else {
 
