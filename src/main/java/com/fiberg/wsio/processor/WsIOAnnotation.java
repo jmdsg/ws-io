@@ -9,7 +9,6 @@ class WsIOAnnotation {
 
 	private String packagePath;
 
-
 	private String packagePrefix;
 
 	private String packageSuffix;
