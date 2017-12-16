@@ -117,13 +117,11 @@ class WsIODelegator {
 	 *
 	 * @param referenceType reference type
 	 * @param useInternalTypes indicates if internal types are going to be used or not
-	 * @param useWildcards indicates if wildcard types should be used or not
 	 * @param context context of the process
 	 * @return first collection implementation and the rest just internals
 	 */
 	private static TypeName ensureFirstConcreteClass(ReferenceType referenceType,
 	                                                 Boolean useInternalTypes,
-	                                                 Boolean useWildcards,
 	                                                 WsIOContext context) {
 
 		/* Check the type of reference */
@@ -140,7 +138,7 @@ class WsIODelegator {
 
 				/* Get the recursive type name with implementations on collection and map classes */
 				TypeName implementation = context.getRecursiveFullTypeName(referenceType,
-						useInternalTypes, true, useWildcards);
+						useInternalTypes, true, false);
 
 				/* Check if type name is parameterized */
 				if (implementation instanceof ParameterizedTypeName) {
@@ -150,7 +148,7 @@ class WsIODelegator {
 
 					/* Get the recursive type name without implementations only internals */
 					ParameterizedTypeName internal = (ParameterizedTypeName) context.getRecursiveFullTypeName(
-							referenceType, useInternalTypes, false, useWildcards);
+							referenceType, useInternalTypes, false, false);
 
 					/* Return first implementation */
 					return ParameterizedTypeName.get(parameterized.rawType,
@@ -169,7 +167,7 @@ class WsIODelegator {
 
 		/* Return recursive name when type is not declared */
 		return context.getRecursiveFullTypeName(referenceType,
-				useInternalTypes, false, useWildcards);
+				useInternalTypes, false, false);
 
 	}
 
@@ -418,7 +416,7 @@ class WsIODelegator {
 
 								/* Cast class type name */
 								TypeName castClass = ensureFirstConcreteClass(externalDeclared,
-										toInternal, false, context);
+										toInternal, context);
 
 								/* Build and return the code block for collection types */
 								return CodeBlock.builder()
@@ -467,7 +465,7 @@ class WsIODelegator {
 
 								/* Cast class type name */
 								TypeName castClass = ensureFirstConcreteClass(externalDeclared,
-										toInternal, false, context);
+										toInternal, context);
 
 								/* Entry class to create simple entries */
 								Class<?> entryClass = java.util.AbstractMap.SimpleEntry.class;
