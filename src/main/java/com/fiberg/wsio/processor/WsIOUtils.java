@@ -1,7 +1,7 @@
 package com.fiberg.wsio.processor;
 
-import com.fiberg.wsio.annotation.WsIOIgnoreState;
-import com.fiberg.wsio.annotation.WsIOIgnoreTime;
+import com.fiberg.wsio.annotation.WsIOIgnoreUseState;
+import com.fiberg.wsio.annotation.WsIOIgnoreUseTime;
 import com.fiberg.wsio.annotation.WsIOUseState;
 import com.fiberg.wsio.annotation.WsIOUseTime;
 import com.fiberg.wsio.util.WsIOUtil;
@@ -86,14 +86,14 @@ final class WsIOUtils {
 
 		WsIOUseTime typeTimeWrapper = type.getAnnotation(WsIOUseTime.class);
 		WsIOUseTime methodTimeWrapper = executable.getAnnotation(WsIOUseTime.class);
-		WsIOIgnoreTime ignoreTimeWrapper = executable.getAnnotation(WsIOIgnoreTime.class);
+		WsIOIgnoreUseTime ignoreTimeWrapper = executable.getAnnotation(WsIOIgnoreUseTime.class);
 		if ((typeTimeWrapper != null || methodTimeWrapper != null) && ignoreTimeWrapper == null) {
 			wrappers = wrappers.add(WsIOWrapper.TIME_WRAPPER);
 		}
 
 		WsIOUseState typeStateWrapper = type.getAnnotation(WsIOUseState.class);
 		WsIOUseState methodStateWrapper = executable.getAnnotation(WsIOUseState.class);
-		WsIOIgnoreState ignoreStateWrapper = executable.getAnnotation(WsIOIgnoreState.class);
+		WsIOIgnoreUseState ignoreStateWrapper = executable.getAnnotation(WsIOIgnoreUseState.class);
 		if ((typeStateWrapper != null || methodStateWrapper != null) && ignoreStateWrapper == null) {
 			wrappers = wrappers.add(WsIOWrapper.STATE_WRAPPER);
 		}

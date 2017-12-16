@@ -67,7 +67,7 @@ public final class WsIOInterceptor {
 			Object response = objects.get(0);
 			WsIOUseTime timeWrapper = (WsIOUseTime) wsio.get("time");
 			if (timeWrapper != null) {
-				if (!timeWrapper.middle()) {
+				if (!timeWrapper.others()) {
 					if (timeWrapper.start() && Time.getDateTimes().size() > 0) {
 						WsIOInstant start = Time.getDateTimes().get(0);
 						Time.clearDateTimes();
