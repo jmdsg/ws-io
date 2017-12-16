@@ -2,7 +2,6 @@ package com.fiberg.wsio.processor;
 
 import com.fiberg.wsio.annotation.WsIOQualifier;
 import com.fiberg.wsio.handler.state.*;
-import com.fiberg.wsio.handler.time.WsIOInstant;
 import com.fiberg.wsio.handler.time.WsIOTime;
 import com.fiberg.wsio.util.WsIOUtil;
 import com.squareup.javapoet.*;
@@ -422,7 +421,8 @@ class WsIOGenerator {
 					.toList();
 
 			/* Generate the property methods */
-			List<MethodSpec> propertyMethods = generatePropertyMethods(getterPriorities, setterPriorities, context);
+			List<MethodSpec> propertyMethods = generatePropertyMethods(getterPriorities, setterPriorities,
+					HashMap.empty(), WsIOConstant.GET_DELEGATOR, context);
 
 			/* Generate the override main methods */
 			List<MethodSpec> overrideMethods = generateOverrideMethods(element, context);
@@ -493,34 +493,25 @@ class WsIOGenerator {
 	}
 
 	/**
-	 * Method that generate the property methods of internal classes and interfaces.
+	 * Function that matches the priority level and check both getter and setter are defined.
 	 *
-	 * @param getters map containing the getters with level
-	 * @param setters map containing the setters with level
-	 * @param context context of the process
-	 * @return property methods of internal classes and interfaces.
+	 * @param getters priority map of getters
+	 * @param setters priority map of setters
+	 * @return list containing matching getters and setters
 	 */
-	private List<MethodSpec> generatePropertyMethods(Map<WsIOLevel, Map<String, ExecutableElement>> getters,
-	                                                 Map<WsIOLevel, Map<String, ExecutableElement>> setters,
-	                                                 WsIOContext context) {
+	private List<Tuple3<ExecutableElement, ExecutableElement, WsIOLevel>> getMatchingProperties(Map<WsIOLevel, Map<String, ExecutableElement>> getters,
+	                                                                                            Map<WsIOLevel, Map<String, ExecutableElement>> setters) {
 
 		/* Function to transform the name of a getter to setter */
 		Function1<String, String> getterToSetter = getter -> getter.replaceAll("^get", "set");
-		Function1<String, String> getterToProperty = getter -> {
-
-			/* Remove get from the method name and replace first char with lower */
-			String name = getter.replaceAll("^get", "");
-			return WordUtils.uncapitalize(name);
-
-		};
 
 		/* Getter and setter names */
 		Set<String> getterNames = getters.values()
 				.flatMap(Map::keySet)
 				.toSet();
 
-		/* Property names matching names and level */
-		List<Tuple3<ExecutableElement, ExecutableElement, WsIOLevel>> properties = getterNames.toList()
+		/* Return property names matching names and level */
+		return getterNames.toList()
 				.flatMap(getterName -> {
 
 					/* Maximun level of the getter */
@@ -537,6 +528,37 @@ class WsIOGenerator {
 									.map(getter -> Tuple.of(getter, setter, level)));
 
 				});
+
+	}
+
+	/**
+	 * Method that generate the property methods of internal classes and interfaces.
+	 *
+	 * @param getters map containing the getters with level
+	 * @param setters map containing the setters with level
+	 * @param annotations annotations of the getters and setters
+	 * @param delegator name of the delegator
+	 * @param context context of the process
+	 * @return property methods of internal classes and interfaces.
+	 */
+	private List<MethodSpec> generatePropertyMethods(Map<WsIOLevel, Map<String, ExecutableElement>> getters,
+	                                                 Map<WsIOLevel, Map<String, ExecutableElement>> setters,
+	                                                 Map<String, List<AnnotationSpec>> annotations,
+	                                                 String delegator,
+	                                                 WsIOContext context) {
+
+		/* Function to transform the name of a setter to getter */
+		Function1<String, String> getterToProperty = getter -> {
+
+			/* Remove get from the method name and replace first char with lower */
+			String name = getter.replaceAll("^get", "");
+			return WordUtils.uncapitalize(name);
+
+		};
+
+		/* Property names matching names and level */
+		List<Tuple3<ExecutableElement, ExecutableElement, WsIOLevel>> properties =
+				getMatchingProperties(getters, setters);
 
 		/* Function to create method specs */
 		Function3<ExecutableElement, ExecutableElement, WsIOLevel, List<MethodSpec>> createMethodSpecs = (getter, setter, level) -> {
@@ -561,9 +583,14 @@ class WsIOGenerator {
 				ReferenceType returnReference = (ReferenceType) returnType;
 				ReferenceType parameterReference = (ReferenceType) parameterType;
 
+				/* Current annotations */
+				List<AnnotationSpec> getterAnnotations = annotations.getOrElse(getterName, List.empty());
+				List<AnnotationSpec> setterAnnotations = annotations.getOrElse(setterName, List.empty());
+
 				/* Return the methods generated recursively */
 				return WsIODelegator.generatePropertyDelegates(returnReference, parameterReference,
-						getter, setter, getterName, setterName, propertyName, level, context, messager);
+						getter, setter, getterName, setterName, propertyName, delegator,
+						getterAnnotations, setterAnnotations, level, context, messager);
 
 			}
 
@@ -721,7 +748,9 @@ class WsIOGenerator {
 	 * @param mustOverride indicates if the method delegator must be overrided or not
 	 * @return delegator methods
 	 */
-	private List<MethodSpec> generateDelegatorMethods(TypeElement element, boolean hasSuper, boolean mustOverride) {
+	private List<MethodSpec> generateDelegatorMethods(TypeElement element,
+	                                                  boolean hasSuper,
+	                                                  boolean mustOverride) {
 
 		/* Initialize empty set of method specs */
 		List<MethodSpec> methods = List.empty();
@@ -831,6 +860,7 @@ class WsIOGenerator {
 		List<TypeName> interfaces = List.empty();
 
 		/* Iterate for each parameter and return type */
+		String fieldName = null;
 		for (Tuple3<ReferenceType, String, Tuple2<String, String>> descriptor : descriptors) {
 
 			/* Get declared type, type element and name */
@@ -871,55 +901,19 @@ class WsIOGenerator {
 			String externalGetName = String.format("get%s", upperName);
 			String externalSetName = String.format("set%s", upperName);
 
-			/* Internal and external field and property names */
+			/* Internal and external parameter names */
 			String internalParameterName = String.format("%s_", lowerName);
 			String externalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
 					String.format("%s_", lowerName) : lowerName;
-			String fieldName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
-					String.format("%s_", lowerName) : lowerName;
 
-			/* List with the internal get annotations */
-			List<AnnotationSpec> internalGetAnnotations = List.empty();
-			internalGetAnnotations = internalGetAnnotations.append(AnnotationSpec.builder(XmlElement.class)
-					.addMember("name", "$S", lowerName).build());
+			/* Assign field name */
+			fieldName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
+					String.format("%s_", lowerName) : lowerName;
 
 			/* List with the external get annotations */
 			List<AnnotationSpec> externalGetAnnotations = List.of(
 					AnnotationSpec.builder(XmlTransient.class).build()
 			);
-
-			/* Create internal get accessor and code block */
-			String internalGetAccessor = String.format("%s()", externalGetName);
-			CodeBlock internalGetBlock = WsIODelegator.generateRecursiveTransformToInternal(referenceType,
-					internalType, context, internalGetAccessor);
-
-			/* Create the internal get method spec and add it to the methods set */
-			MethodSpec internalGet = MethodSpec.methodBuilder(internalGetName)
-					.returns(internalType)
-					.addAnnotations(internalGetAnnotations)
-					.addModifiers(Modifier.PUBLIC)
-					.addCode("return $L() != null ? ", externalGetName)
-					.addCode(internalGetBlock)
-					.addCode(" : null").addCode(";").addCode("\n")
-					.build();
-			methods = methods.append(internalGet);
-
-			/* Create external set block code */
-			CodeBlock internalSetBlock = WsIODelegator.generateRecursiveTransformToExternal(internalType,
-					referenceType, context, internalParameterName);
-
-			/* Create parameter and method spec and add it to the methods */
-			ParameterSpec internalParameter = ParameterSpec.builder(internalType, internalParameterName).build();
-			MethodSpec internalSet = MethodSpec.methodBuilder(internalSetName)
-					.addParameter(internalParameter)
-					.addModifiers(Modifier.PUBLIC)
-					.beginControlFlow("if ($L != null)", internalParameterName)
-					.addCode("$L(", externalSetName)
-					.addCode(internalSetBlock)
-					.addCode(")").addCode(";").addCode("\n")
-					.endControlFlow()
-					.build();
-			methods = methods.append(internalSet);
 
 			/* Create fiend and add it to the set */
 			TypeName fieldType = TypeName.get(referenceType);
@@ -944,233 +938,130 @@ class WsIOGenerator {
 					.build();
 			methods = methods.append(externalSet);
 
+			/* Predicate that checks that a reference type is valid,
+			 * is not an array nor a java collection not a map */
+			Predicate<ReferenceType> isValidInnerType = reference -> {
+
+				/* Check reference is a declared type and not an array or another */
+				if (reference instanceof DeclaredType) {
+
+					/* Type element and name */
+					TypeElement element = (TypeElement) ((DeclaredType) reference).asElement();
+					String elementName = element.getQualifiedName().toString();
+
+					/* Return true if element name is not a collection */
+					return !WsIOCollection.ALL.contains(elementName);
+
+				}
+
+				/* Return false by default */
+				return false;
+
+			};
+
+			/* Check if inner wrapper is defined */
+			if (info.getWrappers().contains(WsIOWrapper.INNER_WRAPPER)
+					&& isValidInnerType.test(referenceType)
+					&& WsIOType.RESPONSE.equals(type)) {
+
+				/* Declared type and element type */
+				DeclaredType declaredType = (DeclaredType) referenceType;
+				TypeElement element = (TypeElement) declaredType.asElement();
+
+				/* Generate the inheritance structure */
+				Map<WsIOLevel, Set<DeclaredType>> inheritance = resolveInheritance(element, context);
+
+				/* Generate the method priotity from the inheritance structure */
+				Map<WsIOLevel, Map<WsIOProperty, Map<String, ExecutableElement>>> methodPriorities =
+						resolveMethodPriority(inheritance);
+
+				/* Extract getters and setters from all methods with priority */
+				Map<WsIOLevel, Map<String, ExecutableElement>> getterPriorities = methodPriorities
+						.mapValues(map -> map.getOrElse(WsIOProperty.GETTER, HashMap.empty()));
+				Map<WsIOLevel, Map<String, ExecutableElement>> setterPriorities = methodPriorities
+						.mapValues(map -> map.getOrElse(WsIOProperty.SETTER, HashMap.empty()));
+
+				/* Getter annotations */
+				Map<String, List<AnnotationSpec>> getterAnnotations = getterPriorities.values()
+						.flatMap(Map::values)
+						.filter(Objects::nonNull)
+						.map(ExecutableElement::getSimpleName)
+						.map(Name::toString)
+						.toMap(getter -> {
+
+							/* Get the name of the property */
+							String propertyName = WordUtils.uncapitalize(
+									getter.replaceAll("^get", ""));
+
+							/* Return the tuple of getter name and element annotation with property name */
+							return Tuple.of(getter, List.of(AnnotationSpec.builder(XmlElement.class)
+									.addMember("name", "$S", propertyName).build()));
+
+						});
+
+				/* Get delegator name */
+				String delegator = String.format("%s()", externalGetName);
+
+				/* Add method of the property methods */
+				methods = methods.appendAll(generatePropertyMethods(getterPriorities,
+						setterPriorities, getterAnnotations, delegator, context));
+
+			} else {
+
+				/* List with the internal get annotations */
+				List<AnnotationSpec> internalGetAnnotations = List.empty();
+				internalGetAnnotations = internalGetAnnotations.append(AnnotationSpec.builder(XmlElement.class)
+						.addMember("name", "$S", lowerName).build());
+
+				/* Create internal get accessor and code block */
+				String internalGetAccessor = String.format("%s()", externalGetName);
+				CodeBlock internalGetBlock = WsIODelegator.generateRecursiveTransformToInternal(referenceType,
+						internalType, context, internalGetAccessor);
+
+				/* Create the internal get method spec and add it to the methods set */
+				MethodSpec internalGet = MethodSpec.methodBuilder(internalGetName)
+						.returns(internalType)
+						.addAnnotations(internalGetAnnotations)
+						.addModifiers(Modifier.PUBLIC)
+						.addCode("return $L() != null ? ", externalGetName)
+						.addCode(internalGetBlock)
+						.addCode(" : null").addCode(";").addCode("\n")
+						.build();
+				methods = methods.append(internalGet);
+
+				/* Create external set block code */
+				CodeBlock internalSetBlock = WsIODelegator.generateRecursiveTransformToExternal(internalType,
+						referenceType, context, internalParameterName);
+
+				/* Create parameter and method spec and add it to the methods */
+				ParameterSpec internalParameter = ParameterSpec.builder(internalType, internalParameterName).build();
+				MethodSpec internalSet = MethodSpec.methodBuilder(internalSetName)
+						.addParameter(internalParameter)
+						.addModifiers(Modifier.PUBLIC)
+						.beginControlFlow("if ($L != null)", internalParameterName)
+						.addCode("$L(", externalSetName)
+						.addCode(internalSetBlock)
+						.addCode(")").addCode(";").addCode("\n")
+						.endControlFlow()
+						.build();
+				methods = methods.append(internalSet);
+
+			}
+
 		}
 
 		/* Check if the type is response and the wrapper size is greater than 0 */
 		if (WsIOType.RESPONSE.equals(type) && info.getWrappers().size() > 0) {
 
-			/* Declare function to create the menbers */
-			Function5<String, TypeName, String, List<AnnotationSpec>, List<AnnotationSpec>,
-					Tuple2<List<FieldSpec>, List<MethodSpec>>> createMember =
-					(fieldName, typeName, getCheck, getAnnotations, setAnnotations) -> {
+			/* Get additionals */
+			Tuple4<List<FieldSpec>, List<MethodSpec>, List<TypeName>, List<AnnotationSpec>> additionals =
+					generateAdditionals(info.getWrappers(), fieldName);
 
-						/* Declare current sets to hold the fields and methods */
-						List<FieldSpec> currentFields = List.empty();
-						List<MethodSpec> currentMethods = List.empty();
-
-						/* Get the upper name */
-						String upperName = WordUtils.capitalize(fieldName);
-
-						/* Create the field and add it to the set */
-						currentFields = currentFields.append(FieldSpec.builder(typeName, fieldName, Modifier.PRIVATE).build());
-
-						/* Declare the code block and check if get check is empty or not */
-						CodeBlock getCode;
-						if (StringUtils.isNotBlank(getCheck)) {
-
-							/* Create the upper check name and initialize the get code block */
-							String upperCheck = WordUtils.capitalize(getCheck);
-							getCode = CodeBlock.builder()
-									.beginControlFlow("if ($T.$L.equals(get$L()))", Boolean.class, "TRUE", upperCheck)
-									.addStatement("return $L", fieldName)
-									.endControlFlow()
-									.beginControlFlow("else")
-									.addStatement("return null")
-									.endControlFlow()
-									.build();
-
-						} else {
-
-							/* Initialize the get code block */
-							getCode = CodeBlock.builder()
-									.addStatement("return $L", fieldName)
-									.build();
-
-						}
-
-						/* Add get method to the set */
-						currentMethods = currentMethods.append(MethodSpec.methodBuilder("get" + upperName)
-								.addAnnotation(Override.class)
-								.addAnnotations(getAnnotations)
-								.addModifiers(Modifier.PUBLIC)
-								.returns(typeName)
-								.addCode(getCode)
-								.build());
-
-						/* Add set method to the set */
-						currentMethods = currentMethods.append(MethodSpec.methodBuilder("set" + upperName)
-								.addAnnotations(setAnnotations)
-								.addAnnotation(Override.class)
-								.addModifiers(Modifier.PUBLIC)
-								.addParameter(typeName, fieldName)
-								.addStatement("this.$L = $L", fieldName, fieldName)
-								.build());
-
-						/* Return the tuple with current fields and methods and the flag in true */
-						return Tuple.of(currentFields, currentMethods);
-
-					};
-
-			/* Function to create member without set */
-			Function4<String, TypeName, String, List<AnnotationSpec>, Tuple2<List<FieldSpec>, List<MethodSpec>>>
-					createMemberNoSet = createMember.reversed()
-					.apply(List.empty())
-					.reversed();
-
-			/* Function to create member without set and checks */
-			Function3<String, TypeName, List<AnnotationSpec>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createMemberNoSetCheck =
-					(fieldName, typeName, getAnnotations) ->
-							createMemberNoSet.apply(fieldName, typeName, null, getAnnotations);
-
-			/* List with time names */
-			List<Tuple2<String, String>> timeNames = List.of(
-					Tuple.of("dateTimes", "dateTime"));
-
-			/* List with state names */
-			List<Tuple2<String, String>> stateNames = List.of(
-					Tuple.of("identifiers", "identifier"),
-					Tuple.of("messages", "message"),
-					Tuple.of("descriptions", "description"),
-					Tuple.of("types", "type"),
-					Tuple.of("status", "status"),
-					Tuple.of("details", "detail"),
-					Tuple.of("successfuls", "successful"),
-					Tuple.of("failures", "failure"),
-					Tuple.of("warnings", "warning"),
-					Tuple.of("showSuccessfuls", "showSuccessful"),
-					Tuple.of("showFailures", "showFailure"),
-					Tuple.of("showWarnings", "showWarning"));
-
-			/* Next line counter to format the code */
-			Integer nextLine = 0;
-
-			/* Declare the list of orders */
-			List<String> orders = List.empty();
-
-			/* Check if the time wrapper is defined and add it to orders */
-			if (info.getWrappers().contains(WsIOWrapper.TIME_WRAPPER)) {
-				nextLine++;
-				orders = orders.appendAll(timeNames.map(Tuple2::_1));
-			}
-
-			/* Check if the state wrapper is defined and add the first 6 to orders */
-			if (info.getWrappers().contains(WsIOWrapper.STATE_WRAPPER)) {
-				nextLine += 6;
-				orders = orders.appendAll(stateNames.map(Tuple2::_2).take(6));
-			}
-
-			/* Check if descriptors size is greater than 0 and add the field to orders */
-			if (descriptors.size() > 0) {
-				String result = descriptors.get(0)._2();
-				String field = String.format("%s_", result.substring(0, 1).toLowerCase() + result.substring(1));
-				orders = orders.append(field);
-			}
-
-			/* Check if the state wrapper is defined, skip the first 6 and add the next 3 elements to the orders */
-			if (info.getWrappers().contains(WsIOWrapper.STATE_WRAPPER)) {
-				orders = orders.appendAll(stateNames.map(Tuple2::_1).drop(6).take(3));
-			}
-
-			/* Create the name format */
-			String format = Stream.of("$S")
-					.cycle(orders.size())
-					.intersperse(", ")
-					.prepend("{ ")
-					.append(" }")
-					.insert(2 * nextLine + 1, info.getWrappers().contains(WsIOWrapper.STATE_WRAPPER) ? "\n" :"")
-					.mkString();
-
-			/* Add the annotation to the list */
-			annotations = annotations.append(AnnotationSpec.builder(XmlType.class)
-					.addMember("propOrder", format, orders.toArray()).build());
-
-			/* Chck if time wrapper is going to be added or not */
-			if (info.getWrappers().contains(WsIOWrapper.TIME_WRAPPER)) {
-
-				/* Declare the index and call the function to generate the fields and methods */
-				Integer index = -1;
-				Tuple2<List<FieldSpec>, List<MethodSpec>> fieldsAndMethods = createMemberNoSetCheck
-						.apply(timeNames.get(++index)._1(), ParameterizedTypeName.get(ClassName.get(List.class),
-								ClassName.get(WsIOInstant.class)), List.of(
-								AnnotationSpec.builder(XmlElement.class)
-										.addMember("name", "$S", timeNames.get(index)._2()).build(),
-								AnnotationSpec.builder(XmlElementWrapper.class)
-										.addMember("name", "$S", timeNames.get(index)._1()).build()));
-
-				/* Add the fields and methods */
-				fields = fields.appendAll(fieldsAndMethods._1());
-				methods = methods.appendAll(fieldsAndMethods._2());
-
-				/* Add the annotation */
-				interfaces.append(ClassName.get(WsIOTime.class));
-
-			}
-
-			/* Chck if state wrapper is going to be added or not */
-			if (info.getWrappers().contains(WsIOWrapper.STATE_WRAPPER)) {
-
-				/* Declare the tuple to hold the results and the index */
-				Tuple2<List<FieldSpec>, List<MethodSpec>> result;
-				Integer index = -1;
-
-				/* Create the methods and fields for each elements */
-				result = createMemberNoSetCheck.apply(stateNames.get(++index)._2(), ClassName.get(String.class),
-						List.of(AnnotationSpec.builder(XmlElement.class).build()));
-				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
-				result = createMemberNoSetCheck.apply(stateNames.get(++index)._2(), ClassName.get(WsIOText.class),
-						List.of(AnnotationSpec.builder(XmlElement.class).build()));
-				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
-				result = createMemberNoSetCheck.apply(stateNames.get(++index)._2(), ClassName.get(WsIOText.class),
-						List.of(AnnotationSpec.builder(XmlElement.class).build()));
-				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
-				result = createMemberNoSetCheck.apply(stateNames.get(++index)._2(), ClassName.get(String.class),
-						List.of(AnnotationSpec.builder(XmlElement.class).build()));
-				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
-				result = createMemberNoSetCheck.apply(stateNames.get(++index)._2(), ClassName.get(WsIOStatus.class),
-						List.of(AnnotationSpec.builder(XmlAttribute.class).build()));
-				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
-				result = createMemberNoSetCheck.apply(stateNames.get(++index)._2(), ClassName.get(WsIODetail.class),
-						List.of(AnnotationSpec.builder(XmlAttribute.class).build()));
-				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
-
-				/* Create the methods and fields for each elements */
-				result = createMemberNoSet.apply(stateNames.get(++index)._1(), ParameterizedTypeName.get(ClassName.get(List.class),
-						ClassName.get(WsIOElement.class)), stateNames.get(index + 3)._1(), List.of(
-						AnnotationSpec.builder(XmlElement.class)
-								.addMember("name", "$S", stateNames.get(index)._2()).build(),
-						AnnotationSpec.builder(XmlElementWrapper.class)
-								.addMember("name", "$S", stateNames.get(index)._1()).build()));
-				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
-				result = createMemberNoSet.apply(stateNames.get(++index)._1(), ParameterizedTypeName.get(ClassName.get(List.class),
-						ClassName.get(WsIOElement.class)), stateNames.get(index + 3)._1(), List.of(
-						AnnotationSpec.builder(XmlElement.class)
-								.addMember("name", "$S", stateNames.get(index)._2()).build(),
-						AnnotationSpec.builder(XmlElementWrapper.class)
-								.addMember("name", "$S", stateNames.get(index)._1()).build()));
-				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
-				result = createMemberNoSet.apply(stateNames.get(++index)._1(), ParameterizedTypeName.get(ClassName.get(List.class),
-						ClassName.get(WsIOElement.class)), stateNames.get(index + 3)._1(), List.of(
-						AnnotationSpec.builder(XmlElement.class)
-								.addMember("name", "$S", stateNames.get(index)._2()).build(),
-						AnnotationSpec.builder(XmlElementWrapper.class)
-								.addMember("name", "$S", stateNames.get(index)._1()).build()));
-				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
-
-				/* Create the methods and fields for each elements */
-				result = createMemberNoSetCheck.apply(stateNames.get(++index)._1(), ClassName.get(Boolean.class),
-						List.of(AnnotationSpec.builder(XmlTransient.class).build()));
-				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
-				result = createMemberNoSetCheck.apply(stateNames.get(++index)._1(), ClassName.get(Boolean.class),
-						List.of(AnnotationSpec.builder(XmlTransient.class).build()));
-				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
-				result = createMemberNoSetCheck.apply(stateNames.get(++index)._1(), ClassName.get(Boolean.class),
-						List.of(AnnotationSpec.builder(XmlTransient.class).build()));
-				fields = fields.appendAll(result._1()); methods = methods.appendAll(result._2());
-
-				/* Add the interface to the set */
-				interfaces.append(ClassName.get(WsIOState.class));
-
-			}
+			/* Add all fields, methods, interfaces and annotations */
+			fields = fields.appendAll(additionals._1());
+			methods = methods.appendAll(additionals._2());
+			interfaces = interfaces.appendAll(additionals._3());
+			annotations = annotations.appendAll(additionals._4());
 
 		}
 
@@ -1190,6 +1081,227 @@ class WsIOGenerator {
 
 		/* Return null */
 		return null;
+
+	}
+
+	/**
+	 * Method that generates the fields, methods, interfaces and annotations of wrapper additionals.
+	 *
+	 * @param wrappers list of wrapper enums
+	 * @param field name of the field
+	 * @return fields, methods, interfaces and annotations of wrapper additionals
+	 */
+	private Tuple4<List<FieldSpec>, List<MethodSpec>, List<TypeName>, List<AnnotationSpec>> generateAdditionals(Set<WsIOWrapper> wrappers,
+	                                                                                                           String field) {
+
+		/* Fields, methods and interfaces */
+		List<FieldSpec> fields = List.empty();
+		List<MethodSpec> methods = List.empty();
+		List<TypeName> interfaces = List.empty();
+		List<AnnotationSpec> annotations = List.empty();
+
+		/* Declare function to create the menbers */
+		Function5<String, TypeName, String, List<AnnotationSpec>, List<AnnotationSpec>,
+				Tuple2<List<FieldSpec>, List<MethodSpec>>> createMember =
+				(fieldName, typeName, getCheck, getAnnotations, setAnnotations) -> {
+
+					/* Declare current sets to hold the fields and methods */
+					List<FieldSpec> currentFields = List.empty();
+					List<MethodSpec> currentMethods = List.empty();
+
+					/* Get the upper name */
+					String upperName = WordUtils.capitalize(fieldName);
+
+					/* Create the field and add it to the set */
+					currentFields = currentFields.append(FieldSpec.builder(typeName, fieldName, Modifier.PRIVATE).build());
+
+					/* Declare the code block and check if get check is empty or not */
+					CodeBlock getCode;
+					if (StringUtils.isNotBlank(getCheck)) {
+
+						/* Create the upper check name and initialize the get code block */
+						String upperCheck = WordUtils.capitalize(getCheck);
+						getCode = CodeBlock.builder()
+								.beginControlFlow("if ($T.$L.equals(get$L()))", Boolean.class, "TRUE", upperCheck)
+								.addStatement("return $L", fieldName)
+								.endControlFlow()
+								.beginControlFlow("else")
+								.addStatement("return null")
+								.endControlFlow()
+								.build();
+
+					} else {
+
+						/* Initialize the get code block */
+						getCode = CodeBlock.builder()
+								.addStatement("return $L", fieldName)
+								.build();
+
+					}
+
+					/* Add get method to the set */
+					currentMethods = currentMethods.append(MethodSpec.methodBuilder("get" + upperName)
+							.addAnnotation(Override.class)
+							.addAnnotations(getAnnotations)
+							.addModifiers(Modifier.PUBLIC)
+							.returns(typeName)
+							.addCode(getCode)
+							.build());
+
+					/* Add set method to the set */
+					currentMethods = currentMethods.append(MethodSpec.methodBuilder("set" + upperName)
+							.addAnnotations(setAnnotations)
+							.addAnnotation(Override.class)
+							.addModifiers(Modifier.PUBLIC)
+							.addParameter(typeName, fieldName)
+							.addStatement("this.$L = $L", fieldName, fieldName)
+							.build());
+
+					/* Return the tuple with current fields and methods and the flag in true */
+					return Tuple.of(currentFields, currentMethods);
+
+				};
+
+		/* Function to create member without set */
+		Function4<String, TypeName, String, List<AnnotationSpec>, Tuple2<List<FieldSpec>, List<MethodSpec>>>
+				createMemberNoSet = createMember.reversed()
+				.apply(List.empty())
+				.reversed();
+
+		/* Function to create element field and method spec with element annotations */
+		Function2<TypeName, Tuple2<String, String>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createElement =
+				(type, stateName) -> createMemberNoSet.apply(stateName._2(), type, null,
+						List.of(AnnotationSpec.builder(XmlElement.class).build()));
+
+		/* Function to create element field and method spec with attribute annotations */
+		Function2<TypeName, Tuple2<String, String>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createAttribute =
+				(type, stateName) -> createMemberNoSet.apply(stateName._2(), type, null,
+						List.of(AnnotationSpec.builder(XmlAttribute.class).build()));
+
+		/* Function to create element field and method spec with element and wrapper annotations */
+		Function2<TypeName, Tuple2<String, String>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createWrapper =
+				(type, stateName) -> createMemberNoSet.apply(stateName._1(), type, stateName._1(),
+						List.of(AnnotationSpec.builder(XmlElement.class)
+										.addMember("name", "$S", stateName._2()).build(),
+								AnnotationSpec.builder(XmlElementWrapper.class)
+										.addMember("name", "$S", stateName._1()).build()));
+
+		/* Function to create element field and method spec with transient annotations */
+		Function2<TypeName, Tuple2<String, String>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createTransient =
+				(type, stateName) -> createMemberNoSet.apply(stateName._1(), type, null,
+						List.of(AnnotationSpec.builder(XmlTransient.class).build()));
+
+		/* List with time names */
+		List<Tuple2<String, String>> timeNames = List.of(
+				Tuple.of("dateTimes", "dateTime"));
+
+		/* List with state names */
+		List<Tuple2<String, String>> stateNames = List.of(
+				Tuple.of("identifiers", "identifier"),
+				Tuple.of("messages", "message"),
+				Tuple.of("descriptions", "description"),
+				Tuple.of("types", "type"),
+				Tuple.of("status", "status"),
+				Tuple.of("details", "detail"),
+				Tuple.of("successfuls", "successful"),
+				Tuple.of("failures", "failure"),
+				Tuple.of("warnings", "warning"),
+				Tuple.of("showSuccessfuls", "showSuccessful"),
+				Tuple.of("showFailures", "showFailure"),
+				Tuple.of("showWarnings", "showWarning"));
+
+		/* Next line counter to format the code */
+		Integer nextLine = 0;
+
+		/* Declare the list of orders */
+		List<String> orders = List.empty();
+
+		/* Check if the time wrapper is defined and add it to orders */
+		if (wrappers.contains(WsIOWrapper.TIME_WRAPPER)) {
+			nextLine++;
+			orders = orders.appendAll(timeNames.map(Tuple2::_1));
+		}
+
+		/* Check if the state wrapper is defined and add the first 6 to orders */
+		if (wrappers.contains(WsIOWrapper.STATE_WRAPPER)) {
+			nextLine += 6;
+			orders = orders.appendAll(stateNames.map(Tuple2::_2).take(6));
+		}
+
+		/* Check if descriptors size is greater than 0 and add the field to orders */
+		if (Objects.nonNull(field)) {
+			orders = orders.append(field);
+		}
+
+		/* Check if the state wrapper is defined, skip the first 6 and add the next 3 elements to the orders */
+		if (wrappers.contains(WsIOWrapper.STATE_WRAPPER)) {
+			orders = orders.appendAll(stateNames.map(Tuple2::_1).drop(6).take(3));
+		}
+
+		/* Create the name format */
+		String format = Stream.of("$S")
+				.cycle(orders.size())
+				.intersperse(", ")
+				.prepend("{ ")
+				.append(" }")
+				.insert(2 * nextLine + 1, wrappers.contains(WsIOWrapper.STATE_WRAPPER) ? "\n" :"")
+				.mkString();
+
+		/* Add the annotation to the list */
+		annotations = annotations.append(AnnotationSpec.builder(XmlType.class)
+				.addMember("propOrder", format, orders.toArray()).build());
+
+		/* Chck if time wrapper is going to be added or not */
+		if (wrappers.contains(WsIOWrapper.TIME_WRAPPER)) {
+
+			/* Declare the index and call the function to generate the fields and methods */
+			Option<Tuple2<List<FieldSpec>, List<MethodSpec>>> results = timeNames
+					.map(createWrapper.apply(ClassName.get(List.class)))
+					.headOption();
+
+			/* Add the fields and methods */
+			fields = fields.appendAll(results.toList().flatMap(Tuple2::_1));
+			methods = methods.appendAll(results.toList().flatMap(Tuple2::_2));
+
+			/* Add the annotation */
+			interfaces.append(ClassName.get(WsIOTime.class));
+
+		}
+
+		/* Chck if state wrapper is going to be added or not */
+		if (wrappers.contains(WsIOWrapper.STATE_WRAPPER)) {
+
+			/* Get all results */
+			List<Tuple2<List<FieldSpec>, List<MethodSpec>>> results = List.of(
+					createElement.apply(ClassName.get(String.class)),
+					createElement.apply(ClassName.get(WsIOText.class)),
+					createElement.apply(ClassName.get(WsIOText.class)),
+					createElement.apply(ClassName.get(String.class)),
+					createAttribute.apply(ClassName.get(WsIOStatus.class)),
+					createAttribute.apply(ClassName.get(WsIODetail.class)),
+					createWrapper.apply(ParameterizedTypeName.get(ClassName.get(List.class),
+							ClassName.get(WsIOElement.class))),
+					createWrapper.apply(ParameterizedTypeName.get(ClassName.get(List.class),
+							ClassName.get(WsIOElement.class))),
+					createWrapper.apply(ParameterizedTypeName.get(ClassName.get(List.class),
+							ClassName.get(WsIOElement.class))),
+					createTransient.apply(ClassName.get(Boolean.class)),
+					createTransient.apply(ClassName.get(Boolean.class)),
+					createTransient.apply(ClassName.get(Boolean.class)))
+					.zip(stateNames)
+					.map(tuple -> tuple._1().apply(tuple._2()));
+
+			/* Add all results to fields and methods */
+			fields = fields.appendAll(results.flatMap(Tuple2::_1));
+			methods = methods.appendAll(results.flatMap(Tuple2::_2));
+
+			/* Add the interface to the set */
+			interfaces.append(ClassName.get(WsIOState.class));
+
+		}
+
+		/* Return fields, methods, interfaces and annotations */
+		return Tuple.of(fields, methods, interfaces, annotations);
 
 	}
 
@@ -1356,15 +1468,13 @@ class WsIOGenerator {
 		TypeMirror superType = element.getSuperclass();
 		List<TypeMirror> interTypes = List.ofAll(element.getInterfaces());
 
-		Map<WsIOLevel, Set<DeclaredType>> inheritances = HashMap.empty();
-
-		/* Create the root delegate element */
+		/* Create the root delegate element if is non null and instance of declared type */
 		Option<DeclaredType> rootOpt = Option.of(rootType)
 				.filter(DeclaredType.class::isInstance)
 				.map(DeclaredType.class::cast);
 
-		/* Add the element if is non null and instance of declared type */
-		inheritances = inheritances.merge(rootOpt.toMap(val -> WsIOLevel.LOCAL, HashSet::of));
+		/* Create inheritance map with local class */
+		Map<WsIOLevel, Set<DeclaredType>> inheritances = rootOpt.toMap(val -> WsIOLevel.LOCAL, HashSet::of);
 
 		/* Create the super delegate element */
 		Option<DeclaredType> superOpt = Option.of(superType)

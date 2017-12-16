@@ -5,8 +5,9 @@ import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.Map;
+import org.apache.commons.lang3.ObjectUtils;
 
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.Element;
 import java.lang.annotation.Annotation;
 import java.util.Objects;
 
@@ -73,10 +74,10 @@ class WsIOAdditional {
 	/**
 	 * Method that extracts the use annotations of a type element.
 	 *
-	 * @param element type element
+	 * @param element element
 	 * @return map with the name of the additional and the use annotation
 	 */
-	private static Map<WsIOWrapper, Annotation> extractUse(TypeElement element) {
+	private static Map<WsIOWrapper, Annotation> extractUse(Element element) {
 		return ADDITIONALS.mapValues(Tuple2::_1)
 				.mapValues(annotation -> Objects.nonNull(element) ?
 						element.getEnclosingElement().getAnnotation(annotation) : null);
@@ -85,10 +86,10 @@ class WsIOAdditional {
 	/**
 	 * Method that extracts the ignore annotations of a type element.
 	 *
-	 * @param element type element
+	 * @param element element
 	 * @return map with the name of the additional and the ignore annotation
 	 */
-	private static Map<WsIOWrapper, Annotation> extractIgnore(TypeElement element) {
+	private static Map<WsIOWrapper, Annotation> extractIgnore(Element element) {
 		return ADDITIONALS.mapValues(Tuple2::_2)
 				.mapValues(annotation -> Objects.nonNull(element) ?
 						element.getEnclosingElement().getAnnotation(annotation) : null);
@@ -97,17 +98,23 @@ class WsIOAdditional {
 	/**
 	 * Static constructor method
 	 *
-	 * @param element type element
+	 * @param element element
 	 * @return the addional when element
 	 */
-	static WsIOAdditional of(TypeElement element) {
+	static WsIOAdditional of(Element element) {
 		WsIOAdditional additional = new WsIOAdditional();
 		additional.setAnnotated(WsIOAdditional.extractUse(element));
 		additional.setIgnored(WsIOAdditional.extractIgnore(element));
 		return additional;
 	}
 
-	WsIOAdditional update(TypeElement element) {
+	/**
+	 * Method that updates the additional.
+	 *
+	 * @param element element to process
+	 * @return the new additional after processing the element
+	 */
+	WsIOAdditional update(Element element) {
 
 		/* Check if element is null or not */
 		if (Objects.nonNull(element)) {
@@ -117,8 +124,8 @@ class WsIOAdditional {
 			Map<WsIOWrapper, Annotation> currentIgnored = WsIOAdditional.extractIgnore(element);
 
 			/* Merge last annotations with current, current have more priority */
-			Map<WsIOWrapper, Annotation> mergedAnnotated = currentAnnotated.merge(annotated);
-			Map<WsIOWrapper, Annotation> mergedIgnored = currentIgnored.merge(ignored);
+			Map<WsIOWrapper, Annotation> mergedAnnotated = currentAnnotated.merge(annotated, ObjectUtils::firstNonNull);
+			Map<WsIOWrapper, Annotation> mergedIgnored = currentIgnored.merge(ignored, ObjectUtils::firstNonNull);
 
 			/* Create, set values and return the additional */
 			WsIOAdditional additional = new WsIOAdditional();

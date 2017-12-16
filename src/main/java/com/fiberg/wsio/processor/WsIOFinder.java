@@ -191,7 +191,9 @@ class WsIOFinder {
 									annot.getPackageSuffix(), annot.getPackageStart(), annot.getPackageMiddle(),
 									annot.getPackageEnd(), annot.getPackageJs());
 
-							WsIOInfo info = WsIOUtils.extractInfo(executable, additional);
+							WsIOAdditional additionalExecutable = additional.update(executable);
+
+							WsIOInfo info = WsIOUtils.extractInfo(executable, additionalExecutable);
 
 							return Tuple.of(info, finalPackage);
 

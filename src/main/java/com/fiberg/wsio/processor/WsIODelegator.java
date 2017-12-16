@@ -184,6 +184,9 @@ class WsIODelegator {
 	 * @param getterName name of the getter method
 	 * @param setterName name of the setter method
 	 * @param propertyName name of the property method
+	 * @param delegator name of the delegator
+	 * @param getterAnnotations annotations of the getter
+	 * @param setterAnnotations annotations of the setter
 	 * @param level level of the method
 	 * @param context context of the process
 	 * @param messager messager to print the output
@@ -196,6 +199,9 @@ class WsIODelegator {
 	                                                  String getterName,
 	                                                  String setterName,
 	                                                  String propertyName,
+	                                                  String delegator,
+	                                                  List<AnnotationSpec> getterAnnotations,
+	                                                  List<AnnotationSpec> setterAnnotations,
 	                                                  WsIOLevel level,
 	                                                  WsIOContext context,
 	                                                  Messager messager) {
@@ -212,11 +218,13 @@ class WsIODelegator {
 			/* Create getter builder */
 			MethodSpec.Builder getterSpecBuilder = MethodSpec.methodBuilder(getterName)
 					.addModifiers(Modifier.PUBLIC)
+					.addAnnotations(getterAnnotations)
 					.returns(returnTypeName);
 
 			/* Create setter builder */
 			MethodSpec.Builder setterSpecBuilder = MethodSpec.methodBuilder(setterName)
 					.addModifiers(Modifier.PUBLIC)
+					.addAnnotations(setterAnnotations)
 					.addParameter(parameterTypeName, propertyName);
 
 			/* Check if the property is to be delegated or not */
@@ -241,14 +249,14 @@ class WsIODelegator {
 				CodeBlock setCodeBlock = generateRecursiveTransformToExternal(parameterTypeName, parameterReference,
 						context, propertyName);
 				CodeBlock getCodeBlock = generateRecursiveTransformToInternal(returnReference, returnTypeName,
-						context, String.format("%s().%s()", WsIOConstant.GET_DELEGATOR, getterName));
+						context, String.format("%s().%s()", delegator, getterName));
 
 				/* Check codes are non null */
 				if (Objects.nonNull(setCodeBlock) && Objects.nonNull(getCodeBlock)) {
 
 					/* Create getter method and add it to the set */
 					MethodSpec getterSpec = getterSpecBuilder
-							.addCode("return $L() != null ? ", WsIOConstant.GET_DELEGATOR)
+							.addCode("return $L() != null ? ", delegator)
 							.addCode(getCodeBlock)
 							.addCode(" : null")
 							.addCode(";").addCode("\n")
@@ -257,8 +265,8 @@ class WsIODelegator {
 					/* Create setter method and add it to the set */
 					MethodSpec setterSpec = setterSpecBuilder
 							.beginControlFlow("if ($L() != null && $L != null)",
-									WsIOConstant.GET_DELEGATOR, propertyName)
-							.addCode("$L().$L(", WsIOConstant.GET_DELEGATOR, setterName)
+									delegator, propertyName)
+							.addCode("$L().$L(", delegator, setterName)
 							.addCode(setCodeBlock)
 							.addCode(")").addCode(";").addCode("\n")
 							.endControlFlow()
