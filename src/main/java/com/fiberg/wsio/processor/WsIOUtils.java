@@ -124,8 +124,8 @@ final class WsIOUtils {
 
 		/* Extract the use annotations that are not ignored */
 		Set<WsIOWrapper> wrappers = HashSet.of(WsIOWrapper.values())
-				.flatMap(wrapper -> additional.getAnnotated().get(wrapper)
-						.filter(annotation -> additional.getIgnored().get(wrapper).isEmpty())
+				.flatMap(wrapper -> additional.getAnnotated().get(wrapper).filter(Objects::nonNull)
+						.filter(annotation -> additional.getIgnored().get(wrapper).filter(Objects::nonNull).isEmpty())
 						.map(annotation -> wrapper));
 
 		/* Get return name, namespace and type */
