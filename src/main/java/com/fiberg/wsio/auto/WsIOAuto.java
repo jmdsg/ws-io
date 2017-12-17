@@ -129,12 +129,15 @@ public final class WsIOAuto {
 						if (validResponse || validRequest) {
 
 							try {
-
 								/* Define class file, class pool and attribute */
 								ClassFile ccFile = ctClass.getClassFile();
 								ConstPool constpool = ccFile.getConstPool();
-								AnnotationsAttribute attribute = new AnnotationsAttribute(constpool,
-										AnnotationsAttribute.visibleTag);
+								AnnotationsAttribute attribute = Option.of(ctMethod.getMethodInfo()
+										.getAttribute(AnnotationsAttribute.visibleTag))
+										.filter(AnnotationsAttribute.class::isInstance)
+										.map(AnnotationsAttribute.class::cast)
+										.getOrElse(new AnnotationsAttribute(constpool,
+												AnnotationsAttribute.visibleTag));
 
 								/*  Check if response name is valid to be added */
 								if (validResponse) {

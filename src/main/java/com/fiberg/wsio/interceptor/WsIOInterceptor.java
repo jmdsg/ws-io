@@ -109,6 +109,11 @@ public final class WsIOInterceptor {
 				/* Check response if instance of ws time */
 				if (response instanceof WsIOTime) {
 
+					/* Check end is enabled and add current date time to the additional */
+					if (useTime.start()) {
+						Time.addDateTimeNow(useTime.endName());
+					}
+
 					/* Get time list, create inmmutable list and clear all dates */
 					java.util.List<WsIOInstant> timeList = Time.getDateTimes();
 					List<WsIOInstant> times = Option.of(timeList)

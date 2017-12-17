@@ -1169,46 +1169,46 @@ class WsIOGenerator {
 				.reversed();
 
 		/* Function to create element field and method spec with element annotations */
-		Function2<TypeName, Tuple2<String, String>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createElement =
-				(type, stateName) -> createMemberNoSet.apply(stateName._2(), type, null,
+		Function2<TypeName, Tuple3<String, String, String>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createElement =
+				(type, stateName) -> createMemberNoSet.apply(stateName._2(), type, stateName._3(),
 						List.of(AnnotationSpec.builder(XmlElement.class).build()));
 
 		/* Function to create element field and method spec with attribute annotations */
-		Function2<TypeName, Tuple2<String, String>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createAttribute =
-				(type, stateName) -> createMemberNoSet.apply(stateName._2(), type, null,
+		Function2<TypeName, Tuple3<String, String, String>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createAttribute =
+				(type, stateName) -> createMemberNoSet.apply(stateName._2(), type, stateName._3(),
 						List.of(AnnotationSpec.builder(XmlAttribute.class).build()));
 
 		/* Function to create element field and method spec with element and wrapper annotations */
-		Function2<TypeName, Tuple2<String, String>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createWrapper =
-				(type, stateName) -> createMemberNoSet.apply(stateName._1(), type, stateName._1(),
+		Function2<TypeName, Tuple3<String, String, String>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createWrapper =
+				(type, stateName) -> createMemberNoSet.apply(stateName._1(), type, stateName._3(),
 						List.of(AnnotationSpec.builder(XmlElement.class)
 										.addMember("name", "$S", stateName._2()).build(),
 								AnnotationSpec.builder(XmlElementWrapper.class)
 										.addMember("name", "$S", stateName._1()).build()));
 
 		/* Function to create element field and method spec with transient annotations */
-		Function2<TypeName, Tuple2<String, String>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createTransient =
-				(type, stateName) -> createMemberNoSet.apply(stateName._1(), type, null,
+		Function2<TypeName, Tuple3<String, String, String>, Tuple2<List<FieldSpec>, List<MethodSpec>>> createTransient =
+				(type, stateName) -> createMemberNoSet.apply(stateName._1(), type, stateName._3(),
 						List.of(AnnotationSpec.builder(XmlTransient.class).build()));
 
 		/* List with time names */
-		List<Tuple2<String, String>> timeNames = List.of(
-				Tuple.of("dateTimes", "dateTime"));
+		List<Tuple3<String, String, String>> timeNames = List.of(
+				Tuple.of("dateTimes", "dateTime", null));
 
 		/* List with state names */
-		List<Tuple2<String, String>> stateNames = List.of(
-				Tuple.of("identifiers", "identifier"),
-				Tuple.of("messages", "message"),
-				Tuple.of("descriptions", "description"),
-				Tuple.of("types", "type"),
-				Tuple.of("status", "status"),
-				Tuple.of("details", "detail"),
-				Tuple.of("successfuls", "successful"),
-				Tuple.of("failures", "failure"),
-				Tuple.of("warnings", "warning"),
-				Tuple.of("showSuccessfuls", "showSuccessful"),
-				Tuple.of("showFailures", "showFailure"),
-				Tuple.of("showWarnings", "showWarning"));
+		List<Tuple3<String, String, String>> stateNames = List.of(
+				Tuple.of("identifiers", "identifier", null),
+				Tuple.of("messages", "message", null),
+				Tuple.of("descriptions", "description", null),
+				Tuple.of("types", "type", null),
+				Tuple.of("status", "status", null),
+				Tuple.of("details", "detail", null),
+				Tuple.of("successfuls", "successful", "showSuccessfuls"),
+				Tuple.of("failures", "failure", "showFailures"),
+				Tuple.of("warnings", "warning", "showWarnings"),
+				Tuple.of("showSuccessfuls", "showSuccessful", null),
+				Tuple.of("showFailures", "showFailure", null),
+				Tuple.of("showWarnings", "showWarning", null));
 
 		/* Next line counter to format the code */
 		Integer nextLine = 0;
@@ -1219,13 +1219,13 @@ class WsIOGenerator {
 		/* Check if the time wrapper is defined and add it to orders */
 		if (wrappers.contains(WsIOWrapper.TIME_WRAPPER)) {
 			nextLine++;
-			orders = orders.appendAll(timeNames.map(Tuple2::_1));
+			orders = orders.appendAll(timeNames.map(Tuple3::_1));
 		}
 
 		/* Check if the state wrapper is defined and add the first 6 to orders */
 		if (wrappers.contains(WsIOWrapper.STATE_WRAPPER)) {
 			nextLine += 6;
-			orders = orders.appendAll(stateNames.map(Tuple2::_2).take(6));
+			orders = orders.appendAll(stateNames.map(Tuple3::_2).take(6));
 		}
 
 		/* Add all field names */
@@ -1233,7 +1233,7 @@ class WsIOGenerator {
 
 		/* Check if the state wrapper is defined, skip the first 6 and add the next 3 elements to the orders */
 		if (wrappers.contains(WsIOWrapper.STATE_WRAPPER)) {
-			orders = orders.appendAll(stateNames.map(Tuple2::_1).drop(6).take(3));
+			orders = orders.appendAll(stateNames.map(Tuple3::_1).drop(6).take(3));
 		}
 
 		/* Create the name format */
