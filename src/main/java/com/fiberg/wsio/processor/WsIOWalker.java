@@ -115,7 +115,7 @@ public final class WsIOWalker {
 
 					/* Method, class and package names */
 					String methodName = executable.getName();
-					String className = ctClass.getName();
+					String className = ctClass.getSimpleName();
 					String packageName = ctClass.getPackageName();
 
 					/* Obtain the package name */
