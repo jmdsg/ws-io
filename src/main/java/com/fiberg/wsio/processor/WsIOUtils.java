@@ -129,7 +129,7 @@ final class WsIOUtils {
 		/* Get ws qualifier names */
 		List<Tuple2<String, String>> parameterQualifiers = List.ofAll(executable.getParameters())
 				.map(variable -> variable.getAnnotation(WsIOQualifier.class))
-				.map(qualifier -> Tuple.of(qualifier.prefix(), qualifier.suffix()));
+				.map(qualifier -> qualifier != null ? Tuple.of(qualifier.prefix(), qualifier.suffix()) : null);
 
 		/* Extract the use annotations that are not ignored */
 		Set<WsIOWrapper> wrappers = HashSet.of(WsIOWrapper.values())
