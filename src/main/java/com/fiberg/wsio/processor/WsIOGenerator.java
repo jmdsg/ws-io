@@ -1263,7 +1263,7 @@ class WsIOGenerator {
 			methods = methods.appendAll(results.toList().flatMap(Tuple2::_2));
 
 			/* Add the annotation */
-			interfaces.append(ClassName.get(WsIOTime.class));
+			interfaces = interfaces.append(ClassName.get(WsIOTime.class));
 
 		}
 
@@ -1295,7 +1295,7 @@ class WsIOGenerator {
 			methods = methods.appendAll(results.flatMap(Tuple2::_2));
 
 			/* Add the interface to the set */
-			interfaces.append(ClassName.get(WsIOState.class));
+			interfaces = interfaces.append(ClassName.get(WsIOState.class));
 
 		}
 
