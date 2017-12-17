@@ -10,96 +10,177 @@ import com.fiberg.wsio.handler.state.WsIOState;
 import com.fiberg.wsio.handler.state.WsIOText;
 import com.fiberg.wsio.handler.time.WsIOInstant;
 import com.fiberg.wsio.handler.time.WsIOTime;
+import io.vavr.Predicates;
+import io.vavr.collection.List;
+import io.vavr.control.Option;
+import org.apache.commons.lang3.StringUtils;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
+/**
+ * Class used to intercept the petitions and responses and add the additionals.
+ */
 public final class WsIOInterceptor {
 
-	private WsIOInterceptor() {}
+	/**
+	 * Private empty contructor.
+	 */
+	private WsIOInterceptor() {  }
 
-	public static void in(Class<?> endpoint, Method method, Map<String, Object> session) {
+	/**
+	 * In interceptor method, used to add the initial info for the out interceptor.
+	 * This method also resets the current values for additionals and add the start date when is enabled.
+	 *
+	 * @param endpoint endpoint class of the method
+	 * @param method method to extract the info
+	 * @param session map containing the session info
+	 */
+	public static void in(Class<?> endpoint, Method method, java.util.Map<String, Object> session) {
 
-		Map<String, Object> wsio = new HashMap<>();
+		/* Create the hash map and add the method and endpoint info */
+		java.util.Map<WsIOData, Object> wsio = new java.util.HashMap<>();
+		wsio.put(WsIOData.METHOD, method);
+		wsio.put(WsIOData.ENDPOINT, endpoint);
 
-		wsio.put("method", method);
-		wsio.put("endpoint", endpoint);
+		/* Time and state annotations with priority */
+		WsIOUseTime time = WsIOInterceptor.extractAnnotation(method, WsIOUseTime.class);
+		WsIOUseState state = WsIOInterceptor.extractAnnotation(method, WsIOUseState.class);
 
-		WsIOUseTime classTime = endpoint.getAnnotation(WsIOUseTime.class);
-		WsIOUseTime methodTime = method.getAnnotation(WsIOUseTime.class);
-		WsIOUseTime timeWrapper = methodTime != null ? methodTime : classTime;
+		/* Check time annotation is defined */
+		if (Objects.nonNull(time)) {
 
-		WsIOUseState classState = endpoint.getAnnotation(WsIOUseState.class);
-		WsIOUseState methodState = method.getAnnotation(WsIOUseState.class);
-		WsIOUseState stateWrapper = methodState != null ? methodState : classState;
-
-		if (timeWrapper != null) {
+			/* Reset current values */
 			Time.reset();
-			if (timeWrapper.start()) {
-				Time.addDateTimeNow("start");
+
+			/* Check start is enabled and add current date time to the additional */
+			if (time.start()) {
+				Time.addDateTimeNow(time.startName());
 			}
-			wsio.put("classtime", classTime);
-			wsio.put("methodtime", methodTime);
-			wsio.put("time", timeWrapper);
+
+			/* Add time annotation to the session */
+			wsio.put(WsIOData.TIME, time);
+
 		}
 
-		if (stateWrapper != null) {
+		/* Check state annotation is defined */
+		if (Objects.nonNull(state)) {
+
+			/* Reset current values */
 			State.reset();
-			wsio.put("classstate", classState);
-			wsio.put("methodstate", methodState);
-			wsio.put("state", stateWrapper);
+
+			/* Add state annotation to the session */
+			wsio.put(WsIOData.STATE, state);
+
 		}
 
-		session.put("wsiodata", wsio);
+		/* Put the data map in the current session map */
+		session.put(WsIOData.class.getCanonicalName(), wsio);
 
 	}
 
-	public static void out(List<Object> objects, Map<String, Object> session) {
+	/**
+	 * Method used to add the additional info to the output objects.
+	 *
+	 * @param objects list of objects to add the additionals
+	 * @param session map containing the session info
+	 */
+	public static void out(java.util.List<Object> objects, java.util.Map<String, Object> session) {
 
+		/* Get current wsio data */
 		@SuppressWarnings("unchecked")
-		Map<String, Object> wsio = (Map<String, Object>) session.get("wsiodata");
+		java.util.Map<WsIOData, Object> wsio = (java.util.Map<WsIOData, Object>)
+				session.get(WsIOData.class.getCanonicalName());
 
-		if (wsio != null && objects != null && objects.size() == 1) {
+		/* Check wsio and object list are not null, check the size of objects is 1 */
+		if (Objects.nonNull(wsio) && Objects.nonNull(objects) && objects.size() == 1) {
+
+			/* Get response object */
 			Object response = objects.get(0);
-			WsIOUseTime timeWrapper = (WsIOUseTime) wsio.get("time");
-			if (timeWrapper != null) {
-				if (!timeWrapper.others()) {
-					if (timeWrapper.start() && Time.getDateTimes().size() > 0) {
-						WsIOInstant start = Time.getDateTimes().get(0);
-						Time.clearDateTimes();
-						Time.addDateTime(start);
-					} else {
-						Time.clearDateTimes();
-					}
-				}
-				if (timeWrapper.end()) {
-					Time.addDateTimeNow("end");
-				}
-				if (response != null && response instanceof WsIOTime) {
-					Time.transfer((WsIOTime) response);
-					Time.reset();
-				}
-			}
-			WsIOUseState stateWrapper = (WsIOUseState) wsio.get("handler");
-			if (stateWrapper != null) {
-				if (response != null && response instanceof WsIOTime) {
-					WsIOState state = (WsIOState) response;
-					WsIOLanguage language = !WsIOLanguage.DEFAULT.equals(State.getDefaultLanguage())
-							? (State.getDefaultLanguage())
-							: (!WsIOLanguage.DEFAULT.equals(stateWrapper.language())
-									? (stateWrapper.language())
-									: (null));
 
+			/* Get time annotation and check if is non null */
+			WsIOUseTime useTime = (WsIOUseTime) wsio.get(WsIOData.TIME);
+			if (Objects.nonNull(useTime)) {
+
+				/* Check response if instance of ws time */
+				if (response instanceof WsIOTime) {
+
+					/* Get time list, create inmmutable list and clear all dates */
+					java.util.List<WsIOInstant> timeList = Time.getDateTimes();
+					List<WsIOInstant> times = Option.of(timeList)
+							.toList()
+							.flatMap(e -> e);
+					Time.clearDateTimes();
+
+					/* Filter not enabled date times */
+					Predicate<String> isStart = str -> StringUtils.equals(str, useTime.startName());
+					Predicate<String> isEnd = str -> StringUtils.equals(str, useTime.endName());
+					Predicate<String> isOther = Predicates.noneOf(isStart, isEnd);
+
+					/* Enabled predicates */
+					List<Predicate<String>> enabled = List.of(
+							Option.when(useTime.start(), isStart),
+							Option.when(useTime.end(), isEnd),
+							Option.when(useTime.others(), isOther)
+					).flatMap(e -> e);
+
+					/* Disabled predicates */
+					List<Predicate<String>> disabled = List.of(isStart, isEnd, isOther)
+							.filter(Predicates.noneOf(enabled::contains))
+							.map(Predicate::negate);
+
+					/* Enabled predicates joined with or */
+					Predicate<String> initial = Predicates.anyOf(
+							WsIOInterceptor.toJavaArray(enabled, Predicate.class));
+
+					/* Initial enabled predicates joined with and to all disabled negated */
+					Predicate<String> isValid = Predicates.allOf(
+							WsIOInterceptor.toJavaArray(disabled.append(initial), Predicate.class));
+					Predicate<WsIOInstant> isValidInstant = instant -> isValid.test(instant.getId());
+
+					/* Add java list date times and transfer info to object */
+					Time.setDateTimes(times.filter(isValidInstant).toJavaList());
+					Time.transfer((WsIOTime) response);
+
+				}
+
+				/* Reset times */
+				Time.reset();
+
+			}
+
+			/* Get time annotation and check if is non null */
+			WsIOUseState useState = (WsIOUseState) wsio.get(WsIOData.STATE);
+			if (Objects.nonNull(useState)) {
+
+				/* Check response if instance of ws state */
+				if (response instanceof WsIOState) {
+
+					/* Get priority languages where programmatic is more important than the annotated */
+					Option<WsIOLanguage> programmatic = Option.of(State.getDefaultLanguage());
+					Option<WsIOLanguage> annotated = Option.of(useState.language());
+					Option<WsIOLanguage> priority = programmatic.orElse(annotated);
+
+					/* Get the language */
+					WsIOLanguage language = priority.filter(
+							Predicates.noneOf(WsIOLanguage.DEFAULT::equals)).getOrNull();
+
+					/* Bi consumer to assign the language to the elements with default */
 					BiConsumer<WsIOElement, Function<WsIOElement, WsIOText>> setDefaultLanguage = (element, function) -> {
-						if (function.apply(element) != null
+
+						/* Check element is not null and language is set to default */
+						if (Objects.nonNull(function.apply(element))
 								&& WsIOLanguage.DEFAULT.equals(function.apply(element).getLanguage())) {
 							function.apply(element).setLanguage(language);
 						}
+
 					};
+
+					/* Set default languages to successfuls, failures and warnings */
 					State.getSuccessfuls().forEach(successful -> {
 						setDefaultLanguage.accept(successful, WsIOElement::getMessage);
 						setDefaultLanguage.accept(successful, WsIOElement::getDescription);
@@ -113,20 +194,104 @@ public final class WsIOInterceptor {
 						setDefaultLanguage.accept(warning, WsIOElement::getDescription);
 					});
 
-					if (State.getShowSuccessfuls() == null) {
-						State.setShowSuccessfuls(stateWrapper.successful());
+					/* Set state shows for successfuls, failures and warnings */
+					if (Objects.isNull(State.getShowSuccessfuls())) {
+						State.setShowSuccessfuls(useState.successful());
 					}
-					if (State.getShowFailures() == null) {
-						State.setShowFailures(stateWrapper.failure());
+					if (Objects.isNull(State.getShowFailures())) {
+						State.setShowFailures(useState.failure());
 					}
-					if (State.getShowWarnings() == null) {
-						State.setShowWarnings(stateWrapper.warning());
+					if (Objects.isNull(State.getShowWarnings())) {
+						State.setShowWarnings(useState.warning());
 					}
 
-					State.transfer(state);
-					State.reset();
+					/* Transfer state to response */
+					State.transfer((WsIOState) response);
+
 				}
+
+				/* Reset states */
+				State.reset();
+
 			}
+
+		}
+
+	}
+
+	/**
+	 * Method to transform vavr list to java array.
+	 *
+	 * @param list vavr list
+	 * @param clazz raw class
+	 * @param <R> type argument without generics
+	 * @param <G> type argument with generics
+	 * @return java array of the list
+	 */
+	@SuppressWarnings("unchecked")
+	private static <R, G extends R> G[] toJavaArray(List<G> list, Class<R> clazz) {
+
+		/* Return the java array */
+		return list.toJavaArray((Class<G>) clazz);
+
+	}
+
+	/**
+	 * Method that recursively checks for the annotation in the method and in all the declaring classes.
+	 *
+	 * @param method method to check
+	 * @param annotation class of the annotation
+	 * @param <T> type argument of the annotation
+	 * @return the searched annotation of the method or any of the declaring classes.
+	 */
+	private static <T extends Annotation> T extractAnnotation(Method method, Class<T> annotation) {
+
+		/* Get annotation object and check if is null */
+		T value = method.getAnnotation(annotation);
+		if (Objects.nonNull(value)) {
+
+			/* Return the annotation when is not null */
+			return value;
+
+		} else {
+
+			/* Return the result of the annotation in any declaring classes */
+			return extractAnnotation(method.getDeclaringClass(), annotation);
+
+		}
+
+	}
+
+	/**
+	 * Method that recursively checks for the annotation in the all the declaring classes.
+	 *
+	 * @param clazz class to check
+	 * @param annotation class of the annotation
+	 * @param <T> type argument of the annotation
+	 * @return the searched annotation in any of the declaring classes.
+	 */
+	private static <T extends Annotation> T extractAnnotation(Class<?> clazz, Class<T> annotation) {
+
+		/* Get annotation object and declaring class of the current */
+		T value = clazz.getAnnotation(annotation);
+		Class<?> declaring = clazz.getDeclaringClass();
+
+		/* Check if the annotation or the declaring classes are null */
+		if (Objects.nonNull(value)) {
+
+			/* Return the annotation when is not null */
+			return value;
+
+		} else if (Objects.nonNull(declaring)){
+
+			/* Return the recursive call of the function with the declaring class */
+			return extractAnnotation(declaring, annotation);
+
+		} else {
+
+			/* Return null when annotation could not be found */
+			return null;
+
 		}
 
 	}
