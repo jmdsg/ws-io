@@ -13,9 +13,9 @@ import java.lang.annotation.Target;
 public @interface WsIOQualifier {
 
 	/** Prefix name of the cloned class */
-	String prefix();
+	String prefix() default "";
 
 	/** Suffix name of the cloned class */
-	String suffix();
+	String suffix() default "";
 
 }
