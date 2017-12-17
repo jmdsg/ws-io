@@ -2,6 +2,7 @@ package com.fiberg.wsio.processor;
 
 import com.fiberg.wsio.annotation.WsIOQualifier;
 import com.fiberg.wsio.handler.state.*;
+import com.fiberg.wsio.handler.time.WsIOInstant;
 import com.fiberg.wsio.handler.time.WsIOTime;
 import com.fiberg.wsio.util.WsIOUtil;
 import com.squareup.javapoet.*;
@@ -1253,7 +1254,8 @@ class WsIOGenerator {
 
 			/* Declare the index and call the function to generate the fields and methods */
 			Option<Tuple2<List<FieldSpec>, List<MethodSpec>>> results = timeNames
-					.map(createWrapper.apply(ClassName.get(List.class)))
+					.map(createWrapper.apply(ParameterizedTypeName.get(ClassName.get(java.util.List.class),
+							ClassName.get(WsIOInstant.class))))
 					.headOption();
 
 			/* Add the fields and methods */
@@ -1276,11 +1278,11 @@ class WsIOGenerator {
 					createElement.apply(ClassName.get(String.class)),
 					createAttribute.apply(ClassName.get(WsIOStatus.class)),
 					createAttribute.apply(ClassName.get(WsIODetail.class)),
-					createWrapper.apply(ParameterizedTypeName.get(ClassName.get(List.class),
+					createWrapper.apply(ParameterizedTypeName.get(ClassName.get(java.util.List.class),
 							ClassName.get(WsIOElement.class))),
-					createWrapper.apply(ParameterizedTypeName.get(ClassName.get(List.class),
+					createWrapper.apply(ParameterizedTypeName.get(ClassName.get(java.util.List.class),
 							ClassName.get(WsIOElement.class))),
-					createWrapper.apply(ParameterizedTypeName.get(ClassName.get(List.class),
+					createWrapper.apply(ParameterizedTypeName.get(ClassName.get(java.util.List.class),
 							ClassName.get(WsIOElement.class))),
 					createTransient.apply(ClassName.get(Boolean.class)),
 					createTransient.apply(ClassName.get(Boolean.class)),
