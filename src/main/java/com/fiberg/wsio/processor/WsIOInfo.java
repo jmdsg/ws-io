@@ -1,5 +1,6 @@
 package com.fiberg.wsio.processor;
 
+import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import io.vavr.collection.Set;
 
@@ -22,11 +23,15 @@ class WsIOInfo {
 
 	private List<TypeMirror> parameterTypes;
 
+	private List<Tuple2<String, String>> parameterQualifiers;
+
 	private String returnName;
 
 	private String returnNameSpace;
 
 	private TypeMirror returnType;
+
+	private Tuple2<String, String> returnQualifier;
 
 	private String wrapperName;
 
@@ -40,9 +45,11 @@ class WsIOInfo {
 	                          List<String> parameterNames,
 	                          List<String> parameterNameSpaces,
 	                          List<TypeMirror> parameterTypes,
+	                          List<Tuple2<String, String>> parameterQualifiers,
 	                          String returnName,
 	                          String returnNameSpace,
 	                          TypeMirror returnType,
+	                          Tuple2<String, String> returnQualifier,
 	                          String wrapperName,
 	                          String wrapperNameSpace,
 	                          Set<WsIOWrapper> wrappers) {
@@ -54,9 +61,11 @@ class WsIOInfo {
 		info.parameterNames = parameterNames;
 		info.parameterNameSpaces = parameterNameSpaces;
 		info.parameterTypes = parameterTypes;
+		info.parameterQualifiers = parameterQualifiers;
 		info.returnName = returnName;
 		info.returnNameSpace = returnNameSpace;
 		info.returnType = returnType;
+		info.returnQualifier = returnQualifier;
 		info.wrapperName = wrapperName;
 		info.wrapperNameSpace = wrapperNameSpace;
 		info.wrappers = wrappers;
@@ -124,6 +133,14 @@ class WsIOInfo {
 		this.parameterTypes = parameterTypes;
 	}
 
+	public List<Tuple2<String, String>> getParameterQualifiers() {
+		return parameterQualifiers;
+	}
+
+	public void setParameterQualifiers(List<Tuple2<String, String>> parameterQualifiers) {
+		this.parameterQualifiers = parameterQualifiers;
+	}
+
 	public String getReturnName() {
 		return returnName;
 	}
@@ -146,6 +163,14 @@ class WsIOInfo {
 
 	public void setReturnType(TypeMirror returnType) {
 		this.returnType = returnType;
+	}
+
+	public Tuple2<String, String> getReturnQualifier() {
+		return returnQualifier;
+	}
+
+	public void setReturnQualifier(Tuple2<String, String> returnQualifier) {
+		this.returnQualifier = returnQualifier;
 	}
 
 	public String getWrapperName() {
@@ -190,10 +215,14 @@ class WsIOInfo {
 			return false;
 		if (parameterTypes != null ? !parameterTypes.equals(wsIOInfo.parameterTypes) : wsIOInfo.parameterTypes != null)
 			return false;
+		if (parameterQualifiers != null ? !parameterQualifiers.equals(wsIOInfo.parameterQualifiers) : wsIOInfo.parameterQualifiers != null)
+			return false;
 		if (returnName != null ? !returnName.equals(wsIOInfo.returnName) : wsIOInfo.returnName != null) return false;
 		if (returnNameSpace != null ? !returnNameSpace.equals(wsIOInfo.returnNameSpace) : wsIOInfo.returnNameSpace != null)
 			return false;
 		if (returnType != null ? !returnType.equals(wsIOInfo.returnType) : wsIOInfo.returnType != null) return false;
+		if (returnQualifier != null ? !returnQualifier.equals(wsIOInfo.returnQualifier) : wsIOInfo.returnQualifier != null)
+			return false;
 		if (wrapperName != null ? !wrapperName.equals(wsIOInfo.wrapperName) : wsIOInfo.wrapperName != null)
 			return false;
 		if (wrapperNameSpace != null ? !wrapperNameSpace.equals(wsIOInfo.wrapperNameSpace) : wsIOInfo.wrapperNameSpace != null)
@@ -209,9 +238,11 @@ class WsIOInfo {
 		result = 31 * result + (parameterNames != null ? parameterNames.hashCode() : 0);
 		result = 31 * result + (parameterNameSpaces != null ? parameterNameSpaces.hashCode() : 0);
 		result = 31 * result + (parameterTypes != null ? parameterTypes.hashCode() : 0);
+		result = 31 * result + (parameterQualifiers != null ? parameterQualifiers.hashCode() : 0);
 		result = 31 * result + (returnName != null ? returnName.hashCode() : 0);
 		result = 31 * result + (returnNameSpace != null ? returnNameSpace.hashCode() : 0);
 		result = 31 * result + (returnType != null ? returnType.hashCode() : 0);
+		result = 31 * result + (returnQualifier != null ? returnQualifier.hashCode() : 0);
 		result = 31 * result + (wrapperName != null ? wrapperName.hashCode() : 0);
 		result = 31 * result + (wrapperNameSpace != null ? wrapperNameSpace.hashCode() : 0);
 		result = 31 * result + (wrappers != null ? wrappers.hashCode() : 0);
@@ -227,9 +258,11 @@ class WsIOInfo {
 				", parameterNames=" + parameterNames +
 				", parameterNameSpaces=" + parameterNameSpaces +
 				", parameterTypes=" + parameterTypes +
+				", parameterQualifiers=" + parameterQualifiers +
 				", returnName='" + returnName + '\'' +
 				", returnNameSpace='" + returnNameSpace + '\'' +
 				", returnType=" + returnType +
+				", returnQualifier=" + returnQualifier +
 				", wrapperName='" + wrapperName + '\'' +
 				", wrapperNameSpace='" + wrapperNameSpace + '\'' +
 				", wrappers=" + wrappers +

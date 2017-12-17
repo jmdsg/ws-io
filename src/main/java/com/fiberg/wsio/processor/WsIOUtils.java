@@ -1,5 +1,6 @@
 package com.fiberg.wsio.processor;
 
+import com.fiberg.wsio.annotation.WsIOQualifier;
 import com.fiberg.wsio.util.WsIOUtil;
 import com.squareup.javapoet.*;
 import io.vavr.Tuple;
@@ -125,16 +126,24 @@ final class WsIOUtils {
 				.map(webParam -> webParam != null ? webParam.targetNamespace() : null)
 				.toList();
 
+		/* Get ws qualifier names */
+		List<Tuple2<String, String>> parameterQualifiers = List.ofAll(executable.getParameters())
+				.map(variable -> variable.getAnnotation(WsIOQualifier.class))
+				.map(qualifier -> Tuple.of(qualifier.prefix(), qualifier.suffix()));
+
 		/* Extract the use annotations that are not ignored */
 		Set<WsIOWrapper> wrappers = HashSet.of(WsIOWrapper.values())
 				.flatMap(wrapper -> additional.getAnnotated().get(wrapper).filter(Objects::nonNull)
 						.filter(annotation -> additional.getIgnored().get(wrapper).filter(Objects::nonNull).isEmpty())
 						.map(annotation -> wrapper));
 
-		/* Get return name, namespace and type */
+		/* Get return name, namespace, type and the prefix and suffix of ws qualifier */
 		String returnName = webResult != null ? webResult.name() : "";
 		String returnNameSpace = webResult != null ? webResult.targetNamespace() : "";
 		TypeMirror returnType = executable.getReturnType();
+		Tuple2<String, String> returnQualifier = Option.of(executable.getAnnotation(WsIOQualifier.class))
+				.map(qualifier -> Tuple.of(qualifier.prefix(), qualifier.suffix()))
+				.getOrNull();
 
 		/* Get wrapper name nad namespace type */
 		String wrapperName = elementWrapper != null ? elementWrapper.name() : "";
@@ -146,7 +155,8 @@ final class WsIOUtils {
 
 		/* Return the info */
 		return WsIOInfo.of(methodName, operationName, executable,
-				parameterNames, parameterNameSpaces, parameterTypes, returnName, returnNameSpace, returnType,
+				parameterNames, parameterNameSpaces, parameterTypes, parameterQualifiers,
+				returnName, returnNameSpace, returnType, returnQualifier,
 				wrapperName, wrapperNameSpace, wrappers);
 
 	}

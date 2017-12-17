@@ -1,6 +1,5 @@
 package com.fiberg.wsio.processor;
 
-import com.fiberg.wsio.annotation.WsIOQualifier;
 import com.fiberg.wsio.handler.state.*;
 import com.fiberg.wsio.handler.time.WsIOInstant;
 import com.fiberg.wsio.handler.time.WsIOTime;
@@ -1335,9 +1334,7 @@ class WsIOGenerator {
 				String result = StringUtils.isNotBlank(returnName) ? returnName : DEFAULT_RESULT;
 
 				/* Get qualifier from annotation */
-				Tuple2<String, String> qualifier = Option.of(typeMirror.getAnnotation(WsIOQualifier.class))
-						.map(qualifiers -> Tuple.of(qualifiers.prefix(), qualifiers.suffix()))
-						.getOrNull();
+				Tuple2<String, String> qualifier = info.getReturnQualifier();
 
 				/* Fill the type, element and name */
 				Tuple3<ReferenceType, String, Tuple2<String, String>> descriptor =
@@ -1364,9 +1361,7 @@ class WsIOGenerator {
 					String argument = StringUtils.isNotBlank(parameterName) ? parameterName : defaultName;
 
 					/* Get qualifier from annotation */
-					Tuple2<String, String> qualifier = Option.of(typeMirror.getAnnotation(WsIOQualifier.class))
-							.map(qualifiers -> Tuple.of(qualifiers.prefix(), qualifiers.suffix()))
-							.getOrNull();
+					Tuple2<String, String> qualifier = info.getParameterQualifiers().get(index);
 
 					/* Fill the type, element and name */
 					Tuple3<ReferenceType, String, Tuple2<String, String>> descriptor =
