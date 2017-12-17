@@ -100,9 +100,9 @@ public @interface WsIOMessageWrapper {
 	String packageJs() default "join(" +
 			"packageStart, " +
 			"packagePath, " +
-			"className.toLowerCase(), " +
 			"packageMiddle, " +
 			"packagePrefix + packageName + packageSuffix, " +
+			"className.toLowerCase(), " +
 			"packageEnd)";
 
 }
