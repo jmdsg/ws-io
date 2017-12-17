@@ -69,101 +69,125 @@ public final class WsIOAuto {
 		Map<String, Tuple2<CtClass, CtClass>> roots = ctClasses.values()
 				.map(WsIOAuto::extractRootCtClass)
 				.toMap(CtClass::getName,
-						ctClass -> Tuple.of(packages.get(ctClass.getName()).getOrNull(), ctClass));
+						ctClass -> Tuple.of(packages.get(ctClass.getPackageName()).getOrNull(), ctClass));
 
 		/* Get current wrappers of the class */
 		Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>> wrappers =
 				WsIOWalker.findWrapperRecursively(roots.values().toList());
 
-		/* Iterate for each class */
-		ctClasses.forEach((className, ctClass) -> {
+		/* Iterate for each wrapper class */
+		for (String className : wrappers.keySet()) {
 
-			/* Get root class and the wrappers */
-			CtClass root = WsIOAuto.extractRootCtClass(ctClass);
-			Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> wrapper =
-					wrappers.getOrElse(root.getName(), HashMap.empty());
+			/* Check ct class is defined */
+			Option<CtClass> ctClassOpt = ctClasses.get(className);
+			if (ctClassOpt.isDefined()) {
 
-			/* Iterate for each method */
-			boolean annotationAdded = false;
-			for (CtMethod ctMethod : ctClass.getDeclaredMethods()) {
+				/* Get main, root class and the wrappers */
+				CtClass ctClass = ctClassOpt.get();
+				CtClass root = WsIOAuto.extractRootCtClass(ctClass);
+				Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> wrapper =
+						wrappers.getOrElse(root.getName(), HashMap.empty());
 
-				/* Get method info */
-				Option<Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> info = wrapper
-						.get(ctMethod.getLongName());
+				/* Iterate for each method */
+				boolean annotationAdded = false;
+				for (CtMethod ctMethod : ctClass.getDeclaredMethods()) {
 
-				/* Get package, response and request options */
-				Option<String> packageOpt = info.map(Tuple2::_1).filter(Objects::nonNull);
-				Option<Tuple2<String, String>> responseOpt = info.map(Tuple2::_2)
-						.flatMap(map -> map.get(WsIOType.RESPONSE));
-				Option<Tuple2<String, String>> requestOpt = info.map(Tuple2::_2)
-						.flatMap(map -> map.get(WsIOType.REQUEST));
+					/* Get method info */
+					Option<Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> info = wrapper
+							.get(ctMethod.getLongName());
 
-				/* Check if all fields are present */
-				if (packageOpt.isDefined() && responseOpt.isDefined() && requestOpt.isDefined()) {
+					/* Get package, response and request options */
+					Option<String> packageOpt = info.map(Tuple2::_1).filter(Objects::nonNull);
+					Option<Tuple2<String, String>> responseOpt = info.map(Tuple2::_2)
+							.flatMap(map -> map.get(WsIOType.RESPONSE));
+					Option<Tuple2<String, String>> requestOpt = info.map(Tuple2::_2)
+							.flatMap(map -> map.get(WsIOType.REQUEST));
 
-					/* Get package name, response and request info with prefixes and suffixes */
-					String packageName = packageOpt.get();
-					Tuple2<String, String> response = responseOpt.get();
-					Tuple2<String, String> request = requestOpt.get();
+					/* Check if all fields are present */
+					if (packageOpt.isDefined() && responseOpt.isDefined() && requestOpt.isDefined()) {
 
-					/* Get method name and upper name to create wrapper names */
-					String methodName = ctMethod.getName();
-					String upperName = WordUtils.capitalize(methodName);
+						/* Get package name, response and request info with prefixes and suffixes */
+						String packageName = packageOpt.get();
+						Tuple2<String, String> response = responseOpt.get();
+						Tuple2<String, String> request = requestOpt.get();
 
-					/* Response and request names with prefix and suffix */
-					String responseName = WsIOUtil.addWrap(upperName, response._1(), response._2());
-					String requestName = WsIOUtil.addWrap(upperName, request._1(), request._2());
+						/* Get method name and upper name to create wrapper names */
+						String methodName = ctMethod.getName();
+						String upperName = WordUtils.capitalize(methodName);
 
-					/* Get full qualified response and request class names */
-					String responseClass = WsIOUtil.addPrefixName(responseName, packageName);
-					String requestClass = WsIOUtil.addPrefixName(requestName, packageName);
+						/* Response and request names with prefix and suffix */
+						String responseName = WsIOUtil.addWrap(upperName, response._1(), response._2());
+						String requestName = WsIOUtil.addWrap(upperName, request._1(), request._2());
 
-					/* Check is the response and request names are valid */
-					boolean validResponse = classNames.contains(responseClass);
-					boolean validRequest = classNames.contains(requestClass);
-					if (validResponse || validRequest) {
+						/* Get full qualified response and request class names */
+						String responseClass = WsIOUtil.addPrefixName(responseName, packageName);
+						String requestClass = WsIOUtil.addPrefixName(requestName, packageName);
 
-						try {
+						/* Check is the response and request names are valid */
+						boolean validResponse = classNames.contains(responseClass);
+						boolean validRequest = classNames.contains(requestClass);
+						if (validResponse || validRequest) {
 
-							/* Define class file, class pool and attribute */
-							ClassFile ccFile = ctClass.getClassFile();
-							ConstPool constpool = ccFile.getConstPool();
-							AnnotationsAttribute attribute = new AnnotationsAttribute(constpool,
-									AnnotationsAttribute.visibleTag);
+							try {
 
-							/*  Check if response name is valid to be added */
-							if (validResponse) {
+								/* Define class file, class pool and attribute */
+								ClassFile ccFile = ctClass.getClassFile();
+								ConstPool constpool = ccFile.getConstPool();
+								AnnotationsAttribute attribute = new AnnotationsAttribute(constpool,
+										AnnotationsAttribute.visibleTag);
 
-								/* Define wrapper class name, create annotation, add the wrapper name
-								 * and add the annotation to the attribute */
-								String responseAnnotation = ResponseWrapper.class.getCanonicalName();
-								Annotation annotation = new Annotation(responseAnnotation, constpool);
-								annotation.addMemberValue("className",
-										new StringMemberValue(responseClass, ccFile.getConstPool()));
-								attribute.addAnnotation(annotation);
+								/*  Check if response name is valid to be added */
+								if (validResponse) {
 
+									/* Define wrapper class name, create annotation, add the wrapper name
+									 * and add the annotation to the attribute */
+									String responseAnnotation = ResponseWrapper.class.getCanonicalName();
+									Annotation annotation = new Annotation(responseAnnotation, constpool);
+									annotation.addMemberValue("className",
+											new StringMemberValue(responseClass, ccFile.getConstPool()));
+									attribute.addAnnotation(annotation);
+
+								}
+
+								/*  Check if request name is valid to be added */
+								if (validRequest) {
+
+									/* Define wrapper class name, create annotation, add the wrapper name
+									 * and add the annotation to the attribute */
+									String requestAnnotation = RequestWrapper.class.getCanonicalName();
+									Annotation annotation = new Annotation(requestAnnotation, constpool);
+									annotation.addMemberValue("className",
+											new StringMemberValue(requestClass, ccFile.getConstPool()));
+									attribute.addAnnotation(annotation);
+
+								}
+
+								/* Add attribute to the method and set flag to true */
+								ctMethod.getMethodInfo().addAttribute(attribute);
+								annotationAdded = true;
+
+							} catch (Exception e) {
+								// ignore class does not exists
 							}
 
-							/*  Check if request name is valid to be added */
-							if (validRequest) {
-
-								/* Define wrapper class name, create annotation, add the wrapper name
-								 * and add the annotation to the attribute */
-								String requestAnnotation = RequestWrapper.class.getCanonicalName();
-								Annotation annotation = new Annotation(requestAnnotation, constpool);
-								annotation.addMemberValue("className",
-										new StringMemberValue(requestClass, ccFile.getConstPool()));
-								attribute.addAnnotation(annotation);
-
-							}
-
-							/* Add attribute to the method and set flag to true */
-							ctMethod.getMethodInfo().addAttribute(attribute);
-							annotationAdded = true;
-
-						} catch (Exception e) {
-							// ignore class does not exists
 						}
+
+					}
+
+				}
+
+				/* Check if the class has been annotated or not */
+				if (annotationAdded) {
+
+					try {
+
+						/* Compile the class */
+						ctClass.toClass();
+
+					} catch (CannotCompileException e) {
+
+						/* Throw when the class could not be compiles */
+						throw new IllegalStateException(String.format("Could not compile the class %s", ctClass), e);
 
 					}
 
@@ -171,24 +195,7 @@ public final class WsIOAuto {
 
 			}
 
-			/* Check if the class has been annotated or not */
-			if (annotationAdded) {
-
-				try {
-
-					/* Compile the class */
-					ctClass.toClass();
-
-				} catch (CannotCompileException e) {
-
-					/* Throw when the class could not be compiles */
-					throw new IllegalStateException(String.format("Could not compile the class %s", ctClass), e);
-
-				}
-
-			}
-
-		});
+		}
 
 	}
 
