@@ -1,6 +1,6 @@
 package com.fiberg.wsio.processor;
 
-public final class WsIOConstant {
+final class WsIOConstant {
 
 	private WsIOConstant() {}
 

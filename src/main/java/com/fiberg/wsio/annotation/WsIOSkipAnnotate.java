@@ -12,4 +12,7 @@ import java.lang.annotation.Target;
 @Target({ ElementType.TYPE, ElementType.METHOD })
 public @interface WsIOSkipAnnotate {
 
+	/** Indicates the elements to be skipped */
+	SkipType skip() default SkipType.ALL;
+
 }

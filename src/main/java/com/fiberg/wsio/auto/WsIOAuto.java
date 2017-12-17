@@ -1,183 +1,227 @@
 package com.fiberg.wsio.auto;
 
-import com.fiberg.wsio.annotation.WsIOAnnotate;
-import com.fiberg.wsio.annotation.WsIOMessageWrapper;
-import com.fiberg.wsio.annotation.WsIOSkipMessageWrapper;
-import com.fiberg.wsio.processor.WsIOConstant;
-import com.fiberg.wsio.processor.WsIOEngine;
+import com.fiberg.wsio.processor.*;
 import com.fiberg.wsio.util.WsIOUtil;
 import io.github.lukehutch.fastclasspathscanner.FastClasspathScanner;
-import io.vavr.Tuple;
-import io.vavr.Tuple2;
+import io.vavr.*;
+import io.vavr.collection.HashMap;
+import io.vavr.collection.List;
+import io.vavr.collection.Map;
+import io.vavr.control.Option;
+import io.vavr.control.Try;
 import javassist.*;
 import javassist.bytecode.AnnotationsAttribute;
 import javassist.bytecode.ClassFile;
 import javassist.bytecode.ConstPool;
+import javassist.bytecode.annotation.Annotation;
 import javassist.bytecode.annotation.StringMemberValue;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.mutable.Mutable;
-import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.commons.text.WordUtils;
 
-import javax.jws.WebMethod;
 import javax.xml.ws.RequestWrapper;
 import javax.xml.ws.ResponseWrapper;
-import java.util.List;
-import java.util.Map;
-import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
+/**
+ * Class used to annotate web service classes with response and request wrappers.
+ */
 public final class WsIOAuto {
 
-	private WsIOAuto() {}
+	/**
+	 * Empty private constructor.
+	 */
+	private WsIOAuto() {  }
 
+	/**
+	 * Method used to scan the package for annotate annotations.
+	 *
+	 * @param basePackage package to scan
+	 */
 	public static void annotate(String basePackage) {
 
-		List<String> classNames = new FastClasspathScanner(basePackage)
+		/* Obtain all class names of the base package */
+		List<String> classNames = List.ofAll(new FastClasspathScanner(basePackage)
 				.scan()
-				.getNamesOfAllClasses();
+				.getNamesOfAllClasses());
 
+		/* Get default class pool */
 		ClassPool pool = ClassPool.getDefault();
-		Map<String, CtClass> ctClasses = classNames.stream()
-				.map(className -> {
-					CtClass ctClass = null;
-					if (className.startsWith(basePackage)) {
-						try {
-							ctClass = pool.getCtClass(className);
-						} catch (NotFoundException e) {
-							// ignore class not found
-						}
-					}
-					return Tuple.of(className, ctClass);
-				})
-				.filter(tuple -> tuple._2() != null)
-				.collect(Collectors.toMap(Tuple2::_1, Tuple2::_2));
 
-		Map<String, CtClass> packages = ctClasses.values().stream()
+		/* Get all ct classes when the name starts with base package */
+		Map<String, CtClass> ctClasses = classNames.toMap(className -> className,
+				className -> Try.success(className)
+						.filter(name -> name.startsWith(basePackage))
+						.mapTry(pool::getCtClass)
+						.getOrNull())
+				.filterValues(Objects::nonNull);
+
+		/* Get all package info of every package */
+		Map<String, CtClass> packages = ctClasses.values()
 				.map(CtClass::getPackageName)
-				.collect(Collectors.toSet())
-				.stream()
-				.map(packageName -> {
-					CtClass ctPackage;
-					try {
-						String packageClassName = WsIOUtil.addPrefixName("package-info", packageName);
-						ctPackage = pool.getCtClass(packageClassName);
-					} catch (NotFoundException e) {
-						ctPackage = null;
-					}
-					return Tuple.of(packageName, ctPackage);
-				})
-				.filter(tuple -> tuple._2() != null)
-				.collect(Collectors.toMap(Tuple2::_1, Tuple2::_2));
+				.toSet()
+				.toMap(packageName -> packageName,
+						packageName -> Try.success(packageName)
+								.map(name -> WsIOUtil.addPrefixName("package-info", name))
+								.mapTry(pool::getCtClass)
+								.getOrNull())
+				.filterValues(Objects::nonNull);
 
+		/* Map with root class name and a tuple with package ct and the ct root class */
+		Map<String, Tuple2<CtClass, CtClass>> roots = ctClasses.values()
+				.map(WsIOAuto::extractRootCtClass)
+				.toMap(CtClass::getName,
+						ctClass -> Tuple.of(packages.get(ctClass.getName()).getOrNull(), ctClass));
+
+		/* Get current wrappers of the class */
+		Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>> wrappers =
+				WsIOWalker.findWrapperRecursively(roots.values().toList());
+
+		/* Iterate for each class */
 		ctClasses.forEach((className, ctClass) -> {
 
-			Mutable<Boolean> annotated = new MutableObject<>(false);
-			String classSimpleName = ctClass.getSimpleName();
-			String packageName = ctClass.getPackageName();
-			CtClass ctPackage = packages.get(packageName);
+			/* Get root class and the wrappers */
+			CtClass root = WsIOAuto.extractRootCtClass(ctClass);
+			Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> wrapper =
+					wrappers.getOrElse(root.getName(), HashMap.empty());
 
-			WsIOAnnotate packageAnnotate = obtainAnnotation(ctPackage, WsIOAnnotate.class);
-			WsIOAnnotate classAnnotate = obtainAnnotation(ctClass, WsIOAnnotate.class);
-
-			WsIOMessageWrapper packageAnnotation = obtainAnnotation(ctPackage, WsIOMessageWrapper.class);
-			WsIOMessageWrapper classAnnotation = obtainAnnotation(ctClass, WsIOMessageWrapper.class);
-			WsIOSkipMessageWrapper skipClass = obtainAnnotation(ctClass, WsIOSkipMessageWrapper.class);
-
+			/* Iterate for each method */
+			boolean annotationAdded = false;
 			for (CtMethod ctMethod : ctClass.getDeclaredMethods()) {
-				WebMethod webMethod = obtainAnnotation(ctMethod, WebMethod.class);
-				if (webMethod != null) {
 
+				/* Get method info */
+				Option<Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> info = wrapper
+						.get(ctMethod.getLongName());
+
+				/* Get package, response and request options */
+				Option<String> packageOpt = info.map(Tuple2::_1).filter(Objects::nonNull);
+				Option<Tuple2<String, String>> responseOpt = info.map(Tuple2::_2)
+						.flatMap(map -> map.get(WsIOType.RESPONSE));
+				Option<Tuple2<String, String>> requestOpt = info.map(Tuple2::_2)
+						.flatMap(map -> map.get(WsIOType.REQUEST));
+
+				/* Check if all fields are present */
+				if (packageOpt.isDefined() && responseOpt.isDefined() && requestOpt.isDefined()) {
+
+					/* Get package name, response and request info with prefixes and suffixes */
+					String packageName = packageOpt.get();
+					Tuple2<String, String> response = responseOpt.get();
+					Tuple2<String, String> request = requestOpt.get();
+
+					/* Get method name and upper name to create wrapper names */
 					String methodName = ctMethod.getName();
-					WsIOAnnotate methodAnnotate = obtainAnnotation(ctMethod, WsIOAnnotate.class);
-					WsIOAnnotate annotate = ObjectUtils.firstNonNull(methodAnnotate, classAnnotate, packageAnnotate);
-					if (annotate != null) {
+					String upperName = WordUtils.capitalize(methodName);
 
-						WsIOMessageWrapper methodAnnotation = obtainAnnotation(ctMethod, WsIOMessageWrapper.class);
-						WsIOSkipMessageWrapper skipMethod = obtainAnnotation(ctMethod, WsIOSkipMessageWrapper.class);
-						WsIOMessageWrapper annotation = ObjectUtils.firstNonNull(methodAnnotation,
-								classAnnotation, packageAnnotation);
-						WsIOSkipMessageWrapper skip = ObjectUtils.firstNonNull(skipMethod, skipClass);
+					/* Response and request names with prefix and suffix */
+					String responseName = WsIOUtil.addWrap(upperName, response._1(), response._2());
+					String requestName = WsIOUtil.addWrap(upperName, request._1(), request._2());
 
-						BiConsumer<String, String> addAnnotationWrapper = (wrapper, name) -> {
-							try {
-								Class.forName(wrapper);
-								ClassFile ccFile = ctClass.getClassFile();
-								ConstPool constpool = ccFile.getConstPool();
-								AnnotationsAttribute attr = new AnnotationsAttribute(constpool, AnnotationsAttribute.visibleTag);
-								javassist.bytecode.annotation.Annotation annot = new javassist.bytecode.annotation.Annotation(name, constpool);
-								annot.addMemberValue("className", new StringMemberValue(wrapper, ccFile.getConstPool()));
-								attr.addAnnotation(annot);
-								ctMethod.getMethodInfo().addAttribute(attr);
-								annotated.setValue(true);
-							} catch (ClassNotFoundException e) {
-								// ignore class does not exists
-							}
-						};
+					/* Get full qualified response and request class names */
+					String responseClass = WsIOUtil.addPrefixName(responseName, packageName);
+					String requestClass = WsIOUtil.addPrefixName(requestName, packageName);
 
-						if (skip == null && annotation != null) {
+					/* Check is the response and request names are valid */
+					boolean validResponse = classNames.contains(responseClass);
+					boolean validRequest = classNames.contains(requestClass);
+					if (validResponse || validRequest) {
 
-							String finalPackage = WsIOEngine.obtainPackage(methodName, classSimpleName, packageName,
-									annotation.packageName(), annotation.packagePath(), annotation.packagePrefix(),
-									annotation.packageSuffix(), annotation.packageStart(), annotation.packageMiddle(),
-									annotation.packageEnd(), annotation.packageJs());
+						try {
 
-							if (StringUtils.isNotBlank(finalPackage)) {
+							/* Define class file, class pool and attribute */
+							ClassFile ccFile = ctClass.getClassFile();
+							ConstPool constpool = ccFile.getConstPool();
+							AnnotationsAttribute attribute = new AnnotationsAttribute(constpool,
+									AnnotationsAttribute.visibleTag);
 
-								String upperName = WordUtils.capitalize(methodName);
-								String wrappedResponseName = WsIOUtil.addWrap(upperName, WsIOConstant.RESPONSE_WRAPPER_PREFIX,
-										WsIOConstant.RESPONSE_WRAPPER_SUFFIX);
-								String wrappedRequestName = WsIOUtil.addWrap(upperName, WsIOConstant.REQUEST_WRAPPER_PREFIX,
-										WsIOConstant.REQUEST_WRAPPER_SUFFIX);
+							/*  Check if response name is valid to be added */
+							if (validResponse) {
 
-								String responseName = WsIOUtil.addPrefixName(wrappedResponseName, finalPackage);
-								String requestName = WsIOUtil.addPrefixName(wrappedRequestName, finalPackage);
-
-								if (StringUtils.isNotBlank(responseName)) {
-									addAnnotationWrapper.accept(responseName, ResponseWrapper.class.getCanonicalName());
-								}
-								if (StringUtils.isNotBlank(requestName)) {
-									addAnnotationWrapper.accept(requestName, RequestWrapper.class.getCanonicalName());
-								}
+								/* Define wrapper class name, create annotation, add the wrapper name
+								 * and add the annotation to the attribute */
+								String responseAnnotation = ResponseWrapper.class.getCanonicalName();
+								Annotation annotation = new Annotation(responseAnnotation, constpool);
+								annotation.addMemberValue("className",
+										new StringMemberValue(responseClass, ccFile.getConstPool()));
+								attribute.addAnnotation(annotation);
 
 							}
 
+							/*  Check if request name is valid to be added */
+							if (validRequest) {
+
+								/* Define wrapper class name, create annotation, add the wrapper name
+								 * and add the annotation to the attribute */
+								String requestAnnotation = RequestWrapper.class.getCanonicalName();
+								Annotation annotation = new Annotation(requestAnnotation, constpool);
+								annotation.addMemberValue("className",
+										new StringMemberValue(requestClass, ccFile.getConstPool()));
+								attribute.addAnnotation(annotation);
+
+							}
+
+							/* Add attribute to the method and set flag to true */
+							ctMethod.getMethodInfo().addAttribute(attribute);
+							annotationAdded = true;
+
+						} catch (Exception e) {
+							// ignore class does not exists
 						}
 
 					}
+
 				}
+
 			}
 
-			if (annotated.getValue()) {
+			/* Check if the class has been annotated or not */
+			if (annotationAdded) {
+
 				try {
+
+					/* Compile the class */
 					ctClass.toClass();
+
 				} catch (CannotCompileException e) {
+
+					/* Throw when the class could not be compiles */
 					throw new IllegalStateException(String.format("Could not compile the class %s", ctClass), e);
+
 				}
+
 			}
 
 		});
 
 	}
 
-	private static <T> T obtainAnnotation(Object ct, Class<T> annotation) {
-		if (ct != null) {
-			try {
-				if (ct instanceof CtClass) {
-					@SuppressWarnings("unchecked")
-					T annot = (T) ((CtClass) ct).getAnnotation(annotation);
-					return annot;
-				} else if (ct instanceof CtMethod) {
-					@SuppressWarnings("unchecked")
-					T annot = (T) ((CtMethod) ct).getAnnotation(annotation);
-					return annot;
+	/**
+	 * Method that extracts the root ct class.
+	 *
+	 * @param ctClass ct class to extract the root class
+	 * @return root ct class
+	 */
+	private static CtClass extractRootCtClass(CtClass ctClass) {
+		try {
+
+			/* Check ct class is not null */
+			if (Objects.nonNull(ctClass)) {
+
+				/* Get the declaring class */
+				CtClass declaring = ctClass.getDeclaringClass();
+				if (Objects.nonNull(declaring)) {
+
+					/* Return recursive call to extract declaring class */
+					return extractRootCtClass(declaring);
+
 				}
-			} catch (ClassNotFoundException e) {
-				return null;
+
 			}
+
+		} catch (NotFoundException e) {
+			// ignore return current class
 		}
-		return null;
+
+		/* Return current class by default */
+		return ctClass;
+
 	}
 
 }

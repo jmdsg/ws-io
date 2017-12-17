@@ -5,6 +5,7 @@ import com.fiberg.wsio.util.WsIOUtil;
 import io.vavr.*;
 import io.vavr.collection.*;
 import io.vavr.control.Option;
+import javassist.CtClass;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -18,7 +19,84 @@ import java.util.Objects;
 
 class WsIOFinder {
 
-	private WsIOFinder() {}
+	private WsIOFinder() {  }
+
+	static Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> findWrapperRecursively(Set<TypeElement> elements) {
+
+		return elements.map(element -> findWrapperRecursively(element, WsIOAnnotation.ofNull(element.getEnclosingElement()
+				.getAnnotation(WsIOMessageWrapper.class)), WsIOAdditional.of(element)))
+				.fold(HashMap.empty(), Map::merge);
+
+	}
+
+	private static Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> findWrapperRecursively(TypeElement element,
+	                                                                                              WsIOAnnotation annotation,
+	                                                                                              WsIOAdditional additional) {
+
+		WsIOSkipMessageWrapper skip = element.getAnnotation(WsIOSkipMessageWrapper.class);
+		boolean skipped = Objects.nonNull(skip);
+
+		if (skipped && SkipType.ALL.equals(skip.skip())) {
+
+			return HashMap.empty();
+
+		} else {
+
+			WsIOAnnotation annotationWrapper = WsIOAnnotation.ofNull(element.getAnnotation(WsIOMessageWrapper.class));
+			WsIOAnnotation actualWrapper = ObjectUtils.firstNonNull(annotationWrapper, annotation);
+
+			boolean service = Objects.nonNull(element.getAnnotation(WebService.class));
+			boolean enabled = Objects.nonNull(actualWrapper);
+
+			Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> wrappers = HashMap.empty();
+			if (!(skipped && SkipType.PARENT.equals(skip.skip())) && service) {
+
+				Set<ExecutableElement> executables = Stream.ofAll(element.getEnclosedElements())
+						.filter(ExecutableElement.class::isInstance)
+						.map(ExecutableElement.class::cast)
+						.filter(executable -> !"<init>".equals(executable.getSimpleName().toString()))
+						.filter(executable -> Objects.isNull(executable.getAnnotation(WsIOSkipMessageWrapper.class)))
+						.filter(executable -> enabled || Objects.nonNull(executable.getAnnotation(WsIOMessageWrapper.class)))
+						.filter(executable -> Objects.nonNull(executable.getAnnotation(WebMethod.class)))
+						.toSet();
+
+				wrappers = wrappers.put(element,
+						executables.toMap(Function1.of(ExecutableElement::getSimpleName)
+								.andThen(Name::toString), executable -> {
+
+							WsIOAnnotation currentAnnotation = WsIOAnnotation
+									.ofNull(executable.getAnnotation(WsIOMessageWrapper.class));
+							WsIOAnnotation annot = ObjectUtils.firstNonNull(currentAnnotation, actualWrapper);
+
+							String methodName = executable.getSimpleName().toString();
+							String className = element.getSimpleName().toString();
+							String packageName = WsIOUtils.extractPackage(element).getQualifiedName().toString();
+
+							String finalPackage = WsIOEngine.obtainPackage(methodName, className, packageName,
+									annot.getPackageName(), annot.getPackagePath(), annot.getPackagePrefix(),
+									annot.getPackageSuffix(), annot.getPackageStart(), annot.getPackageMiddle(),
+									annot.getPackageEnd(), annot.getPackageJs());
+
+							WsIOAdditional additionalExecutable = additional.update(executable);
+
+							WsIOInfo info = WsIOUtils.extractInfo(executable, additionalExecutable);
+
+							return Tuple.of(info, finalPackage);
+
+						}));
+
+			}
+
+			return Stream.ofAll(element.getEnclosedElements())
+					.filter(TypeElement.class::isInstance)
+					.map(TypeElement.class::cast)
+					.filter(type -> !(skipped && SkipType.CHILDS.equals(skip.skip())))
+					.map(next -> findWrapperRecursively(next, actualWrapper, additional.update(next)))
+					.fold(wrappers, Map::merge);
+
+		}
+
+	}
 
 	static Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> findCloneMessage(Map<TypeElement, String> messages,
 	                                                                                      Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> clones) {
@@ -132,83 +210,6 @@ class WsIOFinder {
 				.map(TypeElement.class::cast)
 				.map(next -> findCloneRecursively(next, nextClones, nextSkips))
 				.fold(groups, (map1, map2) -> map1.merge(map2, Set::addAll));
-
-	}
-
-	static Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> findWrapperRecursively(Set<TypeElement> elements) {
-
-		return elements.map(element -> findWrapperRecursively(element, WsIOAnnotation.ofNull(element.getEnclosingElement()
-						.getAnnotation(WsIOMessageWrapper.class)), WsIOAdditional.of(element)))
-				.fold(HashMap.empty(), Map::merge);
-
-	}
-
-	private static Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> findWrapperRecursively(TypeElement element,
-	                                                                                              WsIOAnnotation annotation,
-	                                                                                              WsIOAdditional additional) {
-
-		WsIOSkipMessageWrapper skip = element.getAnnotation(WsIOSkipMessageWrapper.class);
-		boolean skipped = Objects.nonNull(skip);
-
-		if (skipped && SkipType.ALL.equals(skip.skip())) {
-
-			return HashMap.empty();
-
-		} else {
-
-			WsIOAnnotation annotationWrapper = WsIOAnnotation.ofNull(element.getAnnotation(WsIOMessageWrapper.class));
-			WsIOAnnotation actualWrapper = ObjectUtils.firstNonNull(annotationWrapper, annotation);
-
-			boolean service = Objects.nonNull(element.getAnnotation(WebService.class));
-			boolean enabled = Objects.nonNull(actualWrapper);
-
-			Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> wrappers = HashMap.empty();
-			if (!(skipped && SkipType.PARENT.equals(skip.skip())) && service) {
-
-				Set<ExecutableElement> executables = Stream.ofAll(element.getEnclosedElements())
-						.filter(ExecutableElement.class::isInstance)
-						.map(ExecutableElement.class::cast)
-						.filter(executable -> !"<init>".equals(executable.getSimpleName().toString()))
-						.filter(executable -> Objects.isNull(executable.getAnnotation(WsIOSkipMessageWrapper.class)))
-						.filter(executable -> enabled || Objects.nonNull(executable.getAnnotation(WsIOMessageWrapper.class)))
-						.filter(executable -> Objects.nonNull(executable.getAnnotation(WebMethod.class)))
-						.toSet();
-
-				wrappers = wrappers.put(element,
-						executables.toMap(Function1.of(ExecutableElement::getSimpleName)
-								.andThen(Name::toString), executable -> {
-
-							WsIOAnnotation currentAnnotation = WsIOAnnotation
-									.ofNull(executable.getAnnotation(WsIOMessageWrapper.class));
-							WsIOAnnotation annot = ObjectUtils.firstNonNull(currentAnnotation, actualWrapper);
-
-							String methodName = executable.getSimpleName().toString();
-							String className = element.getSimpleName().toString();
-							String packageName = WsIOUtils.extractPackage(element).getQualifiedName().toString();
-
-							String finalPackage = WsIOEngine.obtainPackage(methodName, className, packageName,
-									annot.getPackageName(), annot.getPackagePath(), annot.getPackagePrefix(),
-									annot.getPackageSuffix(), annot.getPackageStart(), annot.getPackageMiddle(),
-									annot.getPackageEnd(), annot.getPackageJs());
-
-							WsIOAdditional additionalExecutable = additional.update(executable);
-
-							WsIOInfo info = WsIOUtils.extractInfo(executable, additionalExecutable);
-
-							return Tuple.of(info, finalPackage);
-
-						}));
-
-			}
-
-			return Stream.ofAll(element.getEnclosedElements())
-					.filter(TypeElement.class::isInstance)
-					.map(TypeElement.class::cast)
-					.filter(type -> !(skipped && SkipType.CHILDS.equals(skip.skip())))
-					.map(next -> findWrapperRecursively(next, actualWrapper, additional.update(next)))
-					.fold(wrappers, Map::merge);
-
-		}
 
 	}
 

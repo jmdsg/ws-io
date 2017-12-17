@@ -19,7 +19,7 @@ import static java.lang.String.format;
 /**
  * Class that handle the execution of js function to obtain package names.
  */
-public final class WsIOEngine {
+final class WsIOEngine {
 
 	/**
 	 * Private empty constructor.

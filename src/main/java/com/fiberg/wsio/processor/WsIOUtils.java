@@ -6,6 +6,8 @@ import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.*;
 import io.vavr.control.Option;
+import javassist.CtClass;
+import javassist.CtMethod;
 import org.apache.commons.lang3.ObjectUtils;
 
 import javax.jws.WebMethod;
@@ -15,6 +17,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.*;
 import javax.xml.bind.annotation.XmlElementWrapper;
+import java.lang.annotation.Annotation;
 import java.util.Objects;
 
 /**
@@ -600,6 +603,42 @@ final class WsIOUtils {
 		/* Return the array of specified dimension */
 		return Stream.iterate(typeName, ArrayTypeName::of)
 				.get(dimension);
+
+	}
+
+	/**
+	 * Method used to extract the annotation in a ct class.
+	 *
+	 * @param ctClass ct class to extract the annotation
+	 * @param annotation annotation class
+	 * @param <T> type argument of the annotation class
+	 * @return annotation extracted from ct class
+	 */
+	@SuppressWarnings("unchecked")
+	static <T extends Annotation> T extractAnnotation(CtClass ctClass , Class<T> annotation) {
+
+		/* Return the annotation or null */
+		return Option.of(ctClass).toTry()
+				.mapTry(ct -> (T) ct.getAnnotation(annotation))
+				.getOrNull();
+
+	}
+
+	/**
+	 * Method used to extract the annotation in a ct method.
+	 *
+	 * @param ctMethod ct method to extract the annotation
+	 * @param annotation annotation class
+	 * @param <T> type argument of the annotation method
+	 * @return annotation extracted from ct method
+	 */
+	@SuppressWarnings("unchecked")
+	static <T extends Annotation> T extractAnnotation(CtMethod ctMethod , Class<T> annotation) {
+
+		/* Return the annotation or null */
+		return Option.of(ctMethod).toTry()
+				.mapTry(ct -> (T) ct.getAnnotation(annotation))
+				.getOrNull();
 
 	}
 
