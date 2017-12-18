@@ -83,8 +83,8 @@ public final class WsIOWalker {
 			/* Map of wrappers and check condition for use as wrapper */
 			Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>> wrappers = HashMap.empty();
 			if (service
-					&& !(skippedWrapper && SkipType.PARENT.equals(skipWrapper.skip()))
-					&& !(skippedAnnotate && SkipType.PARENT.equals(skipAnnotate.skip()))) {
+					&& !(skippedWrapper && SkipType.CURRENT.equals(skipWrapper.skip()))
+					&& !(skippedAnnotate && SkipType.CURRENT.equals(skipAnnotate.skip()))) {
 
 				/* Get list of executables, with name different to <init>,
 				 * message wrapper and annotate not skipped,

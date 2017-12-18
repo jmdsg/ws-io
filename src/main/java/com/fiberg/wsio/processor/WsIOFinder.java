@@ -5,7 +5,6 @@ import com.fiberg.wsio.util.WsIOUtil;
 import io.vavr.*;
 import io.vavr.collection.*;
 import io.vavr.control.Option;
-import javassist.CtClass;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -49,7 +48,7 @@ class WsIOFinder {
 			boolean enabled = Objects.nonNull(actualWrapper);
 
 			Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> wrappers = HashMap.empty();
-			if (!(skipped && SkipType.PARENT.equals(skip.skip())) && service) {
+			if (!(skipped && SkipType.CURRENT.equals(skip.skip())) && service) {
 
 				Set<ExecutableElement> executables = Stream.ofAll(element.getEnclosedElements())
 						.filter(ExecutableElement.class::isInstance)
@@ -175,7 +174,7 @@ class WsIOFinder {
 		Set<Tuple3<String, String, SkipType>> ioSkips = HashSet.of(element.getAnnotationsByType(WsIOSkipClone.class))
 				.map(clone -> Tuple.of(clone.prefix(), clone.suffix(), clone.skip()));
 
-		Set<Tuple2<String, String>> parentSkips = ioSkips.filter(tuple -> SkipType.PARENT.equals(tuple._3()))
+		Set<Tuple2<String, String>> parentSkips = ioSkips.filter(tuple -> SkipType.CURRENT.equals(tuple._3()))
 				.map(tuple -> Tuple.of(tuple._1(), tuple._2()));
 
 		Set<Tuple2<String, String>> childSkips = ioSkips.filter(tuple -> SkipType.CHILDS.equals(tuple._3()))
@@ -237,7 +236,7 @@ class WsIOFinder {
 			boolean enabled = Objects.nonNull(actualMessage);
 
 			Map<TypeElement, String> messages = HashMap.empty();
-			if (!(skipped && SkipType.PARENT.equals(skip.skip())) && enabled) {
+			if (!(skipped && SkipType.CURRENT.equals(skip.skip())) && enabled) {
 
 				Function2<TypeElement, WsIOAnnotation, String> extractor = (elem, annot) -> {
 

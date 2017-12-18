@@ -9,7 +9,7 @@ public enum SkipType {
 	ALL,
 
 	/** Skip this elements */
-	PARENT,
+	CURRENT,
 
 	/** Skip all childs of this element, but not the element itself */
 	CHILDS

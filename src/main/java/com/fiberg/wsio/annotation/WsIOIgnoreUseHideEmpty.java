@@ -6,11 +6,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * <p>Annotation used to ignore the annotation {@link WsIOUseInner}.</p>
+ * <p>Annotation used to ignore the annotation {@link WsIOUseHideEmpty}.</p>
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.TYPE, ElementType.METHOD })
-public @interface WsIOIgnoreUseInner {
+public @interface WsIOIgnoreUseHideEmpty {
 
 	/** Indicates the elements to be skipped */
 	SkipType skip() default SkipType.ALL;
