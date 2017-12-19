@@ -1,6 +1,6 @@
 package com.fiberg.wsio.processor;
 
-import com.fiberg.wsio.annotation.WsIOQualifier;
+import com.fiberg.wsio.annotation.*;
 import com.fiberg.wsio.util.WsIOUtil;
 import com.squareup.javapoet.*;
 import io.vavr.Tuple;
@@ -131,11 +131,10 @@ final class WsIOUtils {
 				.map(variable -> variable.getAnnotation(WsIOQualifier.class))
 				.map(qualifier -> qualifier != null ? Tuple.of(qualifier.prefix(), qualifier.suffix()) : null);
 
-		/* Extract the use annotations that are not ignored */
-		Set<WsIOWrapper> wrappers = HashSet.of(WsIOWrapper.values())
-				.flatMap(wrapper -> additional.getAnnotated().get(wrapper).filter(Objects::nonNull)
-						.filter(annotation -> additional.getIgnored().get(wrapper).filter(Objects::nonNull).isEmpty())
-						.map(annotation -> wrapper));
+		/* Extract the use annotations that are defined */
+		Set<WsIOWrapper> wrappers = WsIOWrapper.ANNOTATIONS.filterValues(annotation ->
+				descriptor.getSingle(annotation).isDefined())
+				.keySet();
 
 		/* Get return name, namespace, type and the prefix and suffix of ws qualifier */
 		String returnName = webResult != null ? webResult.name() : "";
