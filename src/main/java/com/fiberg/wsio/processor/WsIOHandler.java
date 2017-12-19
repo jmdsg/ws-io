@@ -19,71 +19,71 @@ final class WsIOHandler {
 				e);
 	}
 
-	public static void error(Messager messager, Element e, String msg, Object... args) {
+	static void error(Messager messager, Element e, String msg, Object... args) {
 		messager.printMessage(
 				Diagnostic.Kind.ERROR,
 				String.format(msg, args),
 				e);
 	}
 
-	public static void error(Messager messager, Throwable t, String msg, Object... args) {
+	static void error(Messager messager, Throwable t, String msg, Object... args) {
 		messager.printMessage(
 				Diagnostic.Kind.ERROR,
 				formatThrowable(t, String.format(msg, args)));
 	}
 
-	public static void error(Messager messager, String msg, Object... args) {
+	static void error(Messager messager, String msg, Object... args) {
 		messager.printMessage(
 				Diagnostic.Kind.ERROR,
 				String.format(msg, args));
 	}
 
-	public static void error(Messager messager, Throwable t) {
+	static void error(Messager messager, Throwable t) {
 		messager.printMessage(
 				Diagnostic.Kind.ERROR,
 				formatThrowable(t));
 	}
 
-	public static void error(Messager messager, Element e, Throwable t) {
+	static void error(Messager messager, Element e, Throwable t) {
 		messager.printMessage(
 				Diagnostic.Kind.ERROR,
 				formatThrowable(t),
 				e);
 	}
 
-	public static void warning(Messager messager, Element e, Throwable t, String msg, Object... args) {
+	static void warning(Messager messager, Element e, Throwable t, String msg, Object... args) {
 		messager.printMessage(
 				Diagnostic.Kind.WARNING,
 				formatThrowable(t, String.format(msg, args)),
 				e);
 	}
 
-	public static void warning(Messager messager, Element e, String msg, Object... args) {
+	static void warning(Messager messager, Element e, String msg, Object... args) {
 		messager.printMessage(
 				Diagnostic.Kind.WARNING,
 				String.format(msg, args),
 				e);
 	}
 
-	public static void warning(Messager messager, Throwable t, String msg, Object... args) {
+	static void warning(Messager messager, Throwable t, String msg, Object... args) {
 		messager.printMessage(
 				Diagnostic.Kind.WARNING,
 				formatThrowable(t, String.format(msg, args)));
 	}
 
-	public static void warning(Messager messager, String msg, Object... args) {
+	static void warning(Messager messager, String msg, Object... args) {
 		messager.printMessage(
 				Diagnostic.Kind.WARNING,
 				String.format(msg, args));
 	}
 
-	public static void warning(Messager messager, Throwable t) {
+	static void warning(Messager messager, Throwable t) {
 		messager.printMessage(
 				Diagnostic.Kind.WARNING,
 				formatThrowable(t));
 	}
 
-	public static void warning(Messager messager, Element e, Throwable t) {
+	static void warning(Messager messager, Element e, Throwable t) {
 		messager.printMessage(
 				Diagnostic.Kind.WARNING,
 				formatThrowable(t),

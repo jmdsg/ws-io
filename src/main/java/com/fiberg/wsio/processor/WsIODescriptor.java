@@ -29,10 +29,12 @@ public class WsIODescriptor {
 
 	/** Descriptor of the multiple annotations */
 	private static final Map<Class<? extends Annotation>,
-			Tuple3<Class<? extends Annotation>, Function1<Annotation, SkipType>, Function1<Annotation, Comparable<?>>>> MULTIPLES =
+			Tuple4<Class<? extends Annotation>, Function1<Annotation, SkipType>, Function1<Annotation, Comparable<?>>,
+					Function1<Annotation, Comparable<?>>>> MULTIPLES =
 			HashMap.of(
-					WsIOClone.class, WsIODescriptor.skipMultipleDescriptor(WsIOClone.class, WsIOSkipClone.class,
-							annotation -> Tuple.of(annotation.prefix(), annotation.suffix()), WsIOSkipClone::skip)
+							WsIOClone.class, WsIODescriptor.skipMultipleDescriptor(WsIOClone.class, WsIOSkipClone.class,
+							WsIOSkipClone::skip, annotation -> Tuple.of(annotation.prefix(), annotation.suffix()),
+							annotation -> Tuple.of(annotation.prefix(), annotation.suffix()))
 			);
 
 	/**
@@ -68,20 +70,23 @@ public class WsIODescriptor {
 	/**
 	 * Method that create a descriptor for the skip annotations
 	 *
-	 * @param clazz main class extending annotation
+	 * @param main main class extending annotation
 	 * @param skip skip class extending annotation
-	 * @param comparator annotation comparator
 	 * @param function function to transform
+	 * @param mainComparator main annotation comparator
+	 * @param skipComparator skip annotation comparator
 	 * @param <A> type argument extending the annotation
 	 * @param <S> type argument extending the skip annotation
 	 * @return tuple containing the skip descriptor of the annotation
 	 */
 	@SuppressWarnings("unchecked")
-	private static <A extends Annotation, S extends Annotation> Tuple3<Class<? extends Annotation>, Function1<Annotation, SkipType>,
-	Function1<Annotation, Comparable<?>>> skipMultipleDescriptor(Class<A> clazz,
-	                                                             Class<S> skip,
-	                                                             Function1<A, Comparable<?>> comparator,
-	                                                             Function1<S, SkipType> function) {
+	private static <A extends Annotation, S extends Annotation> Tuple4<Class<? extends Annotation>, Function1<Annotation, SkipType>,
+			Function1<Annotation, Comparable<?>>, Function1<Annotation, Comparable<?>>> skipMultipleDescriptor(
+					Class<A> main,
+					Class<S> skip,
+					Function1<S, SkipType> function,
+					Function1<A, Comparable<?>> mainComparator,
+					Function1<S, Comparable<?>> skipComparator) {
 
 		/* Return the annotation class, the skip function and the comparator function */
 		return Tuple.of(skip,
@@ -101,11 +106,24 @@ public class WsIODescriptor {
 				}, annotation -> {
 
 					/* Check main class and annotation are not null, and that main is instance of annotation */
-					if (clazz != null && annotation != null && clazz.isInstance(annotation)) {
+					if (main != null && annotation != null && main.isInstance(annotation)) {
 
 						/* Return the comparator applied */
-						return comparator.apply((A) annotation);
-						/* Return the function applied */
+						return mainComparator.apply((A) annotation);
+
+					}
+
+					/* Return null by default */
+					return null;
+
+				}, annotation -> {
+
+					/* Check skip class and annotation are not null, and that main is instance of annotation */
+					if (skip != null && annotation != null && skip.isInstance(annotation)) {
+
+						/* Return the comparator applied */
+						return skipComparator.apply((S) annotation);
+
 					}
 
 					/* Return null by default */
@@ -267,13 +285,6 @@ public class WsIODescriptor {
 
 	}
 
-
-
-
-
-
-
-
 	/**
 	 * Method that extracts all elements of current.
 	 *
@@ -380,11 +391,16 @@ public class WsIODescriptor {
 			Class<? extends Annotation> annotation,
 			Function2<E, Class<? extends Annotation>, ? extends Annotation[]> extractor) {
 
-		/* Return the map of multiples */
+		/* Return the annotations info */
 		return Map.narrow(MULTIPLES.get(annotation)
 				.map(tuple -> Stream.of(extractor.apply(element, annotation))
 						.toMap(annot -> tuple._3().apply(annot),
-								annot -> Tuple.of(annot, tuple._2().apply(annot))))
+								annot -> Tuple.of(annot,
+										tuple._2().apply(Stream.of(extractor.apply(element, tuple._1()))
+												.toMap(tuple._4(), e -> e)
+												.get(tuple._3().apply(annot))
+												.getOrNull())
+										)))
 				.getOrElse(HashMap.empty()));
 
 	}

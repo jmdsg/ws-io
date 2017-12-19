@@ -42,9 +42,9 @@ final class WsIOEngine {
 	 * @param packageJs javascript piece to generate package name
 	 * @return name of the package obtained after executing js methods
 	 */
-	public static String obtainPackage(String currentMethod, String currentClass, String currentPackage, String packageName,
-	                                   String packagePath, String packagePrefix, String packageSuffix, String packageStart,
-	                                   String packageMiddle, String packageEnd, String packageJs) {
+	static String obtainPackage(String currentMethod, String currentClass, String currentPackage, String packageName,
+	                            String packagePath, String packagePrefix, String packageSuffix, String packageStart,
+	                            String packageMiddle, String packageEnd, String packageJs) {
 
 		try {
 
