@@ -18,6 +18,7 @@ import javax.annotation.processing.Messager;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.NoType;
+import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.JavaFileObject;
 import javax.xml.bind.annotation.*;
@@ -1022,15 +1023,30 @@ class WsIOGenerator {
 							internalType, context, internalGetAccessor, hideEmpties);
 
 					/* Create the internal get method spec and add it to the methods set */
-					MethodSpec internalGet = MethodSpec.methodBuilder(internalGetName)
+					MethodSpec.Builder internalGetBuilder = MethodSpec.methodBuilder(internalGetName)
 							.returns(internalType)
 							.addAnnotations(internalGetAnnotations)
-							.addModifiers(Modifier.PUBLIC)
-							.addCode("return $L() != null ? ", externalGetName)
-							.addCode(internalGetBlock)
-							.addCode(" : null").addCode(";").addCode("\n")
-							.build();
-					methods = methods.append(internalGet);
+							.addModifiers(Modifier.PUBLIC);
+
+					/* Check mirror is a primitive type or not */
+					if (mirror instanceof PrimitiveType) {
+
+						/* Add return statement of primitive type */
+						internalGetBuilder = internalGetBuilder.addCode("return ", externalGetName)
+								.addCode(internalGetBlock)
+								.addCode(";").addCode("\n");
+
+					} else {
+
+						/* Add return statement of reference type */
+						internalGetBuilder = internalGetBuilder.addCode("return $L() != null ? ", externalGetName)
+								.addCode(internalGetBlock)
+								.addCode(" : null").addCode(";").addCode("\n");
+
+					}
+
+					/* Build and add the method to method list */
+					methods = methods.append(internalGetBuilder.build());
 
 					/* Create external set block code */
 					CodeBlock internalSetBlock = WsIODelegator.generateRecursiveTransformToExternal(internalType,
@@ -1038,16 +1054,31 @@ class WsIOGenerator {
 
 					/* Create parameter and method spec and add it to the methods */
 					ParameterSpec internalParameter = ParameterSpec.builder(internalType, internalParameterName).build();
-					MethodSpec internalSet = MethodSpec.methodBuilder(internalSetName)
+					MethodSpec.Builder internalSetBuilder = MethodSpec.methodBuilder(internalSetName)
 							.addParameter(internalParameter)
-							.addModifiers(Modifier.PUBLIC)
-							.beginControlFlow("if ($L != null)", internalParameterName)
-							.addCode("$L(", externalSetName)
-							.addCode(internalSetBlock)
-							.addCode(")").addCode(";").addCode("\n")
-							.endControlFlow()
-							.build();
-					methods = methods.append(internalSet);
+							.addModifiers(Modifier.PUBLIC);
+
+					/* Check mirror is a primitive type or not */
+					if (mirror instanceof PrimitiveType) {
+
+						/* Add set statement of primitive type */
+						internalSetBuilder = internalSetBuilder.addCode("$L(", externalSetName)
+								.addCode(internalSetBlock)
+								.addCode(")").addCode(";").addCode("\n");
+
+					} else {
+
+						/* Add set statement of reference type */
+						internalSetBuilder = internalSetBuilder.beginControlFlow("if ($L != null)", internalParameterName)
+								.addCode("$L(", externalSetName)
+								.addCode(internalSetBlock)
+								.addCode(")").addCode(";").addCode("\n")
+								.endControlFlow();
+
+					}
+
+					/* Build and add set method to the list */
+					methods = methods.append(internalSetBuilder.build());
 
 				}
 

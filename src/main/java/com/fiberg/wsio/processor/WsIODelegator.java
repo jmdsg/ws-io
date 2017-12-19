@@ -257,17 +257,28 @@ class WsIODelegator {
 							.addCode(";").addCode("\n")
 							.build();
 
+					/* Check return mirror is primitive or not */
+					if (returnMirror instanceof PrimitiveType) {
+
+						setterSpecBuilder = setterSpecBuilder.beginControlFlow(
+								"if ($L() != null)", delegator);
+
+					} else {
+
+						setterSpecBuilder = setterSpecBuilder.beginControlFlow(
+								"if ($L() != null && $L != null)", delegator, propertyName);
+
+					}
+
 					/* Create setter method and add it to the set */
 					MethodSpec setterSpec = setterSpecBuilder
-							.beginControlFlow("if ($L() != null && $L != null)",
-									delegator, propertyName)
 							.addCode("$L().$L(", delegator, setterName)
 							.addCode(setCodeBlock)
 							.addCode(")").addCode(";").addCode("\n")
 							.endControlFlow()
 							.build();
 
-					/* return getter and setter methods */
+						/* return getter and setter methods */
 					return List.of(getterSpec, setterSpec);
 
 				}
