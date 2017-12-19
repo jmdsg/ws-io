@@ -17,6 +17,7 @@ import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.NoType;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.JavaFileObject;
 import javax.xml.bind.annotation.*;
@@ -860,190 +861,195 @@ class WsIOGenerator {
 			TypeMirror mirror = descriptor._1();
 			String name = descriptor._2();
 
-			/* Qualifier, prefixes and suffixes */
-			Tuple2<String, String> qualifier = descriptor._3();
-			String prefixClassName = Objects.nonNull(qualifier) ? qualifier._1() : StringUtils.EMPTY;
-			String suffixClassName = Objects.nonNull(qualifier) ? qualifier._2() : StringUtils.EMPTY;
-			String prefixWrapperName = WsIOType.RESPONSE.equals(type) ? RESPONSE_PREFIX : REQUEST_PREFIX;
-			String suffixWrapperName = WsIOType.RESPONSE.equals(type) ? RESPONSE_SUFFIX : REQUEST_SUFFIX;
-			WsIOGenerate generate = Objects.nonNull(qualifier) ? WsIOGenerate.CLONE_MESSAGE : WsIOGenerate.MESSAGE;
+			/* Check mirror is not a notype */
+			if (!(mirror instanceof NoType)) {
 
-			/* Get identifier and get clone classes and clone message classes */
-			Tuple2<String, String> identifier = Tuple.of(prefixClassName, suffixClassName);
-			Map<String, String> cloneClasses = cloneClassesByName.flatMap((key, map) ->
-					map.get(identifier).map(packageName -> Tuple.of(key, packageName)));
-			Map<String, String> cloneMessageClasses = cloneMessageClassesByName.flatMap((key, map) ->
-					map.get(identifier).map(packageName -> Tuple.of(key, packageName)));
+				/* Qualifier, prefixes and suffixes */
+				Tuple2<String, String> qualifier = descriptor._3();
+				String prefixClassName = Objects.nonNull(qualifier) ? qualifier._1() : StringUtils.EMPTY;
+				String suffixClassName = Objects.nonNull(qualifier) ? qualifier._2() : StringUtils.EMPTY;
+				String prefixWrapperName = WsIOType.RESPONSE.equals(type) ? RESPONSE_PREFIX : REQUEST_PREFIX;
+				String suffixWrapperName = WsIOType.RESPONSE.equals(type) ? RESPONSE_SUFFIX : REQUEST_SUFFIX;
+				WsIOGenerate generate = Objects.nonNull(qualifier) ? WsIOGenerate.CLONE_MESSAGE : WsIOGenerate.MESSAGE;
 
-			/* Context of the generation */
-			WsIOContext context = new WsIOContext(prefixClassName, suffixClassName,
-					prefixWrapperName, suffixWrapperName, messageClasses, cloneClasses,
-					cloneMessageClasses, typeByName, generate);
+				/* Get identifier and get clone classes and clone message classes */
+				Tuple2<String, String> identifier = Tuple.of(prefixClassName, suffixClassName);
+				Map<String, String> cloneClasses = cloneClassesByName.flatMap((key, map) ->
+						map.get(identifier).map(packageName -> Tuple.of(key, packageName)));
+				Map<String, String> cloneMessageClasses = cloneMessageClassesByName.flatMap((key, map) ->
+						map.get(identifier).map(packageName -> Tuple.of(key, packageName)));
 
-			/* Recursive full type name */
-			TypeName internalType = context.getRecursiveFullTypeName(mirror,
-					true, false, true);
+				/* Context of the generation */
+				WsIOContext context = new WsIOContext(prefixClassName, suffixClassName,
+						prefixWrapperName, suffixWrapperName, messageClasses, cloneClasses,
+						cloneMessageClasses, typeByName, generate);
 
-			/* Lower and upper names */
-			String lowerName = WordUtils.uncapitalize(name);
-			String upperName = WordUtils.capitalize(name);
+				/* Recursive full type name */
+				TypeName internalType = context.getRecursiveFullTypeName(mirror,
+						true, false, true);
 
-			/* Internal and external getter and setter names */
-			String internalGetName = String.format("get%s_", upperName);
-			String internalSetName = String.format("set%s_", upperName);
-			String externalGetName = String.format("get%s", upperName);
-			String externalSetName = String.format("set%s", upperName);
+				/* Lower and upper names */
+				String lowerName = WordUtils.uncapitalize(name);
+				String upperName = WordUtils.capitalize(name);
 
-			/* Internal and external parameter names */
-			String internalParameterName = String.format("%s_", lowerName);
-			String externalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
-					String.format("%s_", lowerName) : lowerName;
+				/* Internal and external getter and setter names */
+				String internalGetName = String.format("get%s_", upperName);
+				String internalSetName = String.format("set%s_", upperName);
+				String externalGetName = String.format("get%s", upperName);
+				String externalSetName = String.format("set%s", upperName);
 
-			/* Assign field name and add it to the fields */
-			String fieldName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
-					String.format("%s_", lowerName) : lowerName;
-			fieldNames = fieldNames.append(fieldName);
+				/* Internal and external parameter names */
+				String internalParameterName = String.format("%s_", lowerName);
+				String externalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
+						String.format("%s_", lowerName) : lowerName;
 
-			/* List with the external get annotations */
-			List<AnnotationSpec> externalGetAnnotations = List.of(
-					AnnotationSpec.builder(XmlTransient.class).build()
-			);
+				/* Assign field name and add it to the fields */
+				String fieldName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
+						String.format("%s_", lowerName) : lowerName;
+				fieldNames = fieldNames.append(fieldName);
 
-			/* Create fiend and add it to the set */
-			TypeName fieldType = TypeName.get(mirror);
-			FieldSpec fieldSpec = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE).build();
-			fields = fields.append(fieldSpec);
+				/* List with the external get annotations */
+				List<AnnotationSpec> externalGetAnnotations = List.of(
+						AnnotationSpec.builder(XmlTransient.class).build()
+				);
 
-			/* Create return type name and get method and add it to the set */
-			MethodSpec externalGet = MethodSpec.methodBuilder(externalGetName)
-					.returns(fieldType)
-					.addAnnotations(externalGetAnnotations)
-					.addModifiers(Modifier.PUBLIC)
-					.addStatement("return $L", fieldName)
-					.build();
-			methods = methods.append(externalGet);
+				/* Create fiend and add it to the set */
+				TypeName fieldType = TypeName.get(mirror);
+				FieldSpec fieldSpec = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE).build();
+				fields = fields.append(fieldSpec);
 
-			/* Create external parameter, build the method spec and add it to the set */
-			ParameterSpec externalParameter = ParameterSpec.builder(fieldType, externalParameterName).build();
-			MethodSpec externalSet = MethodSpec.methodBuilder(externalSetName)
-					.addParameter(externalParameter)
-					.addModifiers(Modifier.PUBLIC)
-					.addStatement("this.$L = $L", fieldName, externalParameterName)
-					.build();
-			methods = methods.append(externalSet);
+				/* Create return type name and get method and add it to the set */
+				MethodSpec externalGet = MethodSpec.methodBuilder(externalGetName)
+						.returns(fieldType)
+						.addAnnotations(externalGetAnnotations)
+						.addModifiers(Modifier.PUBLIC)
+						.addStatement("return $L", fieldName)
+						.build();
+				methods = methods.append(externalGet);
 
-			/* Predicate that checks that a mirror type is valid,
-			 * is not an array nor a java collection not a map */
-			Predicate<TypeMirror> isValidInnerType = mirrorType -> {
+				/* Create external parameter, build the method spec and add it to the set */
+				ParameterSpec externalParameter = ParameterSpec.builder(fieldType, externalParameterName).build();
+				MethodSpec externalSet = MethodSpec.methodBuilder(externalSetName)
+						.addParameter(externalParameter)
+						.addModifiers(Modifier.PUBLIC)
+						.addStatement("this.$L = $L", fieldName, externalParameterName)
+						.build();
+				methods = methods.append(externalSet);
 
-				/* Check mirror is a declared type and not an array or another */
-				if (mirrorType instanceof DeclaredType) {
+				/* Predicate that checks that a mirror type is valid,
+				 * is not an array nor a java collection not a map */
+				Predicate<TypeMirror> isValidInnerType = mirrorType -> {
 
-					/* Type element and name */
-					TypeElement element = (TypeElement) ((DeclaredType) mirrorType).asElement();
-					String elementName = element.getQualifiedName().toString();
+					/* Check mirror is a declared type and not an array or another */
+					if (mirrorType instanceof DeclaredType) {
 
-					/* Return true if element name is not a collection */
-					return !WsIOCollection.ALL.contains(elementName);
+						/* Type element and name */
+						TypeElement element = (TypeElement) ((DeclaredType) mirrorType).asElement();
+						String elementName = element.getQualifiedName().toString();
+
+						/* Return true if element name is not a collection */
+						return !WsIOCollection.ALL.contains(elementName);
+
+					}
+
+					/* Return false by default */
+					return false;
+
+				};
+
+				/* Check if inner wrapper is defined */
+				if (info.getWrappers().contains(WsIOWrapper.INNER_WRAPPER)
+						&& isValidInnerType.test(mirror)
+						&& WsIOType.RESPONSE.equals(type)) {
+
+					/* Declared type and element type */
+					DeclaredType declaredType = (DeclaredType) mirror;
+					TypeElement element = (TypeElement) declaredType.asElement();
+
+					/* Generate the inheritance structure */
+					Map<WsIOLevel, Set<DeclaredType>> inheritance = resolveInheritance(element, context);
+
+					/* Generate the method priotity from the inheritance structure */
+					Map<WsIOLevel, Map<WsIOProperty, Map<String, ExecutableElement>>> methodPriorities =
+							resolveMethodPriority(inheritance);
+
+					/* Extract getters and setters from all methods with priority */
+					Map<WsIOLevel, Map<String, ExecutableElement>> getterPriorities = methodPriorities
+							.mapValues(map -> map.getOrElse(WsIOProperty.GETTER, HashMap.empty()));
+					Map<WsIOLevel, Map<String, ExecutableElement>> setterPriorities = methodPriorities
+							.mapValues(map -> map.getOrElse(WsIOProperty.SETTER, HashMap.empty()));
+
+					/* Property names matching names and level */
+					List<Tuple3<ExecutableElement, ExecutableElement, WsIOLevel>> properties =
+							getMatchingProperties(getterPriorities, setterPriorities);
+
+					/* Map identifier by getter name and containing property name */
+					Map<String, String> getterProperties = properties.map(Tuple3::_1)
+							.map(ExecutableElement::getSimpleName)
+							.map(Name::toString)
+							.toMap(getter -> Tuple.of(getter, WordUtils.uncapitalize(
+									getter.replaceAll("^get", ""))));
+
+					/* Getter annotations */
+					Map<String, List<AnnotationSpec>> getterAnnotations = getterProperties
+							.mapValues(propertyName -> List.of(AnnotationSpec.builder(XmlElement.class)
+									.addMember("name", "$S", propertyName).build()));
+
+					/* Change the field names to the class inner fields */
+					fieldNames = getterProperties.map(Tuple2::_2).toList();
+
+					/* Get element descriptor and get use hide empties annotation */
+					WsIODescriptor desc = WsIODescriptor.of(element);
+					boolean hideEmpties = desc.getSingle(WsIOUseHideEmpty.class).isDefined();
+
+					/* Add method of the property methods */
+					methods = methods.appendAll(generatePropertyMethods(getterPriorities,
+							setterPriorities, getterAnnotations, externalGetName, hideEmpties, context));
+
+				} else {
+
+					/* Flag indicating if empty collections, maps and arrays should be hidden */
+					boolean hideEmpties = info.getWrappers().contains(WsIOWrapper.HIDE_EMPTY_WRAPPER);
+
+					/* List with the internal get annotations */
+					List<AnnotationSpec> internalGetAnnotations = List.empty();
+					internalGetAnnotations = internalGetAnnotations.append(AnnotationSpec.builder(XmlElement.class)
+							.addMember("name", "$S", lowerName).build());
+
+					/* Create internal get accessor and code block */
+					String internalGetAccessor = String.format("%s()", externalGetName);
+					CodeBlock internalGetBlock = WsIODelegator.generateRecursiveTransformToInternal(mirror,
+							internalType, context, internalGetAccessor, hideEmpties);
+
+					/* Create the internal get method spec and add it to the methods set */
+					MethodSpec internalGet = MethodSpec.methodBuilder(internalGetName)
+							.returns(internalType)
+							.addAnnotations(internalGetAnnotations)
+							.addModifiers(Modifier.PUBLIC)
+							.addCode("return $L() != null ? ", externalGetName)
+							.addCode(internalGetBlock)
+							.addCode(" : null").addCode(";").addCode("\n")
+							.build();
+					methods = methods.append(internalGet);
+
+					/* Create external set block code */
+					CodeBlock internalSetBlock = WsIODelegator.generateRecursiveTransformToExternal(internalType,
+							mirror, context, internalParameterName, hideEmpties);
+
+					/* Create parameter and method spec and add it to the methods */
+					ParameterSpec internalParameter = ParameterSpec.builder(internalType, internalParameterName).build();
+					MethodSpec internalSet = MethodSpec.methodBuilder(internalSetName)
+							.addParameter(internalParameter)
+							.addModifiers(Modifier.PUBLIC)
+							.beginControlFlow("if ($L != null)", internalParameterName)
+							.addCode("$L(", externalSetName)
+							.addCode(internalSetBlock)
+							.addCode(")").addCode(";").addCode("\n")
+							.endControlFlow()
+							.build();
+					methods = methods.append(internalSet);
 
 				}
-
-				/* Return false by default */
-				return false;
-
-			};
-
-			/* Check if inner wrapper is defined */
-			if (info.getWrappers().contains(WsIOWrapper.INNER_WRAPPER)
-					&& isValidInnerType.test(mirror)
-					&& WsIOType.RESPONSE.equals(type)) {
-
-				/* Declared type and element type */
-				DeclaredType declaredType = (DeclaredType) mirror;
-				TypeElement element = (TypeElement) declaredType.asElement();
-
-				/* Generate the inheritance structure */
-				Map<WsIOLevel, Set<DeclaredType>> inheritance = resolveInheritance(element, context);
-
-				/* Generate the method priotity from the inheritance structure */
-				Map<WsIOLevel, Map<WsIOProperty, Map<String, ExecutableElement>>> methodPriorities =
-						resolveMethodPriority(inheritance);
-
-				/* Extract getters and setters from all methods with priority */
-				Map<WsIOLevel, Map<String, ExecutableElement>> getterPriorities = methodPriorities
-						.mapValues(map -> map.getOrElse(WsIOProperty.GETTER, HashMap.empty()));
-				Map<WsIOLevel, Map<String, ExecutableElement>> setterPriorities = methodPriorities
-						.mapValues(map -> map.getOrElse(WsIOProperty.SETTER, HashMap.empty()));
-
-				/* Property names matching names and level */
-				List<Tuple3<ExecutableElement, ExecutableElement, WsIOLevel>> properties =
-						getMatchingProperties(getterPriorities, setterPriorities);
-
-				/* Map identifier by getter name and containing property name */
-				Map<String, String> getterProperties = properties.map(Tuple3::_1)
-						.map(ExecutableElement::getSimpleName)
-						.map(Name::toString)
-						.toMap(getter -> Tuple.of(getter, WordUtils.uncapitalize(
-								getter.replaceAll("^get", ""))));
-
-				/* Getter annotations */
-				Map<String, List<AnnotationSpec>> getterAnnotations = getterProperties
-						.mapValues(propertyName -> List.of(AnnotationSpec.builder(XmlElement.class)
-								.addMember("name", "$S", propertyName).build()));
-
-				/* Change the field names to the class inner fields */
-				fieldNames = getterProperties.map(Tuple2::_2).toList();
-
-				/* Get element descriptor and get use hide empties annotation */
-				WsIODescriptor desc = WsIODescriptor.of(element);
-				boolean hideEmpties = desc.getSingle(WsIOUseHideEmpty.class).isDefined();
-
-				/* Add method of the property methods */
-				methods = methods.appendAll(generatePropertyMethods(getterPriorities,
-						setterPriorities, getterAnnotations, externalGetName, hideEmpties, context));
-
-			} else {
-
-				/* Flag indicating if empty collections, maps and arrays should be hidden */
-				boolean hideEmpties = info.getWrappers().contains(WsIOWrapper.HIDE_EMPTY_WRAPPER);
-
-				/* List with the internal get annotations */
-				List<AnnotationSpec> internalGetAnnotations = List.empty();
-				internalGetAnnotations = internalGetAnnotations.append(AnnotationSpec.builder(XmlElement.class)
-						.addMember("name", "$S", lowerName).build());
-
-				/* Create internal get accessor and code block */
-				String internalGetAccessor = String.format("%s()", externalGetName);
-				CodeBlock internalGetBlock = WsIODelegator.generateRecursiveTransformToInternal(mirror,
-						internalType, context, internalGetAccessor, hideEmpties);
-
-				/* Create the internal get method spec and add it to the methods set */
-				MethodSpec internalGet = MethodSpec.methodBuilder(internalGetName)
-						.returns(internalType)
-						.addAnnotations(internalGetAnnotations)
-						.addModifiers(Modifier.PUBLIC)
-						.addCode("return $L() != null ? ", externalGetName)
-						.addCode(internalGetBlock)
-						.addCode(" : null").addCode(";").addCode("\n")
-						.build();
-				methods = methods.append(internalGet);
-
-				/* Create external set block code */
-				CodeBlock internalSetBlock = WsIODelegator.generateRecursiveTransformToExternal(internalType,
-						mirror, context, internalParameterName, hideEmpties);
-
-				/* Create parameter and method spec and add it to the methods */
-				ParameterSpec internalParameter = ParameterSpec.builder(internalType, internalParameterName).build();
-				MethodSpec internalSet = MethodSpec.methodBuilder(internalSetName)
-						.addParameter(internalParameter)
-						.addModifiers(Modifier.PUBLIC)
-						.beginControlFlow("if ($L != null)", internalParameterName)
-						.addCode("$L(", externalSetName)
-						.addCode(internalSetBlock)
-						.addCode(")").addCode(";").addCode("\n")
-						.endControlFlow()
-						.build();
-				methods = methods.append(internalSet);
 
 			}
 
