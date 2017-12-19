@@ -1130,6 +1130,9 @@ class WsIOGenerator {
 	private Tuple4<List<FieldSpec>, List<MethodSpec>, List<TypeName>, List<AnnotationSpec>> generateAdditionals(Set<WsIOWrapper> wrappers,
 	                                                                                                            List<String> fieldNames) {
 
+		/* Flag indicating if empty collections, maps and arrays should be hidden */
+		boolean hideEmpties = wrappers.contains(WsIOWrapper.HIDE_EMPTY_WRAPPER);
+
 		/* Fields, methods and interfaces */
 		List<FieldSpec> fields = List.empty();
 		List<MethodSpec> methods = List.empty();
@@ -1151,15 +1154,52 @@ class WsIOGenerator {
 					/* Create the field and add it to the set */
 					currentFields = currentFields.append(FieldSpec.builder(typeName, fieldName, Modifier.PRIVATE).build());
 
+					/* Get possible class name and check if is a collection or an array */
+					String possibleClassName = Option.of(typeName)
+							.filter(ParameterizedTypeName.class::isInstance)
+							.map(ParameterizedTypeName.class::cast)
+							.map(pameterized -> pameterized.rawType)
+							.orElse(Option.of(typeName)
+									.filter(ClassName.class::isInstance)
+									.map(ClassName.class::cast))
+							.map(ClassName::reflectionName)
+							.getOrNull();
+					boolean isArray = typeName instanceof ArrayTypeName;
+					boolean isCollection = WsIOCollection.ALL.contains(possibleClassName);
+
 					/* Declare the code block and check if get check is empty or not */
 					CodeBlock getCode;
 					if (StringUtils.isNotBlank(getCheck)) {
 
 						/* Create the upper check name and initialize the get code block */
 						String upperCheck = WordUtils.capitalize(getCheck);
-						getCode = CodeBlock.builder()
-								.beginControlFlow("if ($T.$L.equals(get$L()))", Boolean.class, "TRUE", upperCheck)
-								.addStatement("return $L", fieldName)
+
+						/* Create code builder and check if hice mode is enabled and if is an array or collection */
+						CodeBlock.Builder getCodeBuilder = CodeBlock.builder();
+						if (hideEmpties && isArray) {
+
+							/* Simple show condition check */
+							getCodeBuilder = getCodeBuilder.beginControlFlow("if ($T.$L.equals(get$L()) " +
+											"&& $L != null && $L.length > 0)",
+									Boolean.class, "TRUE", upperCheck, fieldName, fieldName);
+
+						} else if (hideEmpties && isCollection) {
+
+							/* Simple show condition check */
+							getCodeBuilder = getCodeBuilder.beginControlFlow("if ($T.$L.equals(get$L()) " +
+											"&& $L != null && $L.size() > 0)",
+									Boolean.class, "TRUE", upperCheck, fieldName, fieldName);
+
+						} else {
+
+							/* Simple show condition check */
+							getCodeBuilder = getCodeBuilder.beginControlFlow("if ($T.$L.equals(get$L()))",
+									Boolean.class, "TRUE", upperCheck);
+
+						}
+
+						/* Builder and add the rest of the get code */
+						getCode = getCodeBuilder.addStatement("return $L", fieldName)
 								.endControlFlow()
 								.beginControlFlow("else")
 								.addStatement("return null")
@@ -1168,10 +1208,30 @@ class WsIOGenerator {
 
 					} else {
 
-						/* Initialize the get code block */
-						getCode = CodeBlock.builder()
-								.addStatement("return $L", fieldName)
-								.build();
+						if (hideEmpties && isArray) {
+
+							/* Initialize the get code block */
+							getCode = CodeBlock.builder()
+									.addStatement("return ($L != null && $L.length > 0 : $L : null)",
+											fieldName, fieldName, fieldName)
+									.build();
+
+						} else if (hideEmpties && isCollection) {
+
+							/* Initialize the get code block */
+							getCode = CodeBlock.builder()
+									.addStatement("return ($L != null && $L.size() > 0 : $L : null)",
+											fieldName, fieldName, fieldName)
+									.build();
+
+						} else {
+
+							/* Initialize the get code block */
+							getCode = CodeBlock.builder()
+									.addStatement("return $L", fieldName)
+									.build();
+
+						}
 
 					}
 
