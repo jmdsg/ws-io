@@ -2,6 +2,7 @@ package com.fiberg.wsio.util;
 
 import com.google.common.collect.Multimap;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.WordUtils;
 
 import java.util.HashSet;
 import java.util.Map.Entry;
@@ -104,6 +105,34 @@ public final class WsIOUtil {
 		}
 
 		return null;
+
+	}
+
+	/**
+	 * Method to transform a getter name to property name
+	 *
+	 * @param getter name of the getter
+	 * @return property name
+	 */
+	public static String getterToProperty(String getter) {
+
+        /* Remove get from the method name and replace first char with lower */
+		String name = getter.replaceAll("^get", "");
+		return WordUtils.uncapitalize(name);
+
+	}
+
+	/**
+	 * Method to transform a setter name to property name
+	 *
+	 * @param setter name of the setter
+	 * @return property name
+	 */
+	public static String setterToProperty(String setter) {
+
+        /* Remove set from the method name and replace first char with lower */
+		String name = setter.replaceAll("^set", "");
+		return WordUtils.uncapitalize(name);
 
 	}
 

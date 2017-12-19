@@ -178,6 +178,8 @@ class WsIODelegator {
 	 * @param setterName name of the setter method
 	 * @param propertyName name of the property method
 	 * @param delegator name of the delegator
+	 * @param delegatorGetterName name of the delegator getter method
+	 * @param delegatorSetterName name of the delegator setter method
 	 * @param getterAnnotations annotations of the getter
 	 * @param setterAnnotations annotations of the setter
 	 * @param level level of the method
@@ -194,6 +196,8 @@ class WsIODelegator {
 	                                                  String setterName,
 	                                                  String propertyName,
 	                                                  String delegator,
+	                                                  String delegatorGetterName,
+	                                                  String delegatorSetterName,
 	                                                  List<AnnotationSpec> getterAnnotations,
 	                                                  List<AnnotationSpec> setterAnnotations,
 	                                                  WsIOLevel level,
@@ -244,7 +248,7 @@ class WsIODelegator {
 				CodeBlock setCodeBlock = generateRecursiveTransformToExternal(parameterTypeName, parameterMirror,
 						context, propertyName, hideEmpties);
 				CodeBlock getCodeBlock = generateRecursiveTransformToInternal(returnMirror, returnTypeName,
-						context, String.format("%s().%s()", delegator, getterName), hideEmpties);
+						context, String.format("%s().%s()", delegator, delegatorGetterName), hideEmpties);
 
 				/* Check codes are non null */
 				if (Objects.nonNull(setCodeBlock) && Objects.nonNull(getCodeBlock)) {
@@ -272,7 +276,7 @@ class WsIODelegator {
 
 					/* Create setter method and add it to the set */
 					MethodSpec setterSpec = setterSpecBuilder
-							.addCode("$L().$L(", delegator, setterName)
+							.addCode("$L().$L(", delegator, delegatorSetterName)
 							.addCode(setCodeBlock)
 							.addCode(")").addCode(";").addCode("\n")
 							.endControlFlow()

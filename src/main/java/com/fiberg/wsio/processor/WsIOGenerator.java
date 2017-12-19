@@ -555,15 +555,6 @@ class WsIOGenerator {
 	                                                 Boolean hideEmpties,
 	                                                 WsIOContext context) {
 
-		/* Function to transform the name of a setter to getter */
-		Function1<String, String> getterToProperty = getter -> {
-
-			/* Remove get from the method name and replace first char with lower */
-			String name = getter.replaceAll("^get", "");
-			return WordUtils.uncapitalize(name);
-
-		};
-
 		/* Property names matching names and level */
 		List<Tuple3<ExecutableElement, ExecutableElement, WsIOLevel>> properties =
 				getMatchingProperties(getters, setters);
@@ -574,7 +565,7 @@ class WsIOGenerator {
 			/* Getter, setter and property name */
 			String getterName = getter.getSimpleName().toString();
 			String setterName = setter.getSimpleName().toString();
-			String propertyName = getterToProperty.apply(getterName);
+			String propertyName = WsIOUtil.getterToProperty(getterName);
 
 			/* Get return mirror type */
 			TypeMirror returnType = getter.getReturnType();
@@ -589,7 +580,7 @@ class WsIOGenerator {
 
 			/* Return the methods generated recursively */
 			return WsIODelegator.generatePropertyDelegates(returnType, parameterType,
-					getter, setter, getterName, setterName, propertyName, delegator,
+					getter, setter, getterName, setterName, propertyName, delegator, getterName, setterName,
 					getterAnnotations, setterAnnotations, level, hideEmpties, context, messager);
 
 		};
@@ -984,28 +975,81 @@ class WsIOGenerator {
 					List<Tuple3<ExecutableElement, ExecutableElement, WsIOLevel>> properties =
 							getMatchingProperties(getterPriorities, setterPriorities);
 
-					/* Map identifier by getter name and containing property name */
-					Map<String, String> getterProperties = properties.map(Tuple3::_1)
-							.map(ExecutableElement::getSimpleName)
-							.map(Name::toString)
-							.toMap(getter -> Tuple.of(getter, WordUtils.uncapitalize(
-									getter.replaceAll("^get", ""))));
+					/* Map from property to getter and setter properties */
+					Function1<ExecutableElement, String> getExecutableName = executable ->
+							executable.getSimpleName().toString();
+					Map<String, Tuple2<String, String>> propertyToProperties = properties
+							.map(tuple -> Tuple.of(getExecutableName.apply(tuple._1()),
+									getExecutableName.apply(tuple._2())))
+							.toLinkedMap(tuple -> WsIOUtil.getterToProperty(tuple._1()), tuple -> tuple);
+
+					/* Map from property to final property, getter and setter */
+					Map<String, Tuple3<String, String, String>> propertyToFinals = propertyToProperties
+							.map((propertyName, propertyNames) ->
+									Tuple.of(propertyName,  Tuple.of(
+											String.format("%s_", propertyName),
+											String.format("%s_", propertyNames._1()),
+											String.format("%s_", propertyNames._2()))));
 
 					/* Getter annotations */
-					Map<String, List<AnnotationSpec>> getterAnnotations = getterProperties
+					Map<String, List<AnnotationSpec>> getterAnnotations = propertyToProperties
+							.toMap(tuple -> tuple._2()._1(), Tuple2::_1)
 							.mapValues(propertyName -> List.of(AnnotationSpec.builder(XmlElement.class)
 									.addMember("name", "$S", propertyName).build()));
 
 					/* Change the field names to the class inner fields */
-					fieldNames = getterProperties.map(Tuple2::_2).toList();
+					fieldNames = Option.of(propertyToFinals)
+							.<Traversable<String>>map(map -> map.values().map(Tuple3::_1))
+							.filter(Traversable::nonEmpty)
+							.getOrElse(propertyToProperties.keySet())
+							.toList();
 
 					/* Get element descriptor and get use hide empties annotation */
 					WsIODescriptor desc = WsIODescriptor.of(element);
 					boolean hideEmpties = desc.getSingle(WsIOUseHideEmpty.class).isDefined();
 
+					/* Create the property methods */
+					List<MethodSpec> propertyMethods = properties.flatMap(tuple -> {
+
+						/* Get getter, setter and level */
+						ExecutableElement getter = tuple._1();
+						ExecutableElement setter = tuple._2();
+						WsIOLevel level = tuple._3();
+
+                        /* Getter, setter and property name */
+						String getterName = getter.getSimpleName().toString();
+						String setterName = setter.getSimpleName().toString();
+						String propertyName = WsIOUtil.getterToProperty(getterName);
+
+						/* Final names for getter, setter and property */
+						String finalPropertyName = propertyToFinals.get(propertyName)
+								.map(Tuple3::_1).getOrElse(propertyName);
+						String finalGetterName = propertyToFinals.get(propertyName)
+								.map(Tuple3::_2).getOrElse(getterName);
+						String finalSetterName = propertyToFinals.get(propertyName)
+								.map(Tuple3::_3).getOrElse(setterName);
+
+                        /* Get return mirror type */
+						TypeMirror returnType = getter.getReturnType();
+
+                         /* Get parameter mirror type */
+						VariableElement parameter = setter.getParameters().get(0);
+						TypeMirror parameterType = parameter.asType();
+
+						/* Current annotations */
+						List<AnnotationSpec> getterListAnnotations = getterAnnotations
+								.getOrElse(getterName, List.empty());
+						List<AnnotationSpec> setterListAnnotations = List.empty();
+
+						/* Return the methods generated recursively */
+						return WsIODelegator.generatePropertyDelegates(returnType, parameterType, getter, setter,
+								finalGetterName, finalSetterName, finalPropertyName, externalGetName, getterName, setterName,
+								getterListAnnotations, setterListAnnotations, level, hideEmpties, context, messager);
+
+					});
+
 					/* Add method of the property methods */
-					methods = methods.appendAll(generatePropertyMethods(getterPriorities,
-							setterPriorities, getterAnnotations, externalGetName, hideEmpties, context));
+					methods = methods.appendAll(propertyMethods);
 
 				} else {
 
