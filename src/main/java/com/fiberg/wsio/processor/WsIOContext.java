@@ -326,7 +326,7 @@ class WsIOContext {
 		/* Get array info */
 		Tuple2<TypeMirror, Integer> info = WsIOUtils.getArrayInfo(mirror);
 
-		/* Declared type and array count */
+		/* Mirror type and array count */
 		TypeMirror type = info._1();
 		int arrayCount = info._2();
 
@@ -474,7 +474,7 @@ class WsIOContext {
 
 		} else {
 
-			/* Return the type name when type is not declared nor array */
+			/* Return the type name when type is not mirror nor array */
 			return TypeName.get(mirror);
 
 		}

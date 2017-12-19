@@ -161,7 +161,7 @@ class WsIODelegator {
 
 		}
 
-		/* Return recursive name when type is not declared */
+		/* Return recursive name when type is not mirror */
 		return context.getRecursiveFullTypeName(mirrorType,
 				useInternalTypes, false, false);
 
@@ -330,7 +330,7 @@ class WsIODelegator {
 				/* Get array info */
 				Tuple2<TypeMirror, Integer> arrayInfo = WsIOUtils.getArrayInfo(external);
 
-				/* Get declared type and array count */
+				/* Get mirror type and array count */
 				TypeMirror mirror = arrayInfo._1();
 				Integer dimension = arrayInfo._2();
 
@@ -662,6 +662,11 @@ class WsIODelegator {
 				}
 
 			}
+
+		} else if (external instanceof PrimitiveType) {
+
+			/* Return the code block primitive type */
+			return CodeBlock.of("$L", accessor);
 
 		}
 

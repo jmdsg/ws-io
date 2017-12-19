@@ -302,7 +302,7 @@ final class WsIOUtils {
 	 * Cleared types include wildcard and array types.
 	 *
 	 * @param mirror mirror type to extract the generics
-	 * @return a list with the generics of the cleared declared types
+	 * @return a list with the generics of the cleared mirror types
 	 */
 	static List<TypeMirror> getClearedGenericTypes(TypeMirror mirror) {
 
@@ -332,7 +332,7 @@ final class WsIOUtils {
 	 * Cleared types include wildcard and array types.
 	 *
 	 * @param typeName type name to extract the generics
-	 * @return a list with the generics of the cleared declared types
+	 * @return a list with the generics of the cleared type names
 	 */
 	static List<TypeName> getClearedGenericTypes(TypeName typeName) {
 
@@ -577,17 +577,12 @@ final class WsIOUtils {
 				arrayCount++;
 			}
 
-			/* Process array type */
-			if (component instanceof DeclaredType) {
-
-				/* Return declared type and array count */
-				return Tuple.of(component, arrayCount);
-
-			}
+			/* Return mirror type and array count */
+			return Tuple.of(component, arrayCount);
 
 		}
 
-		/* Return declared type and zero in array count */
+		/* Return mirror type and zero in array count */
 		return Tuple.of(mirror, 0);
 
 	}

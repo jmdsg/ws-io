@@ -605,7 +605,7 @@ class WsIOGenerator {
 	 * @return main override methods
 	 */
 	private List<MethodSpec> generateOverrideMethods(TypeElement element,
-			                                        WsIOContext context) {
+	                                                 WsIOContext context) {
 
 		/* Initialize empty set of method specs */
 		List<MethodSpec> methods = List.empty();
@@ -856,7 +856,7 @@ class WsIOGenerator {
 		List<String> fieldNames = List.empty();
 		for (Tuple3<TypeMirror, String, Tuple2<String, String>> descriptor : descriptors) {
 
-			/* Get declared type, type element and name */
+			/* Get mirror type, type element and name */
 			TypeMirror mirror = descriptor._1();
 			String name = descriptor._2();
 
@@ -1319,7 +1319,7 @@ class WsIOGenerator {
 		/* Check if the type is response or request */
 		if (WsIOType.RESPONSE.equals(type)) {
 
-			/* Check if the type mirror is a declared type */
+			/* Check if the type mirror is a mirror type */
 			TypeMirror typeMirror = info.getReturnType();
 			if (Objects.nonNull(typeMirror)) {
 
@@ -1342,7 +1342,7 @@ class WsIOGenerator {
 			/* Iterate for each parameter */
 			for (int index = 0; index < info.getParameterTypes().size(); index++) {
 
-				/* Check if the type mirror is a declared type */
+				/* Check if the type mirror is a mirror type */
 				TypeMirror typeMirror = info.getParameterTypes().get(index);
 				if (Objects.nonNull(typeMirror)) {
 
