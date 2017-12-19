@@ -10,12 +10,12 @@ import com.fiberg.wsio.handler.state.WsIOState;
 import com.fiberg.wsio.handler.state.WsIOText;
 import com.fiberg.wsio.handler.time.WsIOInstant;
 import com.fiberg.wsio.handler.time.WsIOTime;
+import com.fiberg.wsio.processor.WsIODescriptor;
 import io.vavr.Predicates;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import org.apache.commons.lang3.StringUtils;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Objects;
 import java.util.function.BiConsumer;
@@ -47,9 +47,10 @@ public final class WsIOInterceptor {
 		wsio.put(WsIOData.METHOD, method);
 		wsio.put(WsIOData.ENDPOINT, endpoint);
 
-		/* Time and state annotations with priority */
-		WsIOUseTime time = WsIOInterceptor.extractAnnotation(method, WsIOUseTime.class);
-		WsIOUseState state = WsIOInterceptor.extractAnnotation(method, WsIOUseState.class);
+		/* Get descriptor to extract time and state annotations with priority */
+		WsIODescriptor descriptor = WsIODescriptor.of(method);
+		WsIOUseTime time = descriptor.get(WsIOUseTime.class).getOrNull();
+		WsIOUseState state = descriptor.get(WsIOUseState.class).getOrNull();
 
 		/* Check time annotation is defined */
 		if (Objects.nonNull(time)) {

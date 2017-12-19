@@ -8,165 +8,156 @@ import io.vavr.control.Option;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import javax.jws.WebMethod;
-import javax.jws.WebService;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import java.util.Objects;
 
+/**
+ * Class to extract clone, wrapper, message and clone message annotations info.
+ */
 class WsIOFinder {
 
+	/**
+	 * Private empty constructor.
+	 */
 	private WsIOFinder() {  }
 
+	/**
+	 * Method that finds the wrapper info of a set of type elements.
+	 *
+	 * @param elements set of type elements
+	 * @return map identified by the element type containing wrapper annotations info of all elements
+	 */
 	static Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> findWrapperRecursively(Set<TypeElement> elements) {
 
-		return elements.map(element -> findWrapperRecursively(element, WsIOAnnotation.ofNull(element.getEnclosingElement()
-				.getAnnotation(WsIOMessageWrapper.class)), WsIOAdditional.of(element)))
+		/* Return the map for each element and finally fold the results with an empty map */
+		return elements.map(WsIOFinder::findWrapperRecursively)
 				.fold(HashMap.empty(), Map::merge);
 
 	}
 
-	private static Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> findWrapperRecursively(TypeElement element,
-	                                                                                              WsIOAnnotation annotation,
-	                                                                                              WsIOAdditional additional) {
+	/**
+	 * Method that finds the wrapper info of a single type elements.
+	 *
+	 * @param element type element
+	 * @return map identified by the element type containing wrapper annotations info of a single element
+	 */
+	private static Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> findWrapperRecursively(TypeElement element) {
 
-		WsIOSkipMessageWrapper skip = element.getAnnotation(WsIOSkipMessageWrapper.class);
-		boolean skipped = Objects.nonNull(skip);
+		/* Check if the current element is not or not */
+		if (Objects.nonNull(element)) {
 
-		if (skipped && SkipType.ALL.equals(skip.skip())) {
+			/* Stream of executable methods */
+			Stream<ExecutableElement> executables = Stream.ofAll(element.getEnclosedElements())
+					.filter(ExecutableElement.class::isInstance)
+					.map(ExecutableElement.class::cast)
+					.filter(executable -> !"<init>".equals(executable.getSimpleName().toString()));
 
-			return HashMap.empty();
+			/* Get current element info for every method */
+			Map<String, Tuple2<WsIOInfo, String>> currentInfo = executables.flatMap(executable -> {
 
-		} else {
+				/* Get simple name, current descriptor and annotation option */
+				String executableName = executable.getSimpleName().toString();
+				WsIODescriptor descriptor = WsIODescriptor.of(executable);
+				Option<WsIOAnnotation> messageWrapperOption = descriptor.getSingle(WsIOMessageWrapper.class)
+						.map(WsIOAnnotation::of);
 
-			WsIOAnnotation annotationWrapper = WsIOAnnotation.ofNull(element.getAnnotation(WsIOMessageWrapper.class));
-			WsIOAnnotation actualWrapper = ObjectUtils.firstNonNull(annotationWrapper, annotation);
+				/* Return the tuple of method name, and another tuple with method info and package name */
+				return messageWrapperOption.map(messageWrapper -> {
 
-			boolean service = Objects.nonNull(element.getAnnotation(WebService.class));
-			boolean enabled = Objects.nonNull(actualWrapper);
+					/* Get class name and package name */
+					String className = element.getSimpleName().toString();
+					String packageName = WsIOUtils.extractPackage(element).getQualifiedName().toString();
 
-			Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> wrappers = HashMap.empty();
-			if (!(skipped && SkipType.CURRENT.equals(skip.skip())) && service) {
+					/* Get final package name */
+					String finalPackage = WsIOEngine.obtainPackage(executableName, className, packageName,
+							messageWrapper.getPackageName(), messageWrapper.getPackagePath(),
+							messageWrapper.getPackagePrefix(), messageWrapper.getPackageSuffix(),
+							messageWrapper.getPackageStart(), messageWrapper.getPackageMiddle(),
+							messageWrapper.getPackageEnd(), messageWrapper.getPackageJs());
 
-				Set<ExecutableElement> executables = Stream.ofAll(element.getEnclosedElements())
-						.filter(ExecutableElement.class::isInstance)
-						.map(ExecutableElement.class::cast)
-						.filter(executable -> !"<init>".equals(executable.getSimpleName().toString()))
-						.filter(executable -> Objects.isNull(executable.getAnnotation(WsIOSkipMessageWrapper.class)))
-						.filter(executable -> enabled || Objects.nonNull(executable.getAnnotation(WsIOMessageWrapper.class)))
-						.filter(executable -> Objects.nonNull(executable.getAnnotation(WebMethod.class)))
-						.toSet();
+					/* Get current info of the executable with descriptor annotations descriptor */
+					WsIOInfo info = WsIOUtils.extractInfo(executable, descriptor);
 
-				wrappers = wrappers.put(element,
-						executables.toMap(Function1.of(ExecutableElement::getSimpleName)
-								.andThen(Name::toString), executable -> {
+					/* Return the tuple with executable name and
+					 * other tuple with executable info and package name */
+					return Tuple.of(executableName, Tuple.of(info, finalPackage));
 
-							WsIOAnnotation currentAnnotation = WsIOAnnotation
-									.ofNull(executable.getAnnotation(WsIOMessageWrapper.class));
-							WsIOAnnotation annot = ObjectUtils.firstNonNull(currentAnnotation, actualWrapper);
+				});
 
-							String methodName = executable.getSimpleName().toString();
-							String className = element.getSimpleName().toString();
-							String packageName = WsIOUtils.extractPackage(element).getQualifiedName().toString();
+			}).toMap(tuple -> tuple);
 
-							String finalPackage = WsIOEngine.obtainPackage(methodName, className, packageName,
-									annot.getPackageName(), annot.getPackagePath(), annot.getPackagePrefix(),
-									annot.getPackageSuffix(), annot.getPackageStart(), annot.getPackageMiddle(),
-									annot.getPackageEnd(), annot.getPackageJs());
-
-							WsIOAdditional additionalExecutable = additional.update(executable);
-
-							WsIOInfo info = WsIOUtils.extractInfo(executable, additionalExecutable);
-
-							return Tuple.of(info, finalPackage);
-
-						}));
-
-			}
-
+			/* Create zero map with current element, call recursively this function with each declared class
+			 * and finally fold the results with zero map */
+			Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> zeroMap = HashMap.of(element, currentInfo);
 			return Stream.ofAll(element.getEnclosedElements())
 					.filter(TypeElement.class::isInstance)
 					.map(TypeElement.class::cast)
-					.filter(type -> !(skipped && SkipType.CHILDS.equals(skip.skip())))
-					.map(next -> findWrapperRecursively(next, actualWrapper, additional.update(next)))
-					.fold(wrappers, Map::merge);
+					.map(WsIOFinder::findWrapperRecursively)
+					.fold(zeroMap, Map::merge);
+
+		} else {
+
+			/* Return empty hashmap when element is null */
+			return HashMap.empty();
 
 		}
 
 	}
 
-	static Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> findCloneMessage(Map<TypeElement, String> messages,
-	                                                                                      Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> clones) {
-
-		Function4<String, String, TypeElement, String, Tuple2<TypeElement, String>> transformPackage =
-				(prefix, suffix, element, currentPackage) -> {
-
-					WsIOClone clone = getPriorityClone(element, prefix, suffix);
-					if (Objects.nonNull(clone)) {
-
-						String packageName = WsIOEngine.obtainPackage(StringUtils.EMPTY, element.getSimpleName().toString(), currentPackage,
-								clone.packageName(), clone.packagePath(), clone.packagePrefix(),
-								clone.packageSuffix(), clone.packageStart(), clone.packageMiddle(),
-								clone.packageEnd(), clone.packageJs());
-
-						return Tuple.of(element, packageName);
-
-					} else {
-						return null;
-					}
-
-				};
-
-		return clones.mapValues(set -> set.filter(tuple -> messages.keySet().contains(tuple._1())))
-				.filter((key, value) -> value.nonEmpty())
-				.map((identifier, set) ->
-						Tuple.of(identifier, set.map(tuple -> tuple.map(transformPackage.apply(identifier._1(), identifier._2())))
-								.filter(Objects::nonNull)));
-
-	}
-
-	private static WsIOClone getPriorityClone(TypeElement element, String prefix, String suffix) {
-		WsIOClone[] clones = getPriorityClones(element);
-		if (Objects.nonNull(clones)) {
-			for (WsIOClone current : clones) {
-				if (current.prefix().equals(prefix)
-						&& current.suffix().equals(suffix)) {
-					return current;
-				}
-			}
-		}
-		return null;
-	}
-
-	private static WsIOClone[] getPriorityClones(TypeElement element) {
-		WsIOClone[] clones = element.getAnnotationsByType(WsIOClone.class);
-		if (Objects.nonNull(clones) && clones.length > 0) {
-			return clones;
-		} else if (element.getEnclosingElement() instanceof PackageElement) {
-			return element.getEnclosingElement().getAnnotationsByType(WsIOClone.class);
-		} else if (element.getEnclosingElement() instanceof TypeElement) {
-			return getPriorityClones((TypeElement) element.getEnclosingElement());
-		}
-		return null;
-	}
-
+	/**
+	 * Method that finds the clone info of a set of type elements.
+	 *
+	 * @param elements set of type elements
+	 * @return map identified by the prefix and suffix containing a set
+	 * of tuples with the type element and the package name
+	 */
 	static Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> findCloneRecursively(Set<TypeElement> elements) {
 
-		return elements.map(element -> findCloneRecursively(element,
-				HashSet.of(element.getEnclosingElement().getAnnotationsByType(WsIOClone.class))
-						.toMap(clone -> Tuple.of(clone.prefix(), clone.suffix()), e -> e),
-				HashSet.empty()))
+		/* Return the map for each element and finally fold the results with an empty map */
+		return elements.map(WsIOFinder::findCloneRecursively)
 				.fold(HashMap.empty(), (map1, map2) -> map1.merge(map2, Set::addAll));
 
 	}
 
-	private static Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> findCloneRecursively(TypeElement element,
-	                                                                                                  Map<Tuple2<String, String>, WsIOClone> clones,
-	                                                                                                  Set<Tuple2<String, String>> skips) {
 
-		Map<Tuple2<String, String>, WsIOClone> ioClones = HashSet.of(element.getAnnotationsByType(WsIOClone.class))
+
+
+
+
+
+
+
+	/**
+	 * Method that finds the clone info of a type element.
+	 *
+	 * @param element type element
+	 * @return map identified by the prefix and suffix containing a set
+	 * of tuples with the type element and the package name
+	 */
+	private static Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> findCloneRecursively(TypeElement element) {
+
+
+		/* Check if the current element is not or not */
+		if (Objects.nonNull(element)) {
+
+			/* Get current element descriptor with annotations info */
+			WsIODescriptor descriptor = WsIODescriptor.of(element);
+
+		} else {
+
+			/* Return empty hashmap when element is null */
+			return HashMap.empty();
+
+		}
+
+
+
+
+
+	Map<Tuple2<String, String>, WsIOClone> ioClones = HashSet.of(element.getAnnotationsByType(WsIOClone.class))
 				.toMap(clone -> Tuple.of(clone.prefix(), clone.suffix()), e -> e);
 
 		Map<Tuple2<String, String>, WsIOClone> nextClones = ioClones.merge(clones);
@@ -211,6 +202,90 @@ class WsIOFinder {
 				.fold(groups, (map1, map2) -> map1.merge(map2, Set::addAll));
 
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	static Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> findCloneMessage(Map<TypeElement, String> messages,
+	                                                                                      Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> clones) {
+
+		Function4<String, String, TypeElement, String, Tuple2<TypeElement, String>> transformPackage =
+				(prefix, suffix, element, currentPackage) -> {
+
+					WsIOClone clone = getPriorityClone(element, prefix, suffix);
+					if (Objects.nonNull(clone)) {
+
+						String packageName = WsIOEngine.obtainPackage(StringUtils.EMPTY, element.getSimpleName().toString(), currentPackage,
+								clone.packageName(), clone.packagePath(), clone.packagePrefix(),
+								clone.packageSuffix(), clone.packageStart(), clone.packageMiddle(),
+								clone.packageEnd(), clone.packageJs());
+
+						return Tuple.of(element, packageName);
+
+					} else {
+						return null;
+					}
+
+				};
+
+		return clones.mapValues(set -> set.filter(tuple -> messages.keySet().contains(tuple._1())))
+				.filter((key, value) -> value.nonEmpty())
+				.map((identifier, set) ->
+						Tuple.of(identifier, set.map(tuple -> tuple.map(transformPackage.apply(identifier._1(), identifier._2())))
+								.filter(Objects::nonNull)));
+
+	}
+
+	private static WsIOClone getPriorityClone(TypeElement element, String prefix, String suffix) {
+		WsIOClone[] clones = getPriorityClones(element);
+		if (Objects.nonNull(clones)) {
+			for (WsIOClone current : clones) {
+				if (current.prefix().equals(prefix)
+						&& current.suffix().equals(suffix)) {
+					return current;
+				}
+			}
+		}
+		return null;
+	}
+
+	private static List<WsIOAnnotation> getPriorityClones(TypeElement element) {
+		WsIOClone[] clones = element.getAnnotationsByType(WsIOClone.class);
+		if (Objects.nonNull(clones) && clones.length > 0) {
+			return clones;
+		} else if (element.getEnclosingElement() instanceof PackageElement) {
+			return element.getEnclosingElement().getAnnotationsByType(WsIOClone.class);
+		} else if (element.getEnclosingElement() instanceof TypeElement) {
+			return getPriorityClones((TypeElement) element.getEnclosingElement());
+		}
+		return null;
+	}
+
+
+
+
+
+
+
+
+
+
 
 	static Map<TypeElement, String> findMessageRecursively(Set<TypeElement> elements) {
 

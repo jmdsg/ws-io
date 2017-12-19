@@ -99,10 +99,10 @@ final class WsIOUtils {
 	 * Method that extracts the method and additionals info.
 	 *
 	 * @param executable excecutable element
-	 * @param additional info of the additional annotations
+	 * @param descriptor object with all element annotations
 	 * @return object containing all the info required for the generation of a wrapper element.
 	 */
-	static WsIOInfo extractInfo(ExecutableElement executable, WsIOAdditional additional) {
+	static WsIOInfo extractInfo(ExecutableElement executable, WsIODescriptor descriptor) {
 
 		/* Extract the executable annotations */
 		WebMethod webMethod = executable.getAnnotation(WebMethod.class);

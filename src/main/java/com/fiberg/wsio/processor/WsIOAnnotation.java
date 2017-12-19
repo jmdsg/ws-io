@@ -1,5 +1,6 @@
 package com.fiberg.wsio.processor;
 
+import com.fiberg.wsio.annotation.WsIOClone;
 import com.fiberg.wsio.annotation.WsIOMessage;
 import com.fiberg.wsio.annotation.WsIOMessageWrapper;
 
@@ -42,6 +43,12 @@ class WsIOAnnotation {
 	}
 
 	static WsIOAnnotation of(WsIOMessageWrapper annotation) {
+		return of(annotation.packageName(), annotation.packagePath(), annotation.packagePrefix(),
+				annotation.packageSuffix(), annotation.packageStart(), annotation.packageMiddle(),
+				annotation.packageEnd(), annotation.packageJs());
+	}
+
+	static WsIOAnnotation of(WsIOClone annotation) {
 		return of(annotation.packageName(), annotation.packagePath(), annotation.packagePrefix(),
 				annotation.packageSuffix(), annotation.packageStart(), annotation.packageMiddle(),
 				annotation.packageEnd(), annotation.packageJs());
