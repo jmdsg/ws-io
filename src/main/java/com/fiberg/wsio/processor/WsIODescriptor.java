@@ -573,7 +573,7 @@ public class WsIODescriptor {
 	 *
 	 * @return singles map
 	 */
-	Map<Class<? extends Annotation>, ? extends Annotation> getSingles() {
+	public Map<Class<? extends Annotation>, ? extends Annotation> getSingles() {
 		return singles;
 	}
 
@@ -582,7 +582,7 @@ public class WsIODescriptor {
 	 *
 	 * @return multiples map
 	 */
-	Map<Class<? extends Annotation>, Map<Comparable<?>, ? extends Annotation>> getMultiples() {
+	public Map<Class<? extends Annotation>, Map<Comparable<?>, ? extends Annotation>> getMultiples() {
 		return multiples;
 	}
 
@@ -593,7 +593,7 @@ public class WsIODescriptor {
 	 * @param <T> type argument of the annotation
 	 * @return option containing the possible annotation
 	 */
-	<T extends Annotation> Option<T> getSingle(Class<T> clazz) {
+	public <T extends Annotation> Option<T> getSingle(Class<T> clazz) {
 
 		/* Return annotation option */
 		return WsIODescriptor.getSingle(singles, clazz);
@@ -607,7 +607,7 @@ public class WsIODescriptor {
 	 * @param <T> type argument of the annotation
 	 * @return option containing the possible annotation
 	 */
-	<T extends Annotation> Map<Comparable<?>, T> getMultiple(Class<T> clazz) {
+	public <T extends Annotation> Map<Comparable<?>, T> getMultiple(Class<T> clazz) {
 
 		/* Return annotation option */
 		return WsIODescriptor.getMultiple(multiples, clazz);

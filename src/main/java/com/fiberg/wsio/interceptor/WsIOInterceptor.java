@@ -49,8 +49,8 @@ public final class WsIOInterceptor {
 
 		/* Get descriptor to extract time and state annotations with priority */
 		WsIODescriptor descriptor = WsIODescriptor.of(method);
-		WsIOUseTime time = descriptor.get(WsIOUseTime.class).getOrNull();
-		WsIOUseState state = descriptor.get(WsIOUseState.class).getOrNull();
+		WsIOUseTime time = descriptor.getSingle(WsIOUseTime.class).getOrNull();
+		WsIOUseState state = descriptor.getSingle(WsIOUseState.class).getOrNull();
 
 		/* Check time annotation is defined */
 		if (Objects.nonNull(time)) {
