@@ -1,5 +1,6 @@
 package com.fiberg.wsio.processor;
 
+import com.fiberg.wsio.annotation.WsIOUseHideEmpty;
 import com.fiberg.wsio.handler.state.*;
 import com.fiberg.wsio.handler.time.WsIOInstant;
 import com.fiberg.wsio.handler.time.WsIOTime;
@@ -420,9 +421,13 @@ class WsIOGenerator {
 							FIELD_DELEGATOR, Modifier.PRIVATE).build())
 					.toList();
 
+			/* Get element descriptor and get use hide empties annotation */
+			WsIODescriptor descriptor = WsIODescriptor.of(element);
+			boolean hideEmpties = descriptor.getSingle(WsIOUseHideEmpty.class).isDefined();
+
 			/* Generate the property methods */
 			List<MethodSpec> propertyMethods = generatePropertyMethods(getterPriorities, setterPriorities,
-					HashMap.empty(), WsIOConstant.GET_DELEGATOR, context);
+					HashMap.empty(), WsIOConstant.GET_DELEGATOR, hideEmpties, context);
 
 			/* Generate the override main methods */
 			List<MethodSpec> overrideMethods = generateOverrideMethods(element, context);
@@ -538,6 +543,7 @@ class WsIOGenerator {
 	 * @param setters map containing the setters with level
 	 * @param annotations annotations of the getters and setters
 	 * @param delegator name of the delegator
+	 * @param hideEmpties indicates if the collections and maps should be checked and ignored
 	 * @param context context of the process
 	 * @return property methods of internal classes and interfaces.
 	 */
@@ -545,6 +551,7 @@ class WsIOGenerator {
 	                                                 Map<WsIOLevel, Map<String, ExecutableElement>> setters,
 	                                                 Map<String, List<AnnotationSpec>> annotations,
 	                                                 String delegator,
+	                                                 Boolean hideEmpties,
 	                                                 WsIOContext context) {
 
 		/* Function to transform the name of a setter to getter */
@@ -590,7 +597,7 @@ class WsIOGenerator {
 				/* Return the methods generated recursively */
 				return WsIODelegator.generatePropertyDelegates(returnReference, parameterReference,
 						getter, setter, getterName, setterName, propertyName, delegator,
-						getterAnnotations, setterAnnotations, level, context, messager);
+						getterAnnotations, setterAnnotations, level, hideEmpties, context, messager);
 
 			}
 
@@ -1001,11 +1008,18 @@ class WsIOGenerator {
 				/* Change the field names to the class inner fields */
 				fieldNames = getterProperties.map(Tuple2::_2).toList();
 
+				/* Get element descriptor and get use hide empties annotation */
+				WsIODescriptor desc = WsIODescriptor.of(element);
+				boolean hideEmpties = desc.getSingle(WsIOUseHideEmpty.class).isDefined();
+
 				/* Add method of the property methods */
 				methods = methods.appendAll(generatePropertyMethods(getterPriorities,
-						setterPriorities, getterAnnotations, externalGetName, context));
+						setterPriorities, getterAnnotations, externalGetName, hideEmpties, context));
 
 			} else {
+
+				/* Flag indicating if empty collections, maps and arrays should be hidden */
+				boolean hideEmpties = info.getWrappers().contains(WsIOWrapper.HIDE_EMPTY_WRAPPER);
 
 				/* List with the internal get annotations */
 				List<AnnotationSpec> internalGetAnnotations = List.empty();
@@ -1015,7 +1029,7 @@ class WsIOGenerator {
 				/* Create internal get accessor and code block */
 				String internalGetAccessor = String.format("%s()", externalGetName);
 				CodeBlock internalGetBlock = WsIODelegator.generateRecursiveTransformToInternal(referenceType,
-						internalType, context, internalGetAccessor);
+						internalType, context, internalGetAccessor, hideEmpties);
 
 				/* Create the internal get method spec and add it to the methods set */
 				MethodSpec internalGet = MethodSpec.methodBuilder(internalGetName)
@@ -1030,7 +1044,7 @@ class WsIOGenerator {
 
 				/* Create external set block code */
 				CodeBlock internalSetBlock = WsIODelegator.generateRecursiveTransformToExternal(internalType,
-						referenceType, context, internalParameterName);
+						referenceType, context, internalParameterName, hideEmpties);
 
 				/* Create parameter and method spec and add it to the methods */
 				ParameterSpec internalParameter = ParameterSpec.builder(internalType, internalParameterName).build();

@@ -188,6 +188,7 @@ class WsIODelegator {
 	 * @param getterAnnotations annotations of the getter
 	 * @param setterAnnotations annotations of the setter
 	 * @param level level of the method
+	 * @param hideEmpties indicates if the collections and maps should be checked and ignored
 	 * @param context context of the process
 	 * @param messager messager to print the output
 	 * @return the method specs delegates of a property
@@ -203,6 +204,7 @@ class WsIODelegator {
 	                                                  List<AnnotationSpec> getterAnnotations,
 	                                                  List<AnnotationSpec> setterAnnotations,
 	                                                  WsIOLevel level,
+	                                                  Boolean hideEmpties,
 	                                                  WsIOContext context,
 	                                                  Messager messager) {
 
@@ -247,9 +249,9 @@ class WsIODelegator {
 
 				/* Recursive set and get code blocks */
 				CodeBlock setCodeBlock = generateRecursiveTransformToExternal(parameterTypeName, parameterReference,
-						context, propertyName);
+						context, propertyName, hideEmpties);
 				CodeBlock getCodeBlock = generateRecursiveTransformToInternal(returnReference, returnTypeName,
-						context, String.format("%s().%s()", delegator, getterName));
+						context, String.format("%s().%s()", delegator, getterName), hideEmpties);
 
 				/* Check codes are non null */
 				if (Objects.nonNull(setCodeBlock) && Objects.nonNull(getCodeBlock)) {
@@ -302,6 +304,7 @@ class WsIODelegator {
 	 * @param accessor access variable or function name
 	 * @param level current recursive level
 	 * @param toInternal indicates if the destiny is a internal or not
+	 * @param hideEmpties indicates if the collections and maps should be checked and ignored
 	 * @return recursive internal or external code block to transform.
 	 */
 	private static CodeBlock generateRecursiveTransform(ReferenceType external,
@@ -309,7 +312,8 @@ class WsIODelegator {
 	                                                    WsIOContext context,
 	                                                    String accessor,
 	                                                    Integer level,
-	                                                    Boolean toInternal) {
+	                                                    Boolean toInternal,
+	                                                    Boolean hideEmpties) {
 
 		/* Check the instance of both types */
 		if (external instanceof ArrayType && internal instanceof ArrayTypeName) {
@@ -326,7 +330,7 @@ class WsIODelegator {
 				String componentAccessor = String.format("%s_%d_", accessorName, level);
 				ReferenceType externalComponentReference = (ReferenceType) externalComponentType;
 				CodeBlock componentBlock = generateRecursiveTransform(externalComponentReference, internalComponentTypeName,
-						context, componentAccessor, level + 1, toInternal);
+						context, componentAccessor, level + 1, toInternal, hideEmpties);
 
 				/* Check code block is not null */
 				if (Objects.nonNull(componentBlock)) {
@@ -344,36 +348,87 @@ class WsIODelegator {
 					/* Check array count is greater than zero */
 					if (dimension > 0) {
 
-						/* Get class to cast of dimension - 1 */
-						TypeName typeName = context.getRecursiveFullTypeName(referenceType,
-								toInternal, false, false);
-						TypeName castTypeName = WsIOUtils.getArrayType(typeName, dimension - 1);
+						/* Get possible element name */
+						String possibleElementName = Option.of(referenceType)
+								.filter(DeclaredType.class::isInstance)
+								.map(DeclaredType.class::cast)
+								.map(DeclaredType::asElement)
+								.filter(TypeElement.class::isInstance)
+								.map(TypeElement.class::cast)
+								.map(TypeElement::getQualifiedName)
+								.map(Name::toString)
+								.getOrNull();
 
-						/* Declare destiny class name and check if is parameterized or not */
-						TypeName destinyClassName;
-						if (typeName instanceof ParameterizedTypeName) {
+						/* Check that the array component is internal or generic internal class  */
+						if (context.isRecursiveGenericInternalType(referenceType)
+								|| (Objects.nonNull(possibleElementName)
+								&& context.isInternalType(possibleElementName))) {
 
-							/* Extract the raw type of a parameterized type */
-							destinyClassName = ((ParameterizedTypeName) typeName).rawType;
+								/* Get class to cast of dimension - 1 */
+								TypeName typeName = context.getRecursiveFullTypeName(referenceType,
+										toInternal, false, false);
+								TypeName castTypeName = WsIOUtils.getArrayType(typeName, dimension - 1);
+
+								/* Declare destiny class name and check if is parameterized or not */
+								TypeName destinyClassName;
+								if (typeName instanceof ParameterizedTypeName) {
+
+									/* Extract the raw type of a parameterized type */
+									destinyClassName = ((ParameterizedTypeName) typeName).rawType;
+
+								} else {
+
+									/* Destiny type name when is not parameterized */
+									destinyClassName = typeName;
+
+								}
+
+								/* Get destiny array */
+								TypeName destinyTypeName = WsIOUtils.getArrayType(destinyClassName, dimension - 1);
+
+								/* Code block builder */
+								CodeBlock.Builder builder = CodeBlock.builder();
+
+								/* Check if hide empties if enabled */
+								if (hideEmpties) {
+
+									/* Add array check condition */
+									builder = builder.add("(($L != null && $L.length > 0) ? $T.stream($L)",
+											accessor, accessor, arraysClass, accessor).add("\n");
+
+								} else {
+
+									/* Add normal condition */
+									builder = builder.add("($L != null ? $T.stream($L)",
+											accessor, arraysClass, accessor).add("\n");
+
+								}
+
+								/* Build and return the code block for array types */
+								return builder.add(".map($L -> ", componentAccessor)
+										.add(componentBlock)
+										.add(")").add("\n")
+										.add(".<$T>toArray($T[]::new) : null)", castTypeName, destinyTypeName)
+										.build();
+
 
 						} else {
 
-							/* Destiny type name when is not parameterized */
-							destinyClassName = typeName;
+							/* Check if element is a collection or map and hide empties is enabled */
+							if (WsIOCollection.ALL.contains(possibleElementName) && hideEmpties) {
+
+								/* Return the code block external type */
+								return CodeBlock.of("(($L != null && $L.length > 0) ? $L : null)",
+										accessor, accessor, accessor);
+
+							} else {
+
+								/* Return the code block external type */
+								return CodeBlock.of("$L", accessor);
+
+							}
 
 						}
-
-						/* Get destiny array */
-						TypeName destinyTypeName = WsIOUtils.getArrayType(destinyClassName, dimension - 1);
-
-						/* Build and return the code block for array types */
-						return CodeBlock.builder()
-								.add("($L != null ? $T.stream($L)", accessor, arraysClass, accessor).add("\n")
-								.add(".map($L -> ", componentAccessor)
-								.add(componentBlock)
-								.add(")").add("\n")
-								.add(".<$T>toArray($T[]::new) : null)", castTypeName, destinyTypeName)
-								.build();
 
 					}
 
@@ -415,7 +470,7 @@ class WsIODelegator {
 							String accessorName = "element";
 							String elementAccessor = String.format("%s_%d_", accessorName, level);
 							CodeBlock elementBlock = generateRecursiveTransform(externalElement, internalElement,
-									context, elementAccessor, level + 1, toInternal);
+									context, elementAccessor, level + 1, toInternal, hideEmpties);
 
 							/* Check code block is not null */
 							if (Objects.nonNull(elementBlock)) {
@@ -429,10 +484,26 @@ class WsIODelegator {
 								TypeName castClass = ensureFirstConcreteClass(externalDeclared,
 										toInternal, context);
 
+								/* Code block builder */
+								CodeBlock.Builder builder = CodeBlock.builder();
+
+								/* Check if hide empties if enabled */
+								if (hideEmpties) {
+
+									/* Add array check condition */
+									builder = builder.add("(($L != null && $L.size() > 0) ? $L.stream()",
+											accessor, accessor, accessor).add("\n");
+
+								} else {
+
+									/* Add normal condition */
+									builder = builder.add("($L != null ? $L.stream()",
+											accessor, accessor).add("\n");
+
+								}
+
 								/* Build and return the code block for collection types */
-								return CodeBlock.builder()
-										.add("($L != null ? $L.stream()", accessor, accessor).add("\n")
-										.add(".map($L -> ", elementAccessor)
+								return builder.add(".map($L -> ", elementAccessor)
 										.add(elementBlock)
 										.add(")").add("\n")
 										.add(".<$T>collect($T::new, $T::add, $T::addAll) : null)", castClass,
@@ -459,12 +530,12 @@ class WsIODelegator {
 							/* Create next accesor key name and get recursive code block */
 							String keyAccessor = generalAccessor + ".getKey()";
 							CodeBlock keyBlock = generateRecursiveTransform(externalKey, internalKey,
-									context, keyAccessor, level + 1, toInternal);
+									context, keyAccessor, level + 1, toInternal, hideEmpties);
 
 							/* Create next accesor value name and get recursive code block */
 							String valueAccessor = generalAccessor + ".getValue()";
 							CodeBlock valueBlock = generateRecursiveTransform(externalValue, internalValue,
-									context, valueAccessor, level + 1, toInternal);
+									context, valueAccessor, level + 1, toInternal, hideEmpties);
 
 							/* Check code blocks are not null */
 							if (Objects.nonNull(keyBlock) && Objects.nonNull(valueBlock)) {
@@ -481,10 +552,26 @@ class WsIODelegator {
 								/* Entry class to create simple entries */
 								Class<?> entryClass = java.util.AbstractMap.SimpleEntry.class;
 
+								/* Code block builder */
+								CodeBlock.Builder builder = CodeBlock.builder();
+
+								/* Check if hide empties if enabled */
+								if (hideEmpties) {
+
+									/* Add array check condition */
+									builder = builder.add("(($L != null && $L.size() > 0) ? $L.entrySet().stream()",
+											accessor, accessor, accessor).add("\n");
+
+								} else {
+
+									/* Add normal condition */
+									builder = builder.add("($L != null ? $L.entrySet().stream()",
+											accessor, accessor).add("\n");
+
+								}
+
 								/* Build and return the code block for map types */
-								return CodeBlock.builder()
-										.add("($L != null ? $L.entrySet().stream()", accessor, accessor).add("\n")
-										.add(".map($L -> new $T<>(", generalAccessor, entryClass)
+								return builder.add(".map($L -> new $T<>(", generalAccessor, entryClass)
 										.add(keyBlock)
 										.add(", ").add("\n")
 										.add(valueBlock)
@@ -571,8 +658,19 @@ class WsIODelegator {
 
 				} else {
 
-					/* Return the code block external type */
-					return CodeBlock.of("$L", accessor);
+					/* Check if element is a collection or map and hide empties is enabled */
+					if (WsIOCollection.ALL.contains(externalElementName) && hideEmpties) {
+
+						/* Return the code block external type */
+						return CodeBlock.of("(($L != null && $L.size() > 0) ? $L : null)",
+								accessor, accessor, accessor);
+
+					} else {
+
+						/* Return the code block external type */
+						return CodeBlock.of("$L", accessor);
+
+					}
 
 				}
 
@@ -592,15 +690,18 @@ class WsIODelegator {
 	 * @param toTypeName destiny type name
 	 * @param context context of the process
 	 * @param accessor access variable or function name
+	 * @param hideEmpties indicates if the collections and maps should be checked and ignored
 	 * @return recursive internal code block to transform from external.
 	 */
 	static CodeBlock generateRecursiveTransformToInternal(ReferenceType fromReference,
 	                                                      TypeName toTypeName,
 	                                                      WsIOContext context,
-	                                                      String accessor) {
+	                                                      String accessor,
+	                                                      Boolean hideEmpties) {
 
 		/* Return the transform to internal */
-		return generateRecursiveTransform(fromReference, toTypeName, context, accessor, 0, true);
+		return generateRecursiveTransform(fromReference, toTypeName, context,
+				accessor, 0, true, hideEmpties);
 
 	}
 
@@ -611,15 +712,18 @@ class WsIODelegator {
 	 * @param toReference destiny reference type
 	 * @param context context of the process
 	 * @param accessor access variable or function name
+	 * @param hideEmpties indicates if the collections and maps should be checked and ignored
 	 * @return recursive external code block to transform from internal.
 	 */
 	static CodeBlock generateRecursiveTransformToExternal(TypeName fromTypeName,
 	                                                      ReferenceType toReference,
 	                                                      WsIOContext context,
-	                                                      String accessor) {
+	                                                      String accessor,
+	                                                      Boolean hideEmpties) {
 
 		/* Return the transform to external */
-		return generateRecursiveTransform(toReference, fromTypeName, context, accessor, 0, false);
+		return generateRecursiveTransform(toReference, fromTypeName, context,
+				accessor, 0, false, hideEmpties);
 
 	}
 

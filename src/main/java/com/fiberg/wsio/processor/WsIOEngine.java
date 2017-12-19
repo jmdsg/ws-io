@@ -119,6 +119,7 @@ final class WsIOEngine {
 			/* Throw when an error processing the script occurs */
 			throw new IllegalArgumentException(
 					format("Package js body (%s) could not be parsed correctly", packageJs), e);
+
 		}
 
 	}
