@@ -469,22 +469,27 @@ public class WsIODescriptor {
 		int lastIndex = hierarchy.size() - 1;
 		for (int index = lastIndex; index >= 0; index--) {
 
-			/* Get current annotation and skip */
-			Annotation annotation = hierarchy.get(index)._1();
-			SkipType skip = hierarchy.get(index)._2();
+			/* Check tuple is not null */
+			if (Objects.nonNull(hierarchy.get(index))) {
 
-			/* Check if annotation is null and the if skip is defined */
-			if (Objects.nonNull(annotation)) {
+				/* Get current annotation and skip */
+				Annotation annotation = hierarchy.get(index)._1();
+				SkipType skip = hierarchy.get(index)._2();
 
-				/* Return current annotation */
-				return Option.of(annotation);
+				/* Check if annotation is null and the if skip is defined */
+				if (Objects.nonNull(annotation)) {
 
-			} else if (SkipType.CHILDS.equals(skip)
-					|| SkipType.ALL.equals(skip)
-					|| (SkipType.CURRENT.equals(skip) && index == lastIndex)) {
+					/* Return current annotation */
+					return Option.of(annotation);
 
-				/* Break to return default value */
-				break;
+				} else if (SkipType.CHILDS.equals(skip)
+						|| SkipType.ALL.equals(skip)
+						|| (SkipType.CURRENT.equals(skip) && index == lastIndex)) {
+
+					/* Break to return default value */
+					break;
+
+				}
 
 			}
 
