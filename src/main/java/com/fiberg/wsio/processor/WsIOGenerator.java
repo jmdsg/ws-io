@@ -1212,7 +1212,7 @@ class WsIOGenerator {
 
 							/* Initialize the get code block */
 							getCode = CodeBlock.builder()
-									.addStatement("return ($L != null && $L.length > 0 : $L : null)",
+									.addStatement("return ($L != null && $L.length > 0 ? $L : null)",
 											fieldName, fieldName, fieldName)
 									.build();
 
@@ -1220,7 +1220,7 @@ class WsIOGenerator {
 
 							/* Initialize the get code block */
 							getCode = CodeBlock.builder()
-									.addStatement("return ($L != null && $L.size() > 0 : $L : null)",
+									.addStatement("return ($L != null && $L.size() > 0 ? $L : null)",
 											fieldName, fieldName, fieldName)
 									.build();
 
