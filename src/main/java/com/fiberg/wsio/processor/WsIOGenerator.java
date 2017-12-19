@@ -17,7 +17,6 @@ import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.ReferenceType;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.JavaFileObject;
 import javax.xml.bind.annotation.*;
@@ -582,27 +581,14 @@ class WsIOGenerator {
 			VariableElement parameter = setter.getParameters().get(0);
 			TypeMirror parameterType = parameter.asType();
 
-			/* Check if type mirrors are instacen of declared types */
-			if (returnType instanceof ReferenceType
-					&& parameterType instanceof ReferenceType) {
+			/* Current annotations */
+			List<AnnotationSpec> getterAnnotations = annotations.getOrElse(getterName, List.empty());
+			List<AnnotationSpec> setterAnnotations = annotations.getOrElse(setterName, List.empty());
 
-				/* Initialize declared types */
-				ReferenceType returnReference = (ReferenceType) returnType;
-				ReferenceType parameterReference = (ReferenceType) parameterType;
-
-				/* Current annotations */
-				List<AnnotationSpec> getterAnnotations = annotations.getOrElse(getterName, List.empty());
-				List<AnnotationSpec> setterAnnotations = annotations.getOrElse(setterName, List.empty());
-
-				/* Return the methods generated recursively */
-				return WsIODelegator.generatePropertyDelegates(returnReference, parameterReference,
-						getter, setter, getterName, setterName, propertyName, delegator,
-						getterAnnotations, setterAnnotations, level, hideEmpties, context, messager);
-
-			}
-
-			/* Return empty list */
-			return List.empty();
+			/* Return the methods generated recursively */
+			return WsIODelegator.generatePropertyDelegates(returnType, parameterType,
+					getter, setter, getterName, setterName, propertyName, delegator,
+					getterAnnotations, setterAnnotations, level, hideEmpties, context, messager);
 
 		};
 
@@ -852,7 +838,7 @@ class WsIOGenerator {
 		String fullClassName = WsIOUtil.addWrap(WordUtils.capitalize(classSimpleName), prefixTypeName, suffixTypeName);
 
 		/* List of descriptors with types, elements and names */
-		List<Tuple3<ReferenceType, String, Tuple2<String, String>>> descriptors = getWrapperDescriptors(type, info);
+		List<Tuple3<TypeMirror, String, Tuple2<String, String>>> descriptors = getWrapperDescriptors(type, info);
 
 		/* Add jaxb annotations to the class */
 		List<AnnotationSpec> annotations = List.empty();
@@ -868,10 +854,10 @@ class WsIOGenerator {
 
 		/* Iterate for each parameter and return type */
 		List<String> fieldNames = List.empty();
-		for (Tuple3<ReferenceType, String, Tuple2<String, String>> descriptor : descriptors) {
+		for (Tuple3<TypeMirror, String, Tuple2<String, String>> descriptor : descriptors) {
 
 			/* Get declared type, type element and name */
-			ReferenceType referenceType = descriptor._1();
+			TypeMirror mirror = descriptor._1();
 			String name = descriptor._2();
 
 			/* Qualifier, prefixes and suffixes */
@@ -895,7 +881,7 @@ class WsIOGenerator {
 					cloneMessageClasses, typeByName, generate);
 
 			/* Recursive full type name */
-			TypeName internalType = context.getRecursiveFullTypeName(referenceType,
+			TypeName internalType = context.getRecursiveFullTypeName(mirror,
 					true, false, true);
 
 			/* Lower and upper names */
@@ -924,7 +910,7 @@ class WsIOGenerator {
 			);
 
 			/* Create fiend and add it to the set */
-			TypeName fieldType = TypeName.get(referenceType);
+			TypeName fieldType = TypeName.get(mirror);
 			FieldSpec fieldSpec = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE).build();
 			fields = fields.append(fieldSpec);
 
@@ -946,15 +932,15 @@ class WsIOGenerator {
 					.build();
 			methods = methods.append(externalSet);
 
-			/* Predicate that checks that a reference type is valid,
+			/* Predicate that checks that a mirror type is valid,
 			 * is not an array nor a java collection not a map */
-			Predicate<ReferenceType> isValidInnerType = reference -> {
+			Predicate<TypeMirror> isValidInnerType = mirrorType -> {
 
-				/* Check reference is a declared type and not an array or another */
-				if (reference instanceof DeclaredType) {
+				/* Check mirror is a declared type and not an array or another */
+				if (mirrorType instanceof DeclaredType) {
 
 					/* Type element and name */
-					TypeElement element = (TypeElement) ((DeclaredType) reference).asElement();
+					TypeElement element = (TypeElement) ((DeclaredType) mirrorType).asElement();
 					String elementName = element.getQualifiedName().toString();
 
 					/* Return true if element name is not a collection */
@@ -969,11 +955,11 @@ class WsIOGenerator {
 
 			/* Check if inner wrapper is defined */
 			if (info.getWrappers().contains(WsIOWrapper.INNER_WRAPPER)
-					&& isValidInnerType.test(referenceType)
+					&& isValidInnerType.test(mirror)
 					&& WsIOType.RESPONSE.equals(type)) {
 
 				/* Declared type and element type */
-				DeclaredType declaredType = (DeclaredType) referenceType;
+				DeclaredType declaredType = (DeclaredType) mirror;
 				TypeElement element = (TypeElement) declaredType.asElement();
 
 				/* Generate the inheritance structure */
@@ -1028,7 +1014,7 @@ class WsIOGenerator {
 
 				/* Create internal get accessor and code block */
 				String internalGetAccessor = String.format("%s()", externalGetName);
-				CodeBlock internalGetBlock = WsIODelegator.generateRecursiveTransformToInternal(referenceType,
+				CodeBlock internalGetBlock = WsIODelegator.generateRecursiveTransformToInternal(mirror,
 						internalType, context, internalGetAccessor, hideEmpties);
 
 				/* Create the internal get method spec and add it to the methods set */
@@ -1044,7 +1030,7 @@ class WsIOGenerator {
 
 				/* Create external set block code */
 				CodeBlock internalSetBlock = WsIODelegator.generateRecursiveTransformToExternal(internalType,
-						referenceType, context, internalParameterName, hideEmpties);
+						mirror, context, internalParameterName, hideEmpties);
 
 				/* Create parameter and method spec and add it to the methods */
 				ParameterSpec internalParameter = ParameterSpec.builder(internalType, internalParameterName).build();
@@ -1324,24 +1310,18 @@ class WsIOGenerator {
 	 * @param info all wrapper info
 	 * @return descriptors of reponse and request types.
 	 */
-	private List<Tuple3<ReferenceType, String, Tuple2<String, String>>> getWrapperDescriptors(WsIOType type,
-	                                                                                          WsIOInfo info) {
-
-		/* Main executable element */
-		ExecutableElement executableElement = info.getExecutableElement();
+	private List<Tuple3<TypeMirror, String, Tuple2<String, String>>> getWrapperDescriptors(WsIOType type,
+	                                                                                       WsIOInfo info) {
 
 		/* List to fill with types, elements and names */
-		List<Tuple3<ReferenceType, String, Tuple2<String, String>>> descriptors = List.empty();
+		List<Tuple3<TypeMirror, String, Tuple2<String, String>>> descriptors = List.empty();
 
 		/* Check if the type is response or request */
 		if (WsIOType.RESPONSE.equals(type)) {
 
 			/* Check if the type mirror is a declared type */
 			TypeMirror typeMirror = info.getReturnType();
-			if (executableElement.getReturnType() instanceof ReferenceType) {
-
-				/* Declared type and element type */
-				ReferenceType returnType = (ReferenceType) typeMirror;
+			if (Objects.nonNull(typeMirror)) {
 
 				/* Return name if present otherwise default value*/
 				String returnName = info.getReturnName();
@@ -1351,8 +1331,8 @@ class WsIOGenerator {
 				Tuple2<String, String> qualifier = info.getReturnQualifier();
 
 				/* Fill the type, element and name */
-				Tuple3<ReferenceType, String, Tuple2<String, String>> descriptor =
-						Tuple.of(returnType, result, qualifier);
+				Tuple3<TypeMirror, String, Tuple2<String, String>> descriptor =
+						Tuple.of(typeMirror, result, qualifier);
 				descriptors = descriptors.append(descriptor);
 
 			}
@@ -1364,10 +1344,7 @@ class WsIOGenerator {
 
 				/* Check if the type mirror is a declared type */
 				TypeMirror typeMirror = info.getParameterTypes().get(index);
-				if (typeMirror != null && typeMirror instanceof DeclaredType) {
-
-					/* Reference type and element type */
-					ReferenceType declaredType = (ReferenceType) typeMirror;
+				if (Objects.nonNull(typeMirror)) {
 
 					/* Parameter name if present otherwise default value */
 					String defaultName = DEFAULT_PARAMETER + index;
@@ -1378,8 +1355,8 @@ class WsIOGenerator {
 					Tuple2<String, String> qualifier = info.getParameterQualifiers().get(index);
 
 					/* Fill the type, element and name */
-					Tuple3<ReferenceType, String, Tuple2<String, String>> descriptor =
-							Tuple.of(declaredType, argument, qualifier);
+					Tuple3<TypeMirror, String, Tuple2<String, String>> descriptor =
+							Tuple.of(typeMirror, argument, qualifier);
 					descriptors = descriptors.append(descriptor);
 
 				}

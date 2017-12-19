@@ -277,16 +277,16 @@ final class WsIOUtils {
 	/**
 	 * Method that returns a list with the generic types.
 	 *
-	 * @param referenceType reference type to extract the generics
+	 * @param mirror mirror type to extract the generics
 	 * @return a list with the generics of the declared types
 	 */
-	private static List<TypeMirror> getGenericTypes(ReferenceType referenceType) {
+	private static List<TypeMirror> getGenericTypes(TypeMirror mirror) {
 
 		/* Return the list of type arguments */
-		if (referenceType instanceof DeclaredType) {
+		if (mirror instanceof DeclaredType) {
 
 			/* Return the type arguments of the declared type */
-			return List.ofAll(((DeclaredType) referenceType).getTypeArguments());
+			return List.ofAll(((DeclaredType) mirror).getTypeArguments());
 
 		} else {
 
@@ -301,36 +301,29 @@ final class WsIOUtils {
 	 * Method that returns a list with the cleared generic types.
 	 * Cleared types include wildcard and array types.
 	 *
-	 * @param referenceType reference type to extract the generics
+	 * @param mirror mirror type to extract the generics
 	 * @return a list with the generics of the cleared declared types
 	 */
-	static List<ReferenceType> getClearedGenericTypes(ReferenceType referenceType) {
+	static List<TypeMirror> getClearedGenericTypes(TypeMirror mirror) {
 
 		/* Return the type elements of the generic list */
-		return getGenericTypes(referenceType)
+		return getGenericTypes(mirror)
 				.flatMap(type -> {
 
 					/* Check the type of the mirror */
 					if (type instanceof WildcardType) {
 
 						/* Return the defined super or extend bound */
-						return Option.none()
+						return Option.<TypeMirror>none()
 								.orElse(Option.of(((WildcardType) type).getExtendsBound()))
 								.orElse(Option.of(((WildcardType) type).getSuperBound()));
-
-					} else if (type instanceof ReferenceType) {
-
-						/* Return the element when the type is a reference type */
-						return Option.of(type);
 
 					}
 
 					/* Return empty option */
-					return Option.none();
+					return Option.of(type);
 
-				})
-				.filter(ReferenceType.class::isInstance)
-				.map(ReferenceType.class::cast);
+				});
 
 	}
 
@@ -564,21 +557,21 @@ final class WsIOUtils {
 	}
 
 	/**
-	 * Method that extracts the info of a reference type.
+	 * Method that extracts the info of a mirror type.
 	 *
-	 * @param reference reference type
+	 * @param mirror mirror type
 	 * @return tuple containing the component type of the array and the count with dimension level
 	 */
-	static Tuple2<ReferenceType, Integer> getArrayInfo(ReferenceType reference) {
+	static Tuple2<TypeMirror, Integer> getArrayInfo(TypeMirror mirror) {
 
 		/* Variable to indicate if is an array or not */
 		int arrayCount = 0;
 
-		/* Check the type of the reference */
-		if (reference instanceof ArrayType) {
+		/* Check the type of the mirror */
+		if (mirror instanceof ArrayType) {
 
 			/* Get nested components and increase array count */
-			TypeMirror component = reference;
+			TypeMirror component = mirror;
 			while (component instanceof ArrayType) {
 				component = ((ArrayType) component).getComponentType();
 				arrayCount++;
@@ -588,23 +581,23 @@ final class WsIOUtils {
 			if (component instanceof DeclaredType) {
 
 				/* Return declared type and array count */
-				return Tuple.of((DeclaredType) component, arrayCount);
+				return Tuple.of(component, arrayCount);
 
 			}
 
 		}
 
 		/* Return declared type and zero in array count */
-		return Tuple.of(reference, 0);
+		return Tuple.of(mirror, 0);
 
 	}
 
 	/**
-	 * Method that creates a array type name of the specified dimension with reference.
+	 * Method that creates a array type name of the specified dimension with mirror.
 	 *
 	 * @param typeName type name
 	 * @param dimension dimension of the array
-	 * @return array type name of the specified dimension with reference
+	 * @return array type name of the specified dimension with mirror
 	 */
 	static TypeName getArrayType(TypeName typeName,
 	                             int dimension) {

@@ -10,10 +10,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.processing.Messager;
 import javax.lang.model.element.*;
-import javax.lang.model.type.ArrayType;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.ReferenceType;
-import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.*;
 import java.util.Objects;
 
 /**
@@ -22,37 +19,31 @@ import java.util.Objects;
 class WsIODelegator {
 
 	/**
-	 * Method that checks if two reference types of a getter and setter are recursively compatible.
+	 * Method that checks if two mirror types of a getter and setter are recursively compatible.
 	 *
-	 * @param returnReference return reference type
-	 * @param parameterReference parameter reference type
-	 * @return {@code true} if the two reference types are recursively compatible {@code false} otherwise
+	 * @param returnMirror return mirror type
+	 * @param parameterMirror parameter mirror type
+	 * @return {@code true} if the two mirror types are recursively compatible {@code false} otherwise
 	 */
-	static boolean isRecursiveCompatible(ReferenceType returnReference,
-	                                     ReferenceType parameterReference) {
+	static boolean isRecursiveCompatible(TypeMirror returnMirror,
+	                                     TypeMirror parameterMirror) {
 
 		/* Check the instance types of the parameters */
-		if (returnReference instanceof ArrayType && parameterReference instanceof ArrayType) {
+		if (returnMirror instanceof ArrayType && parameterMirror instanceof ArrayType) {
 
 			/* Get array types */
-			ArrayType returnArray = (ArrayType) returnReference;
-			ArrayType parameterArray = (ArrayType) parameterReference;
+			ArrayType returnArray = (ArrayType) returnMirror;
+			ArrayType parameterArray = (ArrayType) parameterMirror;
 
-			/* Check if components of array are reference types */
-			if (returnArray.getComponentType() instanceof ReferenceType
-					&& parameterArray.getComponentType() instanceof ReferenceType) {
+			/* Return the recursive result of component types of the array */
+			return isRecursiveCompatible(returnArray.getComponentType(),
+					parameterArray.getComponentType());
 
-				/* Return the recursive result of component types of the array */
-				return isRecursiveCompatible((ReferenceType) returnArray.getComponentType(),
-						(ReferenceType) parameterArray.getComponentType());
-
-			}
-
-		} else if (returnReference instanceof DeclaredType && parameterReference instanceof DeclaredType) {
+		} else if (returnMirror instanceof DeclaredType && parameterMirror instanceof DeclaredType) {
 
 			/* Get declared types */
-			DeclaredType returnDeclared = (DeclaredType) returnReference;
-			DeclaredType parameterDeclared = (DeclaredType) parameterReference;
+			DeclaredType returnDeclared = (DeclaredType) returnMirror;
+			DeclaredType parameterDeclared = (DeclaredType) parameterMirror;
 
 			/* Get the generics of each type */
 			java.util.List<? extends TypeMirror> returnGenerics = returnDeclared.getTypeArguments();
@@ -72,11 +63,8 @@ class WsIODelegator {
 						TypeMirror returnGenericType = WsIOUtils.getUnwildType(returnGenerics.get(index));
 						TypeMirror parameterGenericType = WsIOUtils.getUnwildType(parameterGenerics.get(index));
 
-						/* Check if elements are reference types and check recursible if they are compatible or not */
-						if (returnGenericType instanceof ReferenceType
-								&& parameterGenericType instanceof ReferenceType
-								&& !isRecursiveCompatible((ReferenceType) returnGenericType,
-								(ReferenceType) parameterGenericType)) {
+						/* Check recursible if they are compatible or not */
+						if (!isRecursiveCompatible(returnGenericType, parameterGenericType)) {
 
 							/* Return false when a generic type is not compatible with the other in the same position */
 							return false;
@@ -108,6 +96,11 @@ class WsIODelegator {
 
 			}
 
+		} else if (returnMirror instanceof PrimitiveType && parameterMirror instanceof PrimitiveType) {
+
+			/* Check if primitive types are equals */
+			return Objects.equals(returnMirror, parameterMirror);
+
 		}
 
 		/* Return false by default */
@@ -118,20 +111,20 @@ class WsIODelegator {
 	/**
 	 * Method that returns the first collection implementation and the rest just internals.
 	 *
-	 * @param referenceType reference type
+	 * @param mirrorType mirror type
 	 * @param useInternalTypes indicates if internal types are going to be used or not
 	 * @param context context of the process
 	 * @return first collection implementation and the rest just internals
 	 */
-	private static TypeName ensureFirstConcreteClass(ReferenceType referenceType,
+	private static TypeName ensureFirstConcreteClass(TypeMirror mirrorType,
 	                                                 Boolean useInternalTypes,
 	                                                 WsIOContext context) {
 
-		/* Check the type of reference */
-		if (referenceType instanceof DeclaredType) {
+		/* Check the type of mirror */
+		if (mirrorType instanceof DeclaredType) {
 
 			/* Get declared name, type element and name*/
-			DeclaredType declaredType = (DeclaredType) referenceType;
+			DeclaredType declaredType = (DeclaredType) mirrorType;
 			TypeElement typeElement = (TypeElement) declaredType.asElement();
 			String elementName = typeElement.getQualifiedName().toString();
 
@@ -140,7 +133,7 @@ class WsIODelegator {
 					|| WsIOCollection.COLLECTION_INTERFACES.contains(elementName)) {
 
 				/* Get the recursive type name with implementations on collection and map classes */
-				TypeName implementation = context.getRecursiveFullTypeName(referenceType,
+				TypeName implementation = context.getRecursiveFullTypeName(mirrorType,
 						useInternalTypes, true, false);
 
 				/* Check if type name is parameterized */
@@ -151,7 +144,7 @@ class WsIODelegator {
 
 					/* Get the recursive type name without implementations only internals */
 					ParameterizedTypeName internal = (ParameterizedTypeName) context.getRecursiveFullTypeName(
-							referenceType, useInternalTypes, false, false);
+							mirrorType, useInternalTypes, false, false);
 
 					/* Return first implementation */
 					return ParameterizedTypeName.get(parameterized.rawType,
@@ -169,7 +162,7 @@ class WsIODelegator {
 		}
 
 		/* Return recursive name when type is not declared */
-		return context.getRecursiveFullTypeName(referenceType,
+		return context.getRecursiveFullTypeName(mirrorType,
 				useInternalTypes, false, false);
 
 	}
@@ -177,8 +170,8 @@ class WsIODelegator {
 	/**
 	 * Method that generates the method specs delegates of a property.
 	 *
-	 * @param returnReference return reference type
-	 * @param parameterReference parameter reference type
+	 * @param returnMirror return mirror type
+	 * @param parameterMirror parameter mirror type
 	 * @param getter getter method
 	 * @param setter setter method
 	 * @param getterName name of the getter method
@@ -193,8 +186,8 @@ class WsIODelegator {
 	 * @param messager messager to print the output
 	 * @return the method specs delegates of a property
 	 */
-	static List<MethodSpec> generatePropertyDelegates(ReferenceType returnReference,
-	                                                  ReferenceType parameterReference,
+	static List<MethodSpec> generatePropertyDelegates(TypeMirror returnMirror,
+	                                                  TypeMirror parameterMirror,
 	                                                  ExecutableElement getter,
 	                                                  ExecutableElement setter,
 	                                                  String getterName,
@@ -209,12 +202,12 @@ class WsIODelegator {
 	                                                  Messager messager) {
 
 		/* Check that the types are compatible */
-		if (isRecursiveCompatible(returnReference, parameterReference)) {
+		if (isRecursiveCompatible(returnMirror, parameterMirror)) {
 
 			/* Get full names when the class is in message or clones classes */
-			TypeName returnTypeName = context.getRecursiveFullTypeName(returnReference,
+			TypeName returnTypeName = context.getRecursiveFullTypeName(returnMirror,
 					true, false, true);
-			TypeName parameterTypeName = context.getRecursiveFullTypeName(parameterReference,
+			TypeName parameterTypeName = context.getRecursiveFullTypeName(parameterMirror,
 					true, false, true);
 
 			/* Create getter builder */
@@ -248,9 +241,9 @@ class WsIODelegator {
 					&& isDelegated) {
 
 				/* Recursive set and get code blocks */
-				CodeBlock setCodeBlock = generateRecursiveTransformToExternal(parameterTypeName, parameterReference,
+				CodeBlock setCodeBlock = generateRecursiveTransformToExternal(parameterTypeName, parameterMirror,
 						context, propertyName, hideEmpties);
-				CodeBlock getCodeBlock = generateRecursiveTransformToInternal(returnReference, returnTypeName,
+				CodeBlock getCodeBlock = generateRecursiveTransformToInternal(returnMirror, returnTypeName,
 						context, String.format("%s().%s()", delegator, getterName), hideEmpties);
 
 				/* Check codes are non null */
@@ -298,7 +291,7 @@ class WsIODelegator {
 	/**
 	 * Method that generates the recursive code block to transform to internal or external.
 	 *
-	 * @param external external reference type
+	 * @param external external mirror type
 	 * @param internal internal type name
 	 * @param context context of the process
 	 * @param accessor access variable or function name
@@ -307,7 +300,7 @@ class WsIODelegator {
 	 * @param hideEmpties indicates if the collections and maps should be checked and ignored
 	 * @return recursive internal or external code block to transform.
 	 */
-	private static CodeBlock generateRecursiveTransform(ReferenceType external,
+	private static CodeBlock generateRecursiveTransform(TypeMirror external,
 	                                                    TypeName internal,
 	                                                    WsIOContext context,
 	                                                    String accessor,
@@ -322,111 +315,105 @@ class WsIODelegator {
 			TypeMirror externalComponentType = ((ArrayType) external).getComponentType();
 			TypeName internalComponentTypeName = ((ArrayTypeName) internal).componentType;
 
-			/* Check external type is a reference type */
-			if (externalComponentType instanceof ReferenceType) {
+			/* Create next accesor name and get recursive code block */
+			String accessorName = "component";
+			String componentAccessor = String.format("%s_%d_", accessorName, level);
+			CodeBlock componentBlock = generateRecursiveTransform(externalComponentType, internalComponentTypeName,
+					context, componentAccessor, level + 1, toInternal, hideEmpties);
 
-				/* Create next accesor name and get recursive code block */
-				String accessorName = "component";
-				String componentAccessor = String.format("%s_%d_", accessorName, level);
-				ReferenceType externalComponentReference = (ReferenceType) externalComponentType;
-				CodeBlock componentBlock = generateRecursiveTransform(externalComponentReference, internalComponentTypeName,
-						context, componentAccessor, level + 1, toInternal, hideEmpties);
+			/* Check code block is not null */
+			if (Objects.nonNull(componentBlock)) {
 
-				/* Check code block is not null */
-				if (Objects.nonNull(componentBlock)) {
+				/* Arrays class */
+				Class<?> arraysClass = java.util.Arrays.class;
 
-					/* Arrays class */
-					Class<?> arraysClass = java.util.Arrays.class;
+				/* Get array info */
+				Tuple2<TypeMirror, Integer> arrayInfo = WsIOUtils.getArrayInfo(external);
 
-					/* Get array info */
-					Tuple2<ReferenceType, Integer> arrayInfo = WsIOUtils.getArrayInfo(external);
+				/* Get declared type and array count */
+				TypeMirror mirror = arrayInfo._1();
+				Integer dimension = arrayInfo._2();
 
-					/* Get declared type and array count */
-					ReferenceType referenceType = arrayInfo._1();
-					Integer dimension = arrayInfo._2();
+				/* Check array count is greater than zero */
+				if (dimension > 0) {
 
-					/* Check array count is greater than zero */
-					if (dimension > 0) {
+					/* Get possible element name */
+					String possibleElementName = Option.of(mirror)
+							.filter(DeclaredType.class::isInstance)
+							.map(DeclaredType.class::cast)
+							.map(DeclaredType::asElement)
+							.filter(TypeElement.class::isInstance)
+							.map(TypeElement.class::cast)
+							.map(TypeElement::getQualifiedName)
+							.map(Name::toString)
+							.getOrNull();
 
-						/* Get possible element name */
-						String possibleElementName = Option.of(referenceType)
-								.filter(DeclaredType.class::isInstance)
-								.map(DeclaredType.class::cast)
-								.map(DeclaredType::asElement)
-								.filter(TypeElement.class::isInstance)
-								.map(TypeElement.class::cast)
-								.map(TypeElement::getQualifiedName)
-								.map(Name::toString)
-								.getOrNull();
+					/* Check that the array component is internal or generic internal class  */
+					if (context.isRecursiveGenericInternalType(mirror)
+							|| (Objects.nonNull(possibleElementName)
+							&& context.isInternalType(possibleElementName))) {
 
-						/* Check that the array component is internal or generic internal class  */
-						if (context.isRecursiveGenericInternalType(referenceType)
-								|| (Objects.nonNull(possibleElementName)
-								&& context.isInternalType(possibleElementName))) {
+							/* Get class to cast of dimension - 1 */
+							TypeName typeName = context.getRecursiveFullTypeName(mirror,
+									toInternal, false, false);
+							TypeName castTypeName = WsIOUtils.getArrayType(typeName, dimension - 1);
 
-								/* Get class to cast of dimension - 1 */
-								TypeName typeName = context.getRecursiveFullTypeName(referenceType,
-										toInternal, false, false);
-								TypeName castTypeName = WsIOUtils.getArrayType(typeName, dimension - 1);
+							/* Declare destiny class name and check if is parameterized or not */
+							TypeName destinyClassName;
+							if (typeName instanceof ParameterizedTypeName) {
 
-								/* Declare destiny class name and check if is parameterized or not */
-								TypeName destinyClassName;
-								if (typeName instanceof ParameterizedTypeName) {
-
-									/* Extract the raw type of a parameterized type */
-									destinyClassName = ((ParameterizedTypeName) typeName).rawType;
-
-								} else {
-
-									/* Destiny type name when is not parameterized */
-									destinyClassName = typeName;
-
-								}
-
-								/* Get destiny array */
-								TypeName destinyTypeName = WsIOUtils.getArrayType(destinyClassName, dimension - 1);
-
-								/* Code block builder */
-								CodeBlock.Builder builder = CodeBlock.builder();
-
-								/* Check if hide empties if enabled */
-								if (hideEmpties) {
-
-									/* Add array check condition */
-									builder = builder.add("(($L != null && $L.length > 0) ? $T.stream($L)",
-											accessor, accessor, arraysClass, accessor).add("\n");
-
-								} else {
-
-									/* Add normal condition */
-									builder = builder.add("($L != null ? $T.stream($L)",
-											accessor, arraysClass, accessor).add("\n");
-
-								}
-
-								/* Build and return the code block for array types */
-								return builder.add(".map($L -> ", componentAccessor)
-										.add(componentBlock)
-										.add(")").add("\n")
-										.add(".<$T>toArray($T[]::new) : null)", castTypeName, destinyTypeName)
-										.build();
-
-
-						} else {
-
-							/* Check if element is a collection or map and hide empties is enabled */
-							if (WsIOCollection.ALL.contains(possibleElementName) && hideEmpties) {
-
-								/* Return the code block external type */
-								return CodeBlock.of("(($L != null && $L.length > 0) ? $L : null)",
-										accessor, accessor, accessor);
+								/* Extract the raw type of a parameterized type */
+								destinyClassName = ((ParameterizedTypeName) typeName).rawType;
 
 							} else {
 
-								/* Return the code block external type */
-								return CodeBlock.of("$L", accessor);
+								/* Destiny type name when is not parameterized */
+								destinyClassName = typeName;
 
 							}
+
+							/* Get destiny array */
+							TypeName destinyTypeName = WsIOUtils.getArrayType(destinyClassName, dimension - 1);
+
+							/* Code block builder */
+							CodeBlock.Builder builder = CodeBlock.builder();
+
+							/* Check if hide empties if enabled */
+							if (hideEmpties) {
+
+								/* Add array check condition */
+								builder = builder.add("(($L != null && $L.length > 0) ? $T.stream($L)",
+										accessor, accessor, arraysClass, accessor).add("\n");
+
+							} else {
+
+								/* Add normal condition */
+								builder = builder.add("($L != null ? $T.stream($L)",
+										accessor, arraysClass, accessor).add("\n");
+
+							}
+
+							/* Build and return the code block for array types */
+							return builder.add(".map($L -> ", componentAccessor)
+									.add(componentBlock)
+									.add(")").add("\n")
+									.add(".<$T>toArray($T[]::new) : null)", castTypeName, destinyTypeName)
+									.build();
+
+
+					} else {
+
+						/* Check if element is a collection or map and hide empties is enabled */
+						if (WsIOCollection.ALL.contains(possibleElementName) && hideEmpties) {
+
+							/* Return the code block external type */
+							return CodeBlock.of("(($L != null && $L.length > 0) ? $L : null)",
+									accessor, accessor, accessor);
+
+						} else {
+
+							/* Return the code block external type */
+							return CodeBlock.of("$L", accessor);
 
 						}
 
@@ -456,7 +443,7 @@ class WsIODelegator {
 						ParameterizedTypeName internalParameterizedType = (ParameterizedTypeName) internal;
 						List<TypeName> internalGenerics = List.ofAll(WsIOUtils.getClearedGenericTypes(internalParameterizedType));
 
-						List<ReferenceType> externalGenerics = List.ofAll(WsIOUtils.getClearedGenericTypes(externalDeclared));
+						List<TypeMirror> externalGenerics = List.ofAll(WsIOUtils.getClearedGenericTypes(externalDeclared));
 
 						/* Check if is a collection or a map */
 						if (WsIOCollection.COLLECTIONS.contains(externalElementName)
@@ -464,7 +451,7 @@ class WsIODelegator {
 
 							/* Type name and mirror of the element */
 							TypeName internalElement = internalGenerics.get(0);
-							ReferenceType externalElement = externalGenerics.get(0);
+							TypeMirror externalElement = externalGenerics.get(0);
 
 							/* Create next accesor name and get recursive code block */
 							String accessorName = "element";
@@ -520,8 +507,8 @@ class WsIODelegator {
 							TypeName internalValue = internalGenerics.get(1);
 
 							/* Type mirrors of key and value */
-							ReferenceType externalKey = externalGenerics.get(0);
-							ReferenceType externalValue = externalGenerics.get(1);
+							TypeMirror externalKey = externalGenerics.get(0);
+							TypeMirror externalValue = externalGenerics.get(1);
 
 							/* Accessor name and general accessor */
 							String accessorName = "entry";
@@ -686,21 +673,21 @@ class WsIODelegator {
 	/**
 	 * Method that generates the recursive code block to transform to internal.
 	 *
-	 * @param fromReference origin reference type
+	 * @param fromMirror origin mirror type
 	 * @param toTypeName destiny type name
 	 * @param context context of the process
 	 * @param accessor access variable or function name
 	 * @param hideEmpties indicates if the collections and maps should be checked and ignored
 	 * @return recursive internal code block to transform from external.
 	 */
-	static CodeBlock generateRecursiveTransformToInternal(ReferenceType fromReference,
+	static CodeBlock generateRecursiveTransformToInternal(TypeMirror fromMirror,
 	                                                      TypeName toTypeName,
 	                                                      WsIOContext context,
 	                                                      String accessor,
 	                                                      Boolean hideEmpties) {
 
 		/* Return the transform to internal */
-		return generateRecursiveTransform(fromReference, toTypeName, context,
+		return generateRecursiveTransform(fromMirror, toTypeName, context,
 				accessor, 0, true, hideEmpties);
 
 	}
@@ -709,20 +696,20 @@ class WsIODelegator {
 	 * Method that generates the recursive code block to transform to external.
 	 *
 	 * @param fromTypeName origin type name
-	 * @param toReference destiny reference type
+	 * @param toMirror destiny mirror type
 	 * @param context context of the process
 	 * @param accessor access variable or function name
 	 * @param hideEmpties indicates if the collections and maps should be checked and ignored
 	 * @return recursive external code block to transform from internal.
 	 */
 	static CodeBlock generateRecursiveTransformToExternal(TypeName fromTypeName,
-	                                                      ReferenceType toReference,
+	                                                      TypeMirror toMirror,
 	                                                      WsIOContext context,
 	                                                      String accessor,
 	                                                      Boolean hideEmpties) {
 
 		/* Return the transform to external */
-		return generateRecursiveTransform(toReference, fromTypeName, context,
+		return generateRecursiveTransform(toMirror, fromTypeName, context,
 				accessor, 0, false, hideEmpties);
 
 	}

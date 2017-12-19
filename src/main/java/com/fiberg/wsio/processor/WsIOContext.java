@@ -14,7 +14,6 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.ReferenceType;
 import javax.lang.model.type.TypeMirror;
 import java.util.Objects;
 
@@ -266,22 +265,22 @@ class WsIOContext {
 	/**
 	 * Method that checks recursively if a generic type is internal or not;
 	 *
-	 * @param referenceType reference type
+	 * @param mirror mirror type
 	 * @return {@code true} if a type is recursively internal type {@code false} otherwise;
 	 */
-	boolean isRecursiveGenericInternalType(ReferenceType referenceType) {
+	boolean isRecursiveGenericInternalType(TypeMirror mirror) {
 
 		/* Get array info */
-		Tuple2<ReferenceType, Integer> info = WsIOUtils.getArrayInfo(referenceType);
+		Tuple2<TypeMirror, Integer> info = WsIOUtils.getArrayInfo(mirror);
 
-		/* Get clear reference type */
-		ReferenceType clearReference = info._1();
+		/* Get clear mirror type */
+		TypeMirror clearMirror = info._1();
 
-		/* Check clear reference is declared */
-		if (clearReference instanceof DeclaredType) {
+		/* Check clear mirror is declared */
+		if (clearMirror instanceof DeclaredType) {
 
 			/* Get declared type, element and name */
-			DeclaredType declaredType = (DeclaredType) clearReference;
+			DeclaredType declaredType = (DeclaredType) clearMirror;
 			TypeElement typeElement = (TypeElement) declaredType.asElement();
 			String elementName = typeElement.getQualifiedName().toString();
 
@@ -293,7 +292,7 @@ class WsIOContext {
 		}
 
 		/* Get current level cleared generics */
-		List<ReferenceType> firstLevelGenerics = WsIOUtils.getClearedGenericTypes(clearReference);
+		List<TypeMirror> firstLevelGenerics = WsIOUtils.getClearedGenericTypes(clearMirror);
 
 		/* Get current level cleared generic names */
 		List<String> firstLevelGenericNames = firstLevelGenerics.filter(DeclaredType.class::isInstance)
@@ -313,22 +312,22 @@ class WsIOContext {
 	/**
 	 * Method that create a recursively generic type
 	 *
-	 * @param reference reference type
+	 * @param mirror mirror type
 	 * @param useInternalTypes indicates if internal types are going to be used or not
 	 * @param useCollectionImplementations indicates if collection interfaces should be replaced by implementations
 	 * @param useWildcards indicates if wildcard types should be used or not
 	 * @return recursively generic type
 	 */
-	TypeName getRecursiveFullTypeName(ReferenceType reference,
+	TypeName getRecursiveFullTypeName(TypeMirror mirror,
 	                                  boolean useInternalTypes,
 	                                  boolean useCollectionImplementations,
 	                                  boolean useWildcards) {
 
 		/* Get array info */
-		Tuple2<ReferenceType, Integer> info = WsIOUtils.getArrayInfo(reference);
+		Tuple2<TypeMirror, Integer> info = WsIOUtils.getArrayInfo(mirror);
 
 		/* Declared type and array count */
-		ReferenceType type = info._1();
+		TypeMirror type = info._1();
 		int arrayCount = info._2();
 
 		/* Declare empty list for generic types */
@@ -355,41 +354,30 @@ class WsIOContext {
 				TypeMirror wildMirror = unwildType._1();
 				WsIOWild wildType = unwildType._2();
 
-				if (wildMirror instanceof ReferenceType) {
+				/* Recursively call full type name and add result to list */
+				TypeName typeName = getRecursiveFullTypeName(wildMirror, useInternalTypes,
+						useCollectionImplementations, useWildcards);
 
-					/* Recursively call full type name and add result to list */
-					ReferenceType wildReferenceType = (ReferenceType) wildMirror;
-					TypeName typeName = getRecursiveFullTypeName(wildReferenceType, useInternalTypes,
-							useCollectionImplementations, useWildcards);
+				/* Check the use of wildcards */
+				if (useWildcards) {
 
-					/* Check the use of wildcards */
-					if (useWildcards) {
+					/* Check the wild type */
+					if (WsIOWild.EXTENDS.equals(wildType)) {
 
-						/* Check the wild type */
-						if (WsIOWild.EXTENDS.equals(wildType)) {
+						/* Create a subtype wild card name */
+						typeName = WildcardTypeName.subtypeOf(typeName);
 
-							/* Create a subtype wild card name */
-							typeName = WildcardTypeName.subtypeOf(typeName);
+					} else if (WsIOWild.SUPER.equals(wildType)) {
 
-						} else if (WsIOWild.SUPER.equals(wildType)) {
-
-							/* Create a supertype wild card name */
-							typeName = WildcardTypeName.supertypeOf(typeName);
-
-						}
+						/* Create a supertype wild card name */
+						typeName = WildcardTypeName.supertypeOf(typeName);
 
 					}
 
-					/* Add the generic to list */
-					genericTypes = genericTypes.append(typeName);
-
-				} else {
-
-					/* Add type name to list */
-					TypeName typeName = TypeName.get(typeMirror);
-					genericTypes = genericTypes.append(typeName);
-
 				}
+
+				/* Add the generic to list */
+				genericTypes = genericTypes.append(typeName);
 
 			}
 
@@ -487,7 +475,7 @@ class WsIOContext {
 		} else {
 
 			/* Return the type name when type is not declared nor array */
-			return TypeName.get(reference);
+			return TypeName.get(mirror);
 
 		}
 
