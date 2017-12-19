@@ -368,11 +368,21 @@ public class WsIODescriptor {
 		/* Extract and return the annotated element */
 		return extractCtAnnotated(ctClass, pool, ct -> {
 
-					/* Get package name and return package info name*/
-					String packageName = ct.getPackageName();
-					return WsIOUtil.addPrefixName("package-info", packageName);
+			/* Check current class is not a package class */
+			if (!"package-info".equals(ct.getSimpleName())) {
 
-				}, CtClass::getAnnotation, CtClass::getDeclaringClass, ct -> extractCtAnnotated(pool, ct));
+				/* Get package name and return package info name*/
+				String packageName = ct.getPackageName();
+				return WsIOUtil.addPrefixName("package-info", packageName);
+
+			} else {
+
+				/* Return null when current class is a package info */
+				return null;
+
+			}
+
+		}, CtClass::getAnnotation, CtClass::getDeclaringClass, ct -> extractCtAnnotated(pool, ct));
 
 	}
 

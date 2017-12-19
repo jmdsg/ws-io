@@ -1,5 +1,6 @@
 package com.fiberg.wsio.auto;
 
+import com.fiberg.wsio.annotation.WsIOAnnotate;
 import com.fiberg.wsio.processor.*;
 import com.fiberg.wsio.util.WsIOUtil;
 import io.github.lukehutch.fastclasspathscanner.FastClasspathScanner;
@@ -10,13 +11,12 @@ import io.vavr.collection.Map;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
 import javassist.*;
-import javassist.bytecode.AnnotationsAttribute;
-import javassist.bytecode.ClassFile;
-import javassist.bytecode.ConstPool;
-import javassist.bytecode.annotation.Annotation;
-import javassist.bytecode.annotation.StringMemberValue;
+import javassist.bytecode.*;
+import javassist.bytecode.annotation.*;
 import org.apache.commons.text.WordUtils;
 
+import javax.jws.WebParam;
+import javax.jws.WebResult;
 import javax.xml.ws.RequestWrapper;
 import javax.xml.ws.ResponseWrapper;
 import java.util.Objects;
@@ -75,6 +75,10 @@ public final class WsIOAuto {
 				boolean annotationAdded = false;
 				for (CtMethod ctMethod : ctClass.getDeclaredMethods()) {
 
+					/* Define class file and class pool */
+					ClassFile ccFile = ctClass.getClassFile();
+					ConstPool constpool = ccFile.getConstPool();
+
 					/* Get method info */
 					Option<Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> info = wrapper
 							.get(ctMethod.getLongName());
@@ -88,6 +92,123 @@ public final class WsIOAuto {
 
 					/* Check if all fields are present */
 					if (packageOpt.isDefined() && responseOpt.isDefined() && requestOpt.isDefined()) {
+
+						/* Get method descriptor and annotate annotation */
+						WsIODescriptor descriptor = WsIODescriptor.of(ctClasses, ctMethod);
+						Option<WsIOAnnotate> annotate = descriptor.getSingle(WsIOAnnotate.class);
+
+						/* Check if annotate is defined and rename is enabled */
+						if (annotate.isDefined() && annotate.get().rename()) {
+
+							/* Get current method annotations atribute and execute when present */
+							Option.of(ctMethod.getMethodInfo())
+									.map(methodInfo -> methodInfo.getAttribute(AnnotationsAttribute.visibleTag))
+									.filter(AnnotationsAttribute.class::isInstance)
+									.map(AnnotationsAttribute.class::cast)
+									.forEach(annotationsAttribute -> {
+
+										/* Get annotation name and current web result annotation option */
+										String annotationName = WebResult.class.getCanonicalName();
+										Option<Annotation> annotationOpt = Option.of(annotationsAttribute
+												.getAnnotation(annotationName));
+
+										/* Check if the annotation is defined or not */
+										if (annotationOpt.isDefined()) {
+
+											/* Change the annotation when defined */
+											annotationOpt.get().getMemberValue("name")
+													.accept((StringVisitor) stringMember -> {
+
+														/* Get name or default, add the underscore and set the value */
+														String name = Option.of(stringMember.getValue())
+																.getOrElse(WsIOConstant.DEFAULT_RESULT);
+														stringMember.setValue(String.format("%s_", name));
+
+													});
+
+										} else {
+
+											/* Create the annotation, add the member name and add the annotation to attribute */
+											Annotation annotation = new Annotation(annotationName, constpool);
+											annotation.addMemberValue("name",
+													new StringMemberValue(String.format("%s_", WsIOConstant.DEFAULT_RESULT),
+															ccFile.getConstPool()));
+											annotationsAttribute.addAnnotation(annotation);
+
+										}
+
+									});
+
+							/* Get current method parameter annotations atribute and execute when present */
+							Option.of(ctMethod.getMethodInfo())
+									.map(methodInfo -> methodInfo.getAttribute(ParameterAnnotationsAttribute.visibleTag))
+									.filter(ParameterAnnotationsAttribute.class::isInstance)
+									.map(ParameterAnnotationsAttribute.class::cast)
+									.forEach(parameterAnnotationsAttribute -> {
+
+										/* Get the annotation name */
+										String annotationName = WebParam.class.getCanonicalName();
+
+										/* Get the paramters array and list of lists */
+										Annotation[][] paramArrays = parameterAnnotationsAttribute.getAnnotations();
+										List<List<Annotation>> parameters = List.of(paramArrays).map(List::of);
+
+										/* Transform the parameters */
+										List<List<Annotation>> transformed = parameters.zipWithIndex().map(tuple -> {
+
+											/* Get all annotations and index of current parameter */
+											List<Annotation> argParameters = tuple._1();
+											int index = tuple._2();
+
+											/* Check if the annotation already exists */
+											boolean contains = argParameters.exists(parameter ->
+													annotationName.equals(parameter.getTypeName()));
+											if (contains) {
+
+												/* Iterate for each annotation */
+												argParameters.forEach(parameter -> {
+
+													/* Check if the annotatio is the searched one */
+													if (annotationName.equals(parameter.getTypeName())) {
+
+														/* Visit the member name and change its value */
+														parameter.getMemberValue("name").accept((StringVisitor) stringMember -> {
+
+															/* Get name or default, add the underscore and set the value */
+															String name = Option.of(stringMember.getValue())
+																	.getOrElse(String.format("%s%d", WsIOConstant.DEFAULT_PARAMETER, index));
+															stringMember.setValue(String.format("%s_", name));
+
+														});
+
+													}
+
+												});
+
+												/* Return the modified annotations of the parameter */
+												return argParameters;
+
+											} else {
+
+												/* Create the annotation, add the member name and add the annotation to annotations list */
+												Annotation annotation = new Annotation(annotationName, constpool);
+												annotation.addMemberValue("name",
+														new StringMemberValue(String.format("%s%d_",
+																WsIOConstant.DEFAULT_PARAMETER, index), ccFile.getConstPool()));
+												return argParameters.append(annotation);
+
+											}
+
+										});
+
+										/* Transform the list of list into a array of arrays and set the annotations */
+										parameterAnnotationsAttribute.setAnnotations(transformed
+												.map(argParameters -> argParameters.toJavaArray(Annotation.class))
+												.toJavaArray(Annotation[].class));
+
+									});
+
+						}
 
 						/* Get package name, response and request info with prefixes and suffixes */
 						String packageName = packageOpt.get();
@@ -112,9 +233,7 @@ public final class WsIOAuto {
 						if (validResponse || validRequest) {
 
 							try {
-								/* Define class file, class pool and attribute */
-								ClassFile ccFile = ctClass.getClassFile();
-								ConstPool constpool = ccFile.getConstPool();
+								/* Get annotations attribute */
 								AnnotationsAttribute attribute = Option.of(ctMethod.getMethodInfo()
 										.getAttribute(AnnotationsAttribute.visibleTag))
 										.filter(AnnotationsAttribute.class::isInstance)
@@ -214,6 +333,98 @@ public final class WsIOAuto {
 
 		/* Return current class by default */
 		return ctClass;
+
+	}
+
+	/**
+	 * Functional interface for string visitor only.
+	 */
+	@FunctionalInterface
+	private interface StringVisitor extends MemberValueVisitor {
+
+		/**
+		 * {@inheritDoc}
+		 */
+		default void visitAnnotationMemberValue(AnnotationMemberValue node) {
+
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		default void visitArrayMemberValue(ArrayMemberValue node) {
+
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		default void visitBooleanMemberValue(BooleanMemberValue node) {
+
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		default void visitByteMemberValue(ByteMemberValue node) {
+
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		default void visitCharMemberValue(CharMemberValue node) {
+
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		default void visitDoubleMemberValue(DoubleMemberValue node) {
+
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		default void visitEnumMemberValue(EnumMemberValue node) {
+
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		default void visitFloatMemberValue(FloatMemberValue node) {
+
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		default void visitIntegerMemberValue(IntegerMemberValue node) {
+
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		default void visitLongMemberValue(LongMemberValue node) {
+
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		default void visitShortMemberValue(ShortMemberValue node) {
+
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		default void visitClassMemberValue(ClassMemberValue node) {
+
+		}
 
 	}
 
