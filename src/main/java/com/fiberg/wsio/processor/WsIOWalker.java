@@ -4,13 +4,12 @@ import com.fiberg.wsio.annotation.*;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.*;
+import io.vavr.control.Option;
 import io.vavr.control.Try;
 import javassist.CtClass;
 import javassist.CtMethod;
-import org.apache.commons.lang3.ObjectUtils;
 
 import javax.jws.WebMethod;
-import javax.jws.WebService;
 import java.util.Objects;
 
 /**
@@ -24,105 +23,63 @@ public final class WsIOWalker {
 	private WsIOWalker() {  }
 
 	/**
-	 * Method that extracts the info of wrappers in the ct class list.
+	 * Method that finds the wrapper info of a set of type elements.
 	 *
-	 * @param ctClasses ct class list containing tuples with package ct and class ct
-	 * @return map containing the info of wrappers in ct classes
+	 * @param pool pool of classes to search
+	 * @param ctClasses list of ct classes
+	 * @return map identified by the element type containing wrapper annotations info of all elements
 	 */
 	public static Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>>
-	findWrapperRecursively(List<Tuple2<CtClass, CtClass>> ctClasses) {
+	findWrapperRecursively(Map<String, CtClass> pool, List<CtClass> ctClasses) {
 
-		/* Return the recursive call of the method, starting with package annotation */
-		return ctClasses.map(tuple -> findWrapperRecursively(tuple._2(),
-				WsIOAnnotation.ofNull(WsIOUtils.extractAnnotation(tuple._1(), WsIOMessageWrapper.class)),
-				WsIOUtils.extractAnnotation(tuple._1(), WsIOAnnotate.class)))
+		/* Return the map for each element and finally fold the results with an empty map */
+		return ctClasses.map(ctClass -> WsIOWalker.findWrapperRecursively(pool, ctClass))
 				.fold(HashMap.empty(), Map::merge);
 
 	}
 
 	/**
-	 * Method that extracts the info of wrappers in the ct class list.
+	 * Method that finds the wrapper info of a single type elements.
 	 *
-	 * @param ctClass ct class to recursively check
-	 * @param wrapper annotation of the class or package
-	 * @return map containing the info of wrappers in ct classes
+	 * @param pool pool of classes to search
+	 * @param ctClass type element
+	 * @return map identified by the element type containing wrapper annotations info of a single element
 	 */
 	private static Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>>
-	findWrapperRecursively(CtClass ctClass, WsIOAnnotation wrapper, WsIOAnnotate annotate) {
+	findWrapperRecursively(Map<String, CtClass> pool, CtClass ctClass) {
 
-		/* Get skip message wrapper annotation and skipped flag */
-		WsIOSkipMessageWrapper skipWrapper = WsIOUtils.extractAnnotation(ctClass, WsIOSkipMessageWrapper.class);
-		boolean skippedWrapper = Objects.nonNull(skipWrapper);
+		/* Check if the current class is null or not */
+		if (Objects.nonNull(ctClass)) {
 
-		/* Get skip annotate annotation and skipped flag */
-		WsIOSkipAnnotate skipAnnotate = WsIOUtils.extractAnnotation(ctClass, WsIOSkipAnnotate.class);
-		boolean skippedAnnotate = Objects.nonNull(skipAnnotate);
+			/* Stream of executable methods */
+			Stream<CtMethod> methods = Stream.of(ctClass.getMethods())
+					.filter(method -> !"<init>".equals(method.getName()))
+					.filter(method -> Try.success(WebMethod.class)
+							.mapTry(method::getAnnotation)
+							.isSuccess());
 
-		/* Check the skip and skip type */
-		if ((skippedWrapper && SkipType.ALL.equals(skipWrapper.skip()))
-				|| (skippedAnnotate && SkipType.ALL.equals(skipAnnotate.skip()))) {
+			/* Get current element info for every method */
+			Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> currentInfo = methods.flatMap(method -> {
 
-			/* All skipped return empty map */
-			return HashMap.empty();
+				/* Get simple name, long name, current descriptor and annotation option */
+				String methodName = method.getName();
+				String methodLongName = method.getLongName();
+				WsIODescriptor descriptor = WsIODescriptor.of(pool, method);
+				Option<WsIOAnnotation> messageWrapperOption = descriptor.getSingle(WsIOMessageWrapper.class)
+						.map(WsIOAnnotation::of);
 
-		} else {
-
-			/* Current annotation wrapper */
-			WsIOAnnotation annotationWrapper = WsIOAnnotation.ofNull(WsIOUtils.extractAnnotation(ctClass, WsIOMessageWrapper.class));
-			WsIOAnnotation actualWrapper = ObjectUtils.firstNonNull(annotationWrapper, wrapper);
-
-			/* Current annotation wrapper */
-			WsIOAnnotate annotationAnnotate = WsIOUtils.extractAnnotation(ctClass, WsIOAnnotate.class);
-			WsIOAnnotate actualAnnotate = ObjectUtils.firstNonNull(annotationAnnotate, annotate);
-
-			/* Service and enabled flags */
-			boolean service = Objects.nonNull(WsIOUtils.extractAnnotation(ctClass, WebService.class));
-			boolean enabledWrapper = Objects.nonNull(actualWrapper);
-			boolean enabledAnnotate = Objects.nonNull(actualAnnotate);
-
-			/* Map of wrappers and check condition for use as wrapper */
-			Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>> wrappers = HashMap.empty();
-			if (service
-					&& !(skippedWrapper && SkipType.CURRENT.equals(skipWrapper.skip()))
-					&& !(skippedAnnotate && SkipType.CURRENT.equals(skipAnnotate.skip()))) {
-
-				/* Get list of executables, with name different to <init>,
-				 * message wrapper and annotate not skipped,
-				 * and wrapper or annotate defined or enabled */
-				List<CtMethod> executables = Try.success(ctClass)
-						.mapTry(CtClass::getDeclaredMethods)
-						.toList()
-						.flatMap(Stream::of)
-						.filter(executable -> !"<init>".equals(executable.getName()))
-						.filter(executable -> Objects.isNull(WsIOUtils.extractAnnotation(executable,
-								WsIOSkipMessageWrapper.class)))
-						.filter(executable -> Objects.isNull(WsIOUtils.extractAnnotation(executable,
-								WsIOSkipAnnotate.class)))
-						.filter(executable -> enabledWrapper || Objects.nonNull(WsIOUtils.extractAnnotation(executable,
-								WsIOMessageWrapper.class)))
-						.filter(executable -> enabledAnnotate || Objects.nonNull(WsIOUtils.extractAnnotation(executable,
-								WsIOAnnotate.class)))
-						.filter(executable -> Objects.nonNull(WsIOUtils.extractAnnotation(executable,
-								WebMethod.class)));
-
-				/* Process each executable and add it to the map identified with ct class name */
-				wrappers = wrappers.put(ctClass.getName(), executables.toMap(CtMethod::getLongName, executable -> {
-
-					/* Current annotations */
-					WsIOAnnotation currentAnnotation = WsIOAnnotation
-							.ofNull(WsIOUtils.extractAnnotation(executable, WsIOMessageWrapper.class));
-					WsIOAnnotation annot = ObjectUtils.firstNonNull(currentAnnotation, actualWrapper);
+				/* Return the tuple of method name, and another tuple with method info and package name */
+				return messageWrapperOption.map(wrapper -> {
 
 					/* Method, class and package names */
-					String methodName = executable.getName();
 					String className = ctClass.getSimpleName();
 					String packageName = ctClass.getPackageName();
 
 					/* Obtain the package name */
 					String finalPackage = WsIOEngine.obtainPackage(methodName, className, packageName,
-							annot.getPackageName(), annot.getPackagePath(), annot.getPackagePrefix(),
-							annot.getPackageSuffix(), annot.getPackageStart(), annot.getPackageMiddle(),
-							annot.getPackageEnd(), annot.getPackageJs());
+							wrapper.getPackageName(), wrapper.getPackagePath(), wrapper.getPackagePrefix(),
+							wrapper.getPackageSuffix(), wrapper.getPackageStart(), wrapper.getPackageMiddle(),
+							wrapper.getPackageEnd(), wrapper.getPackageJs());
 
 					/* Map with the prefix and suffix for response and request wrappers */
 					Map<WsIOType, Tuple2<String, String>> messageMap = HashMap.of(
@@ -133,20 +90,27 @@ public final class WsIOWalker {
 					);
 
 					/* Return the package name and the prefixes and suffixes of response and requests */
-					return Tuple.of(finalPackage, messageMap);
+					return Tuple.of(methodLongName, Tuple.of(finalPackage, messageMap));
 
-				}));
+				});
 
-			}
+			}).toMap(tuple -> tuple);
 
-			/* Return the recursive call for each declared class of the class */
-			return Try.success(ctClass).mapTry(CtClass::getDeclaredClasses)
-					.toList()
-					.flatMap(Stream::of)
-					.filter(type -> !(skippedWrapper && SkipType.CHILDS.equals(skipWrapper.skip())))
-					.filter(type -> !(skippedAnnotate && SkipType.CHILDS.equals(skipAnnotate.skip())))
-					.map(next -> findWrapperRecursively(next, actualWrapper, actualAnnotate))
-					.fold(wrappers, Map::merge);
+			/* Create zero map with current element */
+			Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>> zeroMap =
+					HashMap.of(ctClass.getName(), currentInfo);
+
+			/* Call recursively this function with each declared class
+			 * and finally fold the results with zero map */
+			return Try.of(ctClass::getDeclaredClasses)
+					.toStream().flatMap(Stream::of)
+					.map(ct -> WsIOWalker.findWrapperRecursively(pool, ct))
+					.fold(zeroMap, Map::merge);
+
+		} else {
+
+			/* Return empty hashmap when element is null */
+			return HashMap.empty();
 
 		}
 

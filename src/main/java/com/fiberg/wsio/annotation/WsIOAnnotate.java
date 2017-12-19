@@ -15,5 +15,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.PACKAGE, ElementType.TYPE, ElementType.METHOD })
 public @interface WsIOAnnotate {
-	
+
+	/** Indicates that web param and web result will be renamed */
+	boolean rename() default true;
+
 }

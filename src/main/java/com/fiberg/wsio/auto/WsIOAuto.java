@@ -54,26 +54,9 @@ public final class WsIOAuto {
 						.getOrNull())
 				.filterValues(Objects::nonNull);
 
-		/* Get all package info of every package */
-		Map<String, CtClass> packages = ctClasses.values()
-				.map(CtClass::getPackageName)
-				.toSet()
-				.toMap(packageName -> packageName,
-						packageName -> Try.success(packageName)
-								.map(name -> WsIOUtil.addPrefixName("package-info", name))
-								.mapTry(pool::getCtClass)
-								.getOrNull())
-				.filterValues(Objects::nonNull);
-
-		/* Map with root class name and a tuple with package ct and the ct root class */
-		Map<String, Tuple2<CtClass, CtClass>> roots = ctClasses.values()
-				.map(WsIOAuto::extractRootCtClass)
-				.toMap(CtClass::getName,
-						ctClass -> Tuple.of(packages.get(ctClass.getPackageName()).getOrNull(), ctClass));
-
 		/* Get current wrappers of the class */
 		Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>> wrappers =
-				WsIOWalker.findWrapperRecursively(roots.values().toList());
+				WsIOWalker.findWrapperRecursively(ctClasses, ctClasses.values().toList());
 
 		/* Iterate for each wrapper class */
 		for (String className : wrappers.keySet()) {
