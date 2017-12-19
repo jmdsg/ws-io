@@ -7,6 +7,7 @@ import io.vavr.collection.*;
 import io.vavr.control.Option;
 import org.apache.commons.lang3.StringUtils;
 
+import javax.jws.WebMethod;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
@@ -51,7 +52,8 @@ class WsIOFinder {
 			Stream<ExecutableElement> executables = Stream.ofAll(element.getEnclosedElements())
 					.filter(ExecutableElement.class::isInstance)
 					.map(ExecutableElement.class::cast)
-					.filter(executable -> !"<init>".equals(executable.getSimpleName().toString()));
+					.filter(executable -> !"<init>".equals(executable.getSimpleName().toString()))
+					.filter(executable -> Objects.nonNull(executable.getAnnotation(WebMethod.class)));
 
 			/* Get current element info for every method */
 			Map<String, Tuple2<WsIOInfo, String>> currentInfo = executables.flatMap(executable -> {

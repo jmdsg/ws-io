@@ -1617,8 +1617,8 @@ class WsIOGenerator {
 	 * @param className class name of the class
 	 */
 	private void createJavaClass(TypeSpec typeSpec,
-	                            String packageName,
-	                            String className) {
+	                             String packageName,
+	                             String className) {
 
 		/* Check if non of the parameters is null */
 		if (Objects.nonNull(typeSpec)
@@ -1641,7 +1641,7 @@ class WsIOGenerator {
 			} catch (IOException e) {
 
 				/* Print the error when the class could not be generated */
-				WsIOHandler.error(messager, e, "Class could not be writed");
+				WsIOHandler.error(messager, e, "Class could not be written");
 
 			}
 

@@ -68,15 +68,18 @@ public class WsIOProcessor extends AbstractProcessor {
 
 		/* Find clone classes recursively */
 		Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneByGroup =
-				WsIOFinder.findCloneRecursively(rootTypeNotGeneratedElements);
+				WsIOFinder.findCloneRecursively(rootTypeNotGeneratedElements)
+						.filterValues(Set::nonEmpty);
 
 		/* Find wrapper classes recursively */
 		Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> wrapperByType =
-				WsIOFinder.findWrapperRecursively(rootTypeElements);
+				WsIOFinder.findWrapperRecursively(rootTypeElements)
+						.filterValues(Map::nonEmpty);
 
 		/* Find message of cloned classes from the current clone and message classes */
 		Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneMessageByGroup =
-				WsIOFinder.findCloneMessage(messageByType, cloneByGroup);
+				WsIOFinder.findCloneMessage(messageByType, cloneByGroup)
+						.filterValues(Set::nonEmpty);
 
 		/* Create the generator class */
 		WsIOGenerator generator = new WsIOGenerator(messager, filer);
