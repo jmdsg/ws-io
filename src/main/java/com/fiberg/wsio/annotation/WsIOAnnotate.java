@@ -17,6 +17,6 @@ import java.lang.annotation.Target;
 public @interface WsIOAnnotate {
 
 	/** Indicates that web param and web result will be renamed */
-	boolean rename() default true;
+	boolean nameSwap() default true;
 
 }

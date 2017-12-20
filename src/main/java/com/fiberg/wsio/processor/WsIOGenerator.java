@@ -1,5 +1,6 @@
 package com.fiberg.wsio.processor;
 
+import com.fiberg.wsio.annotation.WsIOAnnotate;
 import com.fiberg.wsio.annotation.WsIOUseHideEmpty;
 import com.fiberg.wsio.handler.state.*;
 import com.fiberg.wsio.handler.time.WsIOInstant;
@@ -876,6 +877,13 @@ class WsIOGenerator {
 						prefixWrapperName, suffixWrapperName, messageClasses, cloneClasses,
 						cloneMessageClasses, typeByName, generate);
 
+				/* Get annotate of the executable element */
+				boolean nameSwap = Option.of(executableElement)
+						.map(WsIODescriptor::of)
+						.flatMap(desc -> desc.getSingle(WsIOAnnotate.class))
+						.filter(WsIOAnnotate::nameSwap)
+						.isDefined();
+
 				/* Recursive full type name */
 				TypeName internalType = context.getRecursiveFullTypeName(mirror,
 						true, false, true);
@@ -884,14 +892,19 @@ class WsIOGenerator {
 				String lowerName = WordUtils.uncapitalize(name);
 				String upperName = WordUtils.capitalize(name);
 
+				/* Internal and external chars */
+				String internalChar = Option.when(!nameSwap, "_").getOrElse("");
+				String externalChar  = Option.when(nameSwap, "_").getOrElse("");
+
 				/* Internal and external getter and setter names */
-				String internalGetName = String.format("get%s_", upperName);
-				String internalSetName = String.format("set%s_", upperName);
-				String externalGetName = String.format("get%s", upperName);
-				String externalSetName = String.format("set%s", upperName);
+				String internalGetName = String.format("get%s%s", upperName, internalChar);
+				String internalSetName = String.format("set%s%s", upperName, internalChar);
+				String externalGetName = String.format("get%s%s", upperName, externalChar);
+				String externalSetName = String.format("set%s%s", upperName, externalChar);
 
 				/* Internal and external parameter names */
-				String internalParameterName = String.format("%s_", lowerName);
+				String internalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
+						String.format("%s_", lowerName) : lowerName;
 				String externalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
 						String.format("%s_", lowerName) : lowerName;
 
@@ -958,6 +971,11 @@ class WsIOGenerator {
 					DeclaredType declaredType = (DeclaredType) mirror;
 					TypeElement element = (TypeElement) declaredType.asElement();
 
+					/* Get hide empties from the type element */
+					boolean hideEmpties = Option.of(element)
+							.map(WsIODescriptor::of)
+							.flatMap(desc -> desc.getSingle(WsIOUseHideEmpty.class)).isDefined();
+
 					/* Generate the inheritance structure */
 					Map<WsIOLevel, Set<DeclaredType>> inheritance = resolveInheritance(element, context);
 
@@ -989,7 +1007,8 @@ class WsIOGenerator {
 									Tuple.of(propertyName,  Tuple.of(
 											String.format("%s_", propertyName),
 											String.format("%s_", propertyNames._1()),
-											String.format("%s_", propertyNames._2()))));
+											String.format("%s_", propertyNames._2()))))
+							.filter(tuple -> !nameSwap);
 
 					/* Getter annotations */
 					Map<String, List<AnnotationSpec>> getterAnnotations = propertyToProperties
@@ -1003,10 +1022,6 @@ class WsIOGenerator {
 							.filter(Traversable::nonEmpty)
 							.getOrElse(propertyToProperties.keySet())
 							.toList();
-
-					/* Get element descriptor and get use hide empties annotation */
-					WsIODescriptor desc = WsIODescriptor.of(element);
-					boolean hideEmpties = desc.getSingle(WsIOUseHideEmpty.class).isDefined();
 
 					/* Create the property methods */
 					List<MethodSpec> propertyMethods = properties.flatMap(tuple -> {
@@ -1054,7 +1069,7 @@ class WsIOGenerator {
 				} else {
 
 					/* Flag indicating if empty collections, maps and arrays should be hidden */
-					boolean hideEmpties = info.getWrappers().contains(WsIOWrapper.HIDE_EMPTY_WRAPPER);
+					boolean methodHideEmpties = info.getWrappers().contains(WsIOWrapper.HIDE_EMPTY_WRAPPER);
 
 					/* List with the internal get annotations */
 					List<AnnotationSpec> internalGetAnnotations = List.empty();
@@ -1064,7 +1079,7 @@ class WsIOGenerator {
 					/* Create internal get accessor and code block */
 					String internalGetAccessor = String.format("%s()", externalGetName);
 					CodeBlock internalGetBlock = WsIODelegator.generateRecursiveTransformToInternal(mirror,
-							internalType, context, internalGetAccessor, hideEmpties);
+							internalType, context, internalGetAccessor, methodHideEmpties);
 
 					/* Create the internal get method spec and add it to the methods set */
 					MethodSpec.Builder internalGetBuilder = MethodSpec.methodBuilder(internalGetName)
@@ -1094,7 +1109,7 @@ class WsIOGenerator {
 
 					/* Create external set block code */
 					CodeBlock internalSetBlock = WsIODelegator.generateRecursiveTransformToExternal(internalType,
-							mirror, context, internalParameterName, hideEmpties);
+							mirror, context, internalParameterName, methodHideEmpties);
 
 					/* Create parameter and method spec and add it to the methods */
 					ParameterSpec internalParameter = ParameterSpec.builder(internalType, internalParameterName).build();

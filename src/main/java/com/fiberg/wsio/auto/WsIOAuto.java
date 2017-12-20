@@ -98,7 +98,7 @@ public final class WsIOAuto {
 						Option<WsIOAnnotate> annotate = descriptor.getSingle(WsIOAnnotate.class);
 
 						/* Check if annotate is defined and rename is enabled */
-						if (annotate.isDefined() && annotate.get().rename()) {
+						if (annotate.isDefined() && annotate.get().nameSwap()) {
 
 							/* Get current method annotations atribute and execute when present */
 							Option.of(ctMethod.getMethodInfo())
