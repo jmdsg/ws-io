@@ -122,7 +122,7 @@ public final class WsIOAuto {
 														/* Get name or default, add the underscore and set the value */
 														String name = Option.of(stringMember.getValue())
 																.getOrElse(WsIOConstant.DEFAULT_RESULT);
-														stringMember.setValue(String.format("%s_", name));
+														stringMember.setValue(String.format("%s%s", name, WsIOConstant.SWAP_SEPARATOR));
 
 													});
 
@@ -131,8 +131,8 @@ public final class WsIOAuto {
 											/* Create the annotation, add the member name and add the annotation to attribute */
 											Annotation annotation = new Annotation(annotationName, constpool);
 											annotation.addMemberValue("name",
-													new StringMemberValue(String.format("%s_", WsIOConstant.DEFAULT_RESULT),
-															ccFile.getConstPool()));
+													new StringMemberValue(String.format("%s%s", WsIOConstant.DEFAULT_RESULT,
+															WsIOConstant.SWAP_SEPARATOR), ccFile.getConstPool()));
 											annotationsAttribute.addAnnotation(annotation);
 
 										}
@@ -177,7 +177,7 @@ public final class WsIOAuto {
 															/* Get name or default, add the underscore and set the value */
 															String name = Option.of(stringMember.getValue())
 																	.getOrElse(String.format("%s%d", WsIOConstant.DEFAULT_PARAMETER, index));
-															stringMember.setValue(String.format("%s_", name));
+															stringMember.setValue(String.format("%s%s", name, WsIOConstant.SWAP_SEPARATOR));
 
 														});
 
@@ -193,8 +193,8 @@ public final class WsIOAuto {
 												/* Create the annotation, add the member name and add the annotation to annotations list */
 												Annotation annotation = new Annotation(annotationName, constpool);
 												annotation.addMemberValue("name",
-														new StringMemberValue(String.format("%s%d_",
-																WsIOConstant.DEFAULT_PARAMETER, index), ccFile.getConstPool()));
+														new StringMemberValue(String.format("%s%d%s", WsIOConstant.DEFAULT_PARAMETER,
+																index, WsIOConstant.SWAP_SEPARATOR), ccFile.getConstPool()));
 												return argParameters.append(annotation);
 
 											}
