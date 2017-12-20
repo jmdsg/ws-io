@@ -42,4 +42,8 @@ public final class WsIOConstant {
 
 	public static final String DEFAULT_PARAMETER = "arg";
 
+	public static final String SWAP_SEPARATOR = "$";
+
+	public static final String NO_SWAP_SEPARATOR = "_";
+
 }

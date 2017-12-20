@@ -821,6 +821,14 @@ class WsIOGenerator {
 		/* Main executable element */
 		ExecutableElement executableElement = info.getExecutableElement();
 
+		/* Get annotate of the executable element and separator */
+		boolean nameSwap = Option.of(executableElement)
+				.map(WsIODescriptor::of)
+				.flatMap(desc -> desc.getSingle(WsIOAnnotate.class))
+				.filter(WsIOAnnotate::nameSwap)
+				.isDefined();
+		String separator = nameSwap ? WsIOConstant.SWAP_SEPARATOR : WsIOConstant.NO_SWAP_SEPARATOR;
+
 		/* Method and operation names */
 		String methodName = executableElement.getSimpleName().toString();
 		String operationName = info.getOperationName();
@@ -877,13 +885,6 @@ class WsIOGenerator {
 						prefixWrapperName, suffixWrapperName, messageClasses, cloneClasses,
 						cloneMessageClasses, typeByName, generate);
 
-				/* Get annotate of the executable element */
-				boolean nameSwap = Option.of(executableElement)
-						.map(WsIODescriptor::of)
-						.flatMap(desc -> desc.getSingle(WsIOAnnotate.class))
-						.filter(WsIOAnnotate::nameSwap)
-						.isDefined();
-
 				/* Recursive full type name */
 				TypeName internalType = context.getRecursiveFullTypeName(mirror,
 						true, false, true);
@@ -893,8 +894,8 @@ class WsIOGenerator {
 				String upperName = WordUtils.capitalize(name);
 
 				/* Internal and external chars */
-				String internalChar = Option.when(!nameSwap, "_").getOrElse("");
-				String externalChar  = Option.when(nameSwap, "_").getOrElse("");
+				String internalChar = Option.when(!nameSwap, separator).getOrElse("");
+				String externalChar  = Option.when(nameSwap, separator).getOrElse("");
 
 				/* Internal and external getter and setter names */
 				String internalGetName = String.format("get%s%s", upperName, internalChar);
@@ -904,13 +905,13 @@ class WsIOGenerator {
 
 				/* Internal and external parameter names */
 				String internalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
-						String.format("%s_", lowerName) : lowerName;
+						String.format("%s%s", lowerName, separator) : lowerName;
 				String externalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
-						String.format("%s_", lowerName) : lowerName;
+						String.format("%s%s", lowerName, separator) : lowerName;
 
 				/* Assign field name and add it to the fields */
 				String fieldName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
-						String.format("%s_", lowerName) : lowerName;
+						String.format("%s%s", lowerName, separator) : lowerName;
 				fieldNames = fieldNames.append(fieldName);
 
 				/* List with the external get annotations */
@@ -1005,9 +1006,9 @@ class WsIOGenerator {
 					Map<String, Tuple3<String, String, String>> propertyToFinals = propertyToProperties
 							.map((propertyName, propertyNames) ->
 									Tuple.of(propertyName,  Tuple.of(
-											String.format("%s_", propertyName),
-											String.format("%s_", propertyNames._1()),
-											String.format("%s_", propertyNames._2()))))
+											String.format("%s%s", propertyName, separator),
+											String.format("%s%s", propertyNames._1(), separator),
+											String.format("%s%s", propertyNames._2(), separator))))
 							.filter(tuple -> !nameSwap);
 
 					/* Getter annotations */
