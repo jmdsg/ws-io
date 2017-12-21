@@ -1644,8 +1644,10 @@ class WsIOGenerator {
 				boolean inClone = context.getCloneClasses().keySet().contains(name);
 
 				/* Check generate type and in message in clone */
-				if ((WsIOGenerate.MESSAGE.equals(context.getGenerate()) && inMessage)
-						|| (WsIOGenerate.CLONE_MESSAGE.equals(context.getGenerate()) && inMessage && inClone)) {
+				WsIOGenerate generate = context.getGenerate();
+				if ((WsIOGenerate.MESSAGE.equals(generate) && inMessage)
+						|| (WsIOGenerate.CLONE.equals(generate) && inClone)
+						|| (WsIOGenerate.CLONE_MESSAGE.equals(generate) && inMessage && inClone)) {
 
 					/* Check if is a class or interface */
 					if (isClass) {
