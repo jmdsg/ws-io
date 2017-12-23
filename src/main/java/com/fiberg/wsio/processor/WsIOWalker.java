@@ -144,6 +144,13 @@ public final class WsIOWalker {
 		final String currentClass = clazz.getSimpleName();
 		final String currentPackage = clazz.getPackage().getName();
 
+		/* Full class name */
+		final String currentFullClass = Stream.<Class<?>>iterate(clazz, Class::getDeclaringClass)
+				.takeWhile(Objects::nonNull)
+				.reverse()
+				.map(Class::getSimpleName)
+				.mkString();
+
 		/* Function to obtain the package name */
 		final Function2<String, WsIOAnnotation, String> getPackageName = (packagenName, annotation) ->
 				WsIOEngine.obtainPackage(StringUtils.EMPTY, currentClass, currentPackage,
@@ -154,9 +161,9 @@ public final class WsIOWalker {
 		/* Get the message names with the package generated and the response and request identifiers */
 		final Set<String> messageNames = messageOpt.map(getPackageName.apply(currentPackage)).toSet()
 				.flatMap(packageName -> Stream.of(
-						WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentClass,
+						WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentFullClass,
 								WsIOConstant.RESPONSE_PREFIX, WsIOConstant.RESPONSE_SUFFIX), packageName),
-						WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentClass,
+						WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentFullClass,
 								WsIOConstant.REQUEST_PREFIX, WsIOConstant.REQUEST_SUFFIX), packageName)));
 
 		/* Get the clone names with the package generated and the clone identifiers */
@@ -172,7 +179,7 @@ public final class WsIOWalker {
 					final String suffix = identifier._2();
 
 					/* Return the class name */
-					return WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentClass,
+					return WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentFullClass,
 							prefix, suffix), packageName);
 
 				}).toSet();
@@ -204,9 +211,9 @@ public final class WsIOWalker {
 
 					/* Return the names with the package generated and the clone, response and request identifiers */
 					return Stream.of(
-							WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentClass,
+							WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentFullClass,
 									prefixResponse, suffixResponse), finalPackage),
-							WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentClass,
+							WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentFullClass,
 									prefixRequest, suffixRequest), finalPackage));
 
 				}).toSet();
