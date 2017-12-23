@@ -3,7 +3,7 @@ package com.fiberg.wsio.processor;
 /**
  * Enum containing the possible stage of the generation.
  */
-enum WsIOGenerate {
+public enum WsIOGenerate {
 
 	/** Clone class */
 	CLONE,

@@ -1,6 +1,8 @@
 package com.fiberg.wsio.processor;
 
 import com.fiberg.wsio.annotation.*;
+import com.fiberg.wsio.util.WsIOUtil;
+import io.vavr.Function2;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.*;
@@ -8,6 +10,7 @@ import io.vavr.control.Option;
 import io.vavr.control.Try;
 import javassist.CtClass;
 import javassist.CtMethod;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.jws.WebMethod;
 import java.util.Objects;
@@ -25,12 +28,13 @@ public final class WsIOWalker {
 	/**
 	 * Method that finds the wrapper info of a set of type elements.
 	 *
-	 * @param pool pool of classes to search
+	 * @param pool      pool of classes to search
 	 * @param ctClasses list of ct classes
 	 * @return map identified by the element type containing wrapper annotations info of all elements
 	 */
 	public static Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>>
-	findWrapperRecursively(Map<String, CtClass> pool, List<CtClass> ctClasses) {
+	findWrapperRecursively(final Map<String, CtClass> pool,
+	                       final List<CtClass> ctClasses) {
 
 		/* Return the map for each element and finally fold the results with an empty map */
 		return ctClasses.map(ctClass -> WsIOWalker.findWrapperRecursively(pool, ctClass))
@@ -41,48 +45,49 @@ public final class WsIOWalker {
 	/**
 	 * Method that finds the wrapper info of a single type elements.
 	 *
-	 * @param pool pool of classes to search
+	 * @param pool    pool of classes to search
 	 * @param ctClass type element
 	 * @return map identified by the element type containing wrapper annotations info of a single element
 	 */
 	private static Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>>
-	findWrapperRecursively(Map<String, CtClass> pool, CtClass ctClass) {
+	findWrapperRecursively(final Map<String, CtClass> pool,
+	                       final CtClass ctClass) {
 
 		/* Check if the current class is null or not */
 		if (Objects.nonNull(ctClass)) {
 
 			/* Stream of executable methods */
-			Stream<CtMethod> methods = Stream.of(ctClass.getMethods())
+			final Stream<CtMethod> methods = Stream.of(ctClass.getMethods())
 					.filter(method -> !"<init>".equals(method.getName()))
 					.filter(method -> Try.success(WebMethod.class)
 							.mapTry(method::getAnnotation)
 							.isSuccess());
 
 			/* Get current element info for every method */
-			Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> currentInfo = methods.flatMap(method -> {
+			final Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> currentInfo = methods.flatMap(method -> {
 
 				/* Get simple name, long name, current descriptor and annotation option */
-				String methodName = method.getName();
-				String methodLongName = method.getLongName();
-				WsIODescriptor descriptor = WsIODescriptor.of(pool, method);
-				Option<WsIOAnnotation> messageWrapperOption = descriptor.getSingle(WsIOMessageWrapper.class)
+				final String methodName = method.getName();
+				final String methodLongName = method.getLongName();
+				final WsIODescriptor descriptor = WsIODescriptor.of(pool, method);
+				final Option<WsIOAnnotation> messageWrapperOption = descriptor.getSingle(WsIOMessageWrapper.class)
 						.map(WsIOAnnotation::of);
 
 				/* Return the tuple of method name, and another tuple with method info and package name */
 				return messageWrapperOption.map(wrapper -> {
 
 					/* Method, class and package names */
-					String className = ctClass.getSimpleName();
-					String packageName = ctClass.getPackageName();
+					final String className = ctClass.getSimpleName();
+					final String packageName = ctClass.getPackageName();
 
 					/* Obtain the package name */
-					String finalPackage = WsIOEngine.obtainPackage(methodName, className, packageName,
+					final String finalPackage = WsIOEngine.obtainPackage(methodName, className, packageName,
 							wrapper.getPackageName(), wrapper.getPackagePath(), wrapper.getPackagePrefix(),
 							wrapper.getPackageSuffix(), wrapper.getPackageStart(), wrapper.getPackageMiddle(),
 							wrapper.getPackageEnd(), wrapper.getPackageJs());
 
 					/* Map with the prefix and suffix for response and request wrappers */
-					Map<WsIOType, Tuple2<String, String>> messageMap = HashMap.of(
+					final Map<WsIOType, Tuple2<String, String>> messageMap = HashMap.of(
 							WsIOType.RESPONSE, Tuple.of(WsIOConstant.RESPONSE_WRAPPER_PREFIX,
 									WsIOConstant.RESPONSE_WRAPPER_SUFFIX),
 							WsIOType.REQUEST, Tuple.of(WsIOConstant.REQUEST_WRAPPER_PREFIX,
@@ -97,7 +102,7 @@ public final class WsIOWalker {
 			}).toMap(tuple -> tuple);
 
 			/* Create zero map with current element */
-			Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>> zeroMap =
+			final Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>> zeroMap =
 					HashMap.of(ctClass.getName(), currentInfo);
 
 			/* Call recursively this function with each declared class
@@ -113,6 +118,104 @@ public final class WsIOWalker {
 			return HashMap.empty();
 
 		}
+
+	}
+
+	/**
+	 * Method that gets all the related names of a class.
+	 *
+	 * @param clazz class to extract the names
+	 * @return the message, clone and clone message names
+	 */
+	public static Map<WsIOGenerate, Set<String>> getGeneratedNames(final Class<?> clazz) {
+
+		/* Get the descriptor of the class */
+		final WsIODescriptor descriptor = WsIODescriptor.of(clazz);
+
+		/* Get the message annotation option */
+		final Option<WsIOAnnotation> messageOpt = descriptor.getSingle(WsIOMessage.class)
+				.map(WsIOAnnotation::of);
+
+		/* Get the clone map */
+		final Map<Tuple2<String, String>, WsIOAnnotation> cloneMap = descriptor.getMultiple(WsIOClone.class)
+				.map((key, clone) -> Tuple.of(Tuple.of(clone.prefix(), clone.suffix()), WsIOAnnotation.of(clone)));
+
+		/* Class and package names */
+		final String currentClass = clazz.getSimpleName();
+		final String currentPackage = clazz.getPackage().getName();
+
+		/* Function to obtain the package name */
+		final Function2<String, WsIOAnnotation, String> getPackageName = (packagenName, annotation) ->
+				WsIOEngine.obtainPackage(StringUtils.EMPTY, currentClass, currentPackage,
+				annotation.getPackageName(), annotation.getPackagePath(), annotation.getPackagePrefix(),
+				annotation.getPackageSuffix(), annotation.getPackageStart(), annotation.getPackageMiddle(),
+				annotation.getPackageEnd(), annotation.getPackageJs());
+
+		/* Get the message names with the package generated and the response and request identifiers */
+		final Set<String> messageNames = messageOpt.map(getPackageName.apply(currentPackage)).toSet()
+				.flatMap(packageName -> Stream.of(
+						WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentClass,
+								WsIOConstant.RESPONSE_PREFIX, WsIOConstant.RESPONSE_SUFFIX), packageName),
+						WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentClass,
+								WsIOConstant.REQUEST_PREFIX, WsIOConstant.REQUEST_SUFFIX), packageName)));
+
+		/* Get the clone names with the package generated and the clone identifiers */
+		final Set<String> cloneNames = cloneMap.mapValues(getPackageName.apply(currentPackage))
+				.map(tuple -> {
+
+					/* Get identifier and package name */
+					final Tuple2<String, String> identifier = tuple._1();
+					final String packageName = tuple._2();
+
+					/* Get clone prefix and suffix */
+					final String prefix = identifier._1();
+					final String suffix = identifier._2();
+
+					/* Return the class name */
+					return WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentClass,
+							prefix, suffix), packageName);
+
+				}).toSet();
+
+		/* Get the clone message names with the package generated and the clone, response and request identifiers */
+		final Set<String> cloneMessageNames = cloneMap.mapValues(getPackageName.apply(currentPackage))
+				.flatMap(tuple -> messageOpt.map(annotation -> Tuple.of(tuple._1(), tuple._2(), annotation)))
+				.flatMap(tuple -> {
+
+					/* Get identifier, package name and message annotation */
+					final Tuple2<String, String> identifier = tuple._1();
+					final String packageName = tuple._2();
+					final WsIOAnnotation annotation = tuple._3();
+
+					/* Get clone prefix and suffix */
+					final String prefixClass = identifier._1();
+					final String suffixClass = identifier._2();
+
+					/* Get the prefix and suffix response names */
+					final String prefixResponse = WsIOConstant.RESPONSE_PREFIX + prefixClass;
+					final String suffixResponse = suffixClass + WsIOConstant.RESPONSE_SUFFIX;
+
+					/* Get the prefix and suffix request names */
+					final String prefixRequest = WsIOConstant.REQUEST_PREFIX + prefixClass;
+					final String suffixRequest = suffixClass + WsIOConstant.REQUEST_SUFFIX;
+
+					/* Create the final package name */
+					final String finalPackage = getPackageName.apply(packageName, annotation);
+
+					/* Return the names with the package generated and the clone, response and request identifiers */
+					return Stream.of(
+							WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentClass,
+									prefixResponse, suffixResponse), finalPackage),
+							WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentClass,
+									prefixRequest, suffixRequest), finalPackage));
+
+				}).toSet();
+
+		/* Return the map with message, clone and clone message names */
+		return HashMap.of(
+				WsIOGenerate.MESSAGE, messageNames,
+				WsIOGenerate.CLONE, cloneNames,
+				WsIOGenerate.CLONE_MESSAGE, cloneMessageNames);
 
 	}
 
