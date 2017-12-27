@@ -187,18 +187,24 @@ public final class WsIOInterceptor {
 					};
 
 					/* Set default languages to successfuls, failures and warnings */
-					State.getSuccessfuls().forEach(successful -> {
-						setDefaultLanguage.accept(successful, WsIOElement::getMessage);
-						setDefaultLanguage.accept(successful, WsIOElement::getDescription);
-					});
-					State.getFailures().forEach(failure -> {
-						setDefaultLanguage.accept(failure, WsIOElement::getMessage);
-						setDefaultLanguage.accept(failure, WsIOElement::getDescription);
-					});
-					State.getWarnings().forEach(warning -> {
-						setDefaultLanguage.accept(warning, WsIOElement::getMessage);
-						setDefaultLanguage.accept(warning, WsIOElement::getDescription);
-					});
+					if (Objects.nonNull(State.getSuccessfuls())) {
+						State.getSuccessfuls().forEach(successful -> {
+							setDefaultLanguage.accept(successful, WsIOElement::getMessage);
+							setDefaultLanguage.accept(successful, WsIOElement::getDescription);
+						});
+					}
+					if (Objects.nonNull(State.getFailures())) {
+						State.getFailures().forEach(failure -> {
+							setDefaultLanguage.accept(failure, WsIOElement::getMessage);
+							setDefaultLanguage.accept(failure, WsIOElement::getDescription);
+						});
+					}
+					if (Objects.nonNull(State.getWarnings())) {
+						State.getWarnings().forEach(warning -> {
+							setDefaultLanguage.accept(warning, WsIOElement::getMessage);
+							setDefaultLanguage.accept(warning, WsIOElement::getDescription);
+						});
+					}
 
 					/* Set state shows for successfuls, failures and warnings */
 					if (Objects.isNull(State.getShowSuccessfuls())) {
