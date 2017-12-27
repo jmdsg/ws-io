@@ -151,9 +151,6 @@ public class WsIOHandler {
 				stateWrapper.setShowSuccessfuls(showSuccessfuls.get());
 				stateWrapper.setShowFailures(showFailures.get());
 				stateWrapper.setShowWarnings(showWarnings.get());
-
-				State.addSuccessfulId("Fiberg");
-
 			}
 		}
 
