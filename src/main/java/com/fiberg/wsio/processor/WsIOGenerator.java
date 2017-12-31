@@ -340,9 +340,7 @@ class WsIOGenerator {
 					.mapValues(map -> map.getOrElse(WsIOProperty.GETTER, HashMap.empty()));
 
 			/* List with all internal fields */
-			List<FieldSpec> fields = inheritance.filterKeys(level -> WsIOLevel.LOCAL.equals(level)
-					|| WsIOLevel.INTERFACE_EXTERNAL.equals(level)
-					|| WsIOLevel.CLASS_EXTERNAL.equals(level))
+			List<FieldSpec> fields = inheritance.filterKeys(level -> WsIOLevel.LOCAL.equals(level))
 					.values()
 					.flatMap(e -> e)
 					.map(declaredType -> FieldSpec.builder(TypeName.get(declaredType),
@@ -414,9 +412,7 @@ class WsIOGenerator {
 					.toList();
 
 			/* List with all internal fields */
-			List<FieldSpec> fields = inheritance.filterKeys(level -> WsIOLevel.LOCAL.equals(level)
-					|| WsIOLevel.INTERFACE_EXTERNAL.equals(level)
-					|| WsIOLevel.CLASS_EXTERNAL.equals(level))
+			List<FieldSpec> fields = inheritance.filterKeys(level -> WsIOLevel.LOCAL.equals(level))
 					.values()
 					.flatMap(e -> e)
 					.map(declaredType -> FieldSpec.builder(TypeName.get(declaredType),
