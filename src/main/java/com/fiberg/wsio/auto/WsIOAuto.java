@@ -126,6 +126,10 @@ public final class WsIOAuto {
 
 													});
 
+											/* Remove the annotation and add it again */
+											annotationsAttribute.removeAnnotation(annotationName);
+											annotationsAttribute.addAnnotation(annotationOpt.get());
+
 										} else {
 
 											/* Create the annotation, add the member name and add the annotation to attribute */
