@@ -11,10 +11,10 @@ import java.lang.annotation.*;
 public @interface WsIOSkipClone {
 
 	/** Prefix name of the cloned class */
-	String prefix();
+	String prefix() default "";
 
 	/** Suffix name of the cloned class */
-	String suffix();
+	String suffix() default "";
 
 	/** Indicates the elements to be skipped */
 	SkipType skip() default SkipType.ALL;
