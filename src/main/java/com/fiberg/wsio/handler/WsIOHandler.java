@@ -410,28 +410,28 @@ public class WsIOHandler {
 		                                   WsIOText message,
 		                                   WsIOText description,
 		                                   String type) {
-			return addSuccessful(WsIOElement.of(identifier, message, description, type));
+			return addFailure(WsIOElement.of(identifier, message, description, type));
 		}
 
 		public static boolean removeFailureOf(String identifier,
 		                                      WsIOText message,
 		                                      WsIOText description,
 		                                      String type) {
-			return removeSuccessful(WsIOElement.of(identifier, message, description, type));
+			return removeFailure(WsIOElement.of(identifier, message, description, type));
 		}
 
 		public static boolean addWarningOf(String identifier,
 		                                   WsIOText message,
 		                                   WsIOText description,
 		                                   String type) {
-			return addSuccessful(WsIOElement.of(identifier, message, description, type));
+			return addWarning(WsIOElement.of(identifier, message, description, type));
 		}
 
 		public static boolean removeWarningOf(String identifier,
 		                                      WsIOText message,
 		                                      WsIOText description,
 		                                      String type) {
-			return removeSuccessful(WsIOElement.of(identifier, message, description, type));
+			return removeWarning(WsIOElement.of(identifier, message, description, type));
 		}
 
 		public static boolean addSuccessfulId(String identifier) {
@@ -443,19 +443,19 @@ public class WsIOHandler {
 		}
 
 		public static boolean addFailureId(String identifier) {
-			return addSuccessful(WsIOElement.id(identifier));
+			return addFailure(WsIOElement.id(identifier));
 		}
 
 		public static boolean removeFailureId(String identifier) {
-			return removeSuccessful(WsIOElement.id(identifier));
+			return removeFailure(WsIOElement.id(identifier));
 		}
 
 		public static boolean addWarningId(String identifier) {
-			return addSuccessful(WsIOElement.id(identifier));
+			return addWarning(WsIOElement.id(identifier));
 		}
 
 		public static boolean removeWarningId(String identifier) {
-			return removeSuccessful(WsIOElement.id(identifier));
+			return removeWarning(WsIOElement.id(identifier));
 		}
 
 		public static boolean addSuccessfulMessage(WsIOText message) {
@@ -467,19 +467,19 @@ public class WsIOHandler {
 		}
 
 		public static boolean addFailureMessage(WsIOText message) {
-			return addSuccessful(WsIOElement.message(message));
+			return addFailure(WsIOElement.message(message));
 		}
 
 		public static boolean removeFailureMessage(WsIOText message) {
-			return removeSuccessful(WsIOElement.message(message));
+			return removeFailure(WsIOElement.message(message));
 		}
 
 		public static boolean addWarningMessage(WsIOText message) {
-			return addSuccessful(WsIOElement.message(message));
+			return addWarning(WsIOElement.message(message));
 		}
 
 		public static boolean removeWarningMessage(WsIOText message) {
-			return removeSuccessful(WsIOElement.message(message));
+			return removeWarning(WsIOElement.message(message));
 		}
 
 		public static boolean addSuccessfulDescription(WsIOText description) {
@@ -491,19 +491,19 @@ public class WsIOHandler {
 		}
 
 		public static boolean addFailureDescription(WsIOText description) {
-			return addSuccessful(WsIOElement.description(description));
+			return addFailure(WsIOElement.description(description));
 		}
 
 		public static boolean removeFailureDescription(WsIOText description) {
-			return removeSuccessful(WsIOElement.description(description));
+			return removeFailure(WsIOElement.description(description));
 		}
 
 		public static boolean addWarningDescription(WsIOText description) {
-			return addSuccessful(WsIOElement.description(description));
+			return addWarning(WsIOElement.description(description));
 		}
 
 		public static boolean removeWarningDescription(WsIOText description) {
-			return removeSuccessful(WsIOElement.description(description));
+			return removeWarning(WsIOElement.description(description));
 		}
 
 		public static boolean addSuccessfulType(String type) {
@@ -515,19 +515,19 @@ public class WsIOHandler {
 		}
 
 		public static boolean addFailureType(String type) {
-			return addSuccessful(WsIOElement.type(type));
+			return addFailure(WsIOElement.type(type));
 		}
 
 		public static boolean removeFailureType(String type) {
-			return removeSuccessful(WsIOElement.type(type));
+			return removeFailure(WsIOElement.type(type));
 		}
 
 		public static boolean addWarningType(String type) {
-			return addSuccessful(WsIOElement.type(type));
+			return addWarning(WsIOElement.type(type));
 		}
 
 		public static boolean removeWarningType(String type) {
-			return removeSuccessful(WsIOElement.type(type));
+			return removeWarning(WsIOElement.type(type));
 		}
 
 		public static boolean addSuccessfulMessageOf(WsIOLanguage language, String message) {
@@ -539,19 +539,19 @@ public class WsIOHandler {
 		}
 
 		public static boolean addFailureMessageOf(WsIOLanguage language, String message) {
-			return addSuccessful(WsIOElement.messageOf(language, message));
+			return addFailure(WsIOElement.messageOf(language, message));
 		}
 
 		public static boolean removeFailureMessageOf(WsIOLanguage language, String message) {
-			return removeSuccessful(WsIOElement.messageOf(language, message));
+			return removeFailure(WsIOElement.messageOf(language, message));
 		}
 
 		public static boolean addWarningMessageOf(WsIOLanguage language, String message) {
-			return addSuccessful(WsIOElement.messageOf(language, message));
+			return addWarning(WsIOElement.messageOf(language, message));
 		}
 
 		public static boolean removeWarningMessageOf(WsIOLanguage language, String message) {
-			return removeSuccessful(WsIOElement.messageOf(language, message));
+			return removeWarning(WsIOElement.messageOf(language, message));
 		}
 
 		public static boolean addSuccessfulDescriptionOf(WsIOLanguage language, String description) {
@@ -563,19 +563,19 @@ public class WsIOHandler {
 		}
 
 		public static boolean addFailureDescriptionOf(WsIOLanguage language, String description) {
-			return addSuccessful(WsIOElement.descriptionOf(language, description));
+			return addFailure(WsIOElement.descriptionOf(language, description));
 		}
 
 		public static boolean removeFailureDescriptionOf(WsIOLanguage language, String description) {
-			return removeSuccessful(WsIOElement.descriptionOf(language, description));
+			return removeFailure(WsIOElement.descriptionOf(language, description));
 		}
 
 		public static boolean addWarningDescriptionOf(WsIOLanguage language, String description) {
-			return addSuccessful(WsIOElement.descriptionOf(language, description));
+			return addWarning(WsIOElement.descriptionOf(language, description));
 		}
 
 		public static boolean removeWarningDescriptionOf(WsIOLanguage language, String description) {
-			return removeSuccessful(WsIOElement.descriptionOf(language, description));
+			return removeWarning(WsIOElement.descriptionOf(language, description));
 		}
 
 		public static boolean addSuccessfulMessageDef(String message) {
@@ -587,19 +587,19 @@ public class WsIOHandler {
 		}
 
 		public static boolean addFailureMessageDef(String message) {
-			return addSuccessful(WsIOElement.messageDef(message));
+			return addFailure(WsIOElement.messageDef(message));
 		}
 
 		public static boolean removeFailureMessageDef(String message) {
-			return removeSuccessful(WsIOElement.messageDef(message));
+			return removeFailure(WsIOElement.messageDef(message));
 		}
 
 		public static boolean addWarningMessageDef(String message) {
-			return addSuccessful(WsIOElement.messageDef(message));
+			return addWarning(WsIOElement.messageDef(message));
 		}
 
 		public static boolean removeWarningMessageDef(String message) {
-			return removeSuccessful(WsIOElement.messageDef(message));
+			return removeWarning(WsIOElement.messageDef(message));
 		}
 
 		public static boolean addSuccessfulDescriptionDef(String description) {
@@ -611,19 +611,19 @@ public class WsIOHandler {
 		}
 
 		public static boolean addFailureDescriptionDef(String description) {
-			return addSuccessful(WsIOElement.descriptionDef(description));
+			return addFailure(WsIOElement.descriptionDef(description));
 		}
 
 		public static boolean removeFailureDescriptionDef(String description) {
-			return removeSuccessful(WsIOElement.descriptionDef(description));
+			return removeFailure(WsIOElement.descriptionDef(description));
 		}
 
 		public static boolean addWarningDescriptionDef(String description) {
-			return addSuccessful(WsIOElement.descriptionDef(description));
+			return addWarning(WsIOElement.descriptionDef(description));
 		}
 
 		public static boolean removeWarningDescriptionDef(String description) {
-			return removeSuccessful(WsIOElement.descriptionDef(description));
+			return removeWarning(WsIOElement.descriptionDef(description));
 		}
 
 		public static boolean addSuccessfulMessageNolang(String message) {
@@ -635,19 +635,19 @@ public class WsIOHandler {
 		}
 
 		public static boolean addFailureMessageNolang(String message) {
-			return addSuccessful(WsIOElement.messageNolang(message));
+			return addFailure(WsIOElement.messageNolang(message));
 		}
 
 		public static boolean removeFailureMessageNolang(String message) {
-			return removeSuccessful(WsIOElement.messageNolang(message));
+			return removeFailure(WsIOElement.messageNolang(message));
 		}
 
 		public static boolean addWarningMessageNolang(String message) {
-			return addSuccessful(WsIOElement.messageNolang(message));
+			return addWarning(WsIOElement.messageNolang(message));
 		}
 
 		public static boolean removeWarningMessageNolang(String message) {
-			return removeSuccessful(WsIOElement.messageNolang(message));
+			return removeWarning(WsIOElement.messageNolang(message));
 		}
 
 		public static boolean addSuccessfulDescriptionNolang(String description) {
@@ -659,19 +659,19 @@ public class WsIOHandler {
 		}
 
 		public static boolean addFailureDescriptionNolang(String description) {
-			return addSuccessful(WsIOElement.descriptionNolang(description));
+			return addFailure(WsIOElement.descriptionNolang(description));
 		}
 
 		public static boolean removeFailureDescriptionNolang(String description) {
-			return removeSuccessful(WsIOElement.descriptionNolang(description));
+			return removeFailure(WsIOElement.descriptionNolang(description));
 		}
 
 		public static boolean addWarningDescriptionNolang(String description) {
-			return addSuccessful(WsIOElement.descriptionNolang(description));
+			return addWarning(WsIOElement.descriptionNolang(description));
 		}
 
 		public static boolean removeWarningDescriptionNolang(String description) {
-			return removeSuccessful(WsIOElement.descriptionNolang(description));
+			return removeWarning(WsIOElement.descriptionNolang(description));
 		}
 
 		public static boolean addSuccessfulBasic(String identifier,
@@ -686,22 +686,22 @@ public class WsIOHandler {
 
 		public static boolean addFailureBasic(String identifier,
 		                                      WsIOText message) {
-			return addSuccessful(WsIOElement.basic(identifier, message));
+			return addFailure(WsIOElement.basic(identifier, message));
 		}
 
 		public static boolean removeFailureBasic(String identifier,
 		                                         WsIOText message) {
-			return removeSuccessful(WsIOElement.basic(identifier, message));
+			return removeFailure(WsIOElement.basic(identifier, message));
 		}
 
 		public static boolean addWarningBasic(String identifier,
 		                                      WsIOText message) {
-			return addSuccessful(WsIOElement.basic(identifier, message));
+			return addWarning(WsIOElement.basic(identifier, message));
 		}
 
 		public static boolean removeWarningBasic(String identifier,
 		                                         WsIOText message) {
-			return removeSuccessful(WsIOElement.basic(identifier, message));
+			return removeWarning(WsIOElement.basic(identifier, message));
 		}
 
 		public static boolean addSuccessfulSimple(WsIOText message,
@@ -716,22 +716,22 @@ public class WsIOHandler {
 
 		public static boolean addFailureSimple(WsIOText message,
 		                                       String type) {
-			return addSuccessful(WsIOElement.simple(message, type));
+			return addFailure(WsIOElement.simple(message, type));
 		}
 
 		public static boolean removeFailureSimple(WsIOText message,
 		                                          String type) {
-			return removeSuccessful(WsIOElement.simple(message, type));
+			return removeFailure(WsIOElement.simple(message, type));
 		}
 
 		public static boolean addWarningSimple(WsIOText message,
 		                                       String type) {
-			return addSuccessful(WsIOElement.simple(message, type));
+			return addWarning(WsIOElement.simple(message, type));
 		}
 
 		public static boolean removeWarningSimple(WsIOText message,
 		                                          String type) {
-			return removeSuccessful(WsIOElement.simple(message, type));
+			return removeWarning(WsIOElement.simple(message, type));
 		}
 
 		public static boolean addSuccessfulText(WsIOText message,
@@ -746,22 +746,22 @@ public class WsIOHandler {
 
 		public static boolean addFailureText(WsIOText message,
 		                                     WsIOText description) {
-			return addSuccessful(WsIOElement.text(message, description));
+			return addFailure(WsIOElement.text(message, description));
 		}
 
 		public static boolean removeFailureText(WsIOText message,
 		                                        WsIOText description) {
-			return removeSuccessful(WsIOElement.text(message, description));
+			return removeFailure(WsIOElement.text(message, description));
 		}
 
 		public static boolean addWarningText(WsIOText message,
 		                                     WsIOText description) {
-			return addSuccessful(WsIOElement.text(message, description));
+			return addWarning(WsIOElement.text(message, description));
 		}
 
 		public static boolean removeWarningText(WsIOText message,
 		                                        WsIOText description) {
-			return removeSuccessful(WsIOElement.text(message, description));
+			return removeWarning(WsIOElement.text(message, description));
 		}
 
 		public static boolean addSuccessfulTyped(String identifier,
@@ -776,22 +776,22 @@ public class WsIOHandler {
 
 		public static boolean addFailureTyped(String identifier,
 		                                      String type) {
-			return addSuccessful(WsIOElement.typed(identifier, type));
+			return addFailure(WsIOElement.typed(identifier, type));
 		}
 
 		public static boolean removeFailureTyped(String identifier,
 		                                         String type) {
-			return removeSuccessful(WsIOElement.typed(identifier, type));
+			return removeFailure(WsIOElement.typed(identifier, type));
 		}
 
 		public static boolean addWarningTyped(String identifier,
 		                                      String type) {
-			return addSuccessful(WsIOElement.typed(identifier, type));
+			return addWarning(WsIOElement.typed(identifier, type));
 		}
 
 		public static boolean removeWarningTyped(String identifier,
 		                                         String type) {
-			return removeSuccessful(WsIOElement.typed(identifier, type));
+			return removeWarning(WsIOElement.typed(identifier, type));
 		}
 
 		public static boolean addSuccessfulNotype(String identifier,
@@ -809,25 +809,25 @@ public class WsIOHandler {
 		public static boolean addFailureNotype(String identifier,
 		                                       WsIOText message,
 		                                       WsIOText description) {
-			return addSuccessful(WsIOElement.notype(identifier, message, description));
+			return addFailure(WsIOElement.notype(identifier, message, description));
 		}
 
 		public static boolean removeFailureNotype(String identifier,
 		                                          WsIOText message,
 		                                          WsIOText description) {
-			return removeSuccessful(WsIOElement.notype(identifier, message, description));
+			return removeFailure(WsIOElement.notype(identifier, message, description));
 		}
 
 		public static boolean addWarningNotype(String identifier,
 		                                       WsIOText message,
 		                                       WsIOText description) {
-			return addSuccessful(WsIOElement.notype(identifier, message, description));
+			return addWarning(WsIOElement.notype(identifier, message, description));
 		}
 
 		public static boolean removeWarningNotype(String identifier,
 		                                          WsIOText message,
 		                                          WsIOText description) {
-			return removeSuccessful(WsIOElement.notype(identifier, message, description));
+			return removeWarning(WsIOElement.notype(identifier, message, description));
 		}
 
 		public static boolean addSuccessfulNodesc(String identifier,
@@ -845,25 +845,25 @@ public class WsIOHandler {
 		public static boolean addFailureNodesc(String identifier,
 		                                       WsIOText message,
 		                                       String type) {
-			return addSuccessful(WsIOElement.nodesc(identifier, message, type));
+			return addFailure(WsIOElement.nodesc(identifier, message, type));
 		}
 
 		public static boolean removeFailureNodesc(String identifier,
 		                                          WsIOText message,
 		                                          String type) {
-			return removeSuccessful(WsIOElement.nodesc(identifier, message, type));
+			return removeFailure(WsIOElement.nodesc(identifier, message, type));
 		}
 
 		public static boolean addWarningNodesc(String identifier,
 		                                       WsIOText message,
 		                                       String type) {
-			return addSuccessful(WsIOElement.nodesc(identifier, message, type));
+			return addWarning(WsIOElement.nodesc(identifier, message, type));
 		}
 
 		public static boolean removeWarningNodesc(String identifier,
 		                                          WsIOText message,
 		                                          String type) {
-			return removeSuccessful(WsIOElement.nodesc(identifier, message, type));
+			return removeWarning(WsIOElement.nodesc(identifier, message, type));
 		}
 
 		public static boolean addSuccessfulNoid(WsIOText message,
@@ -881,25 +881,25 @@ public class WsIOHandler {
 		public static boolean addFailureNoid(WsIOText message,
 		                                     WsIOText description,
 		                                     String type) {
-			return addSuccessful(WsIOElement.noid(message, description, type));
+			return addFailure(WsIOElement.noid(message, description, type));
 		}
 
 		public static boolean removeFailureNoid(WsIOText message,
 		                                        WsIOText description,
 		                                        String type) {
-			return removeSuccessful(WsIOElement.noid(message, description, type));
+			return removeFailure(WsIOElement.noid(message, description, type));
 		}
 
 		public static boolean addWarningNoid(WsIOText message,
 		                                     WsIOText description,
 		                                     String type) {
-			return addSuccessful(WsIOElement.noid(message, description, type));
+			return addWarning(WsIOElement.noid(message, description, type));
 		}
 
 		public static boolean removeWarningNoid(WsIOText message,
 		                                        WsIOText description,
 		                                        String type) {
-			return removeSuccessful(WsIOElement.noid(message, description, type));
+			return removeWarning(WsIOElement.noid(message, description, type));
 		}
 
 		public static boolean addSuccessfulBasicOf(String identifier,
@@ -917,25 +917,25 @@ public class WsIOHandler {
 		public static boolean addFailureBasicOf(String identifier,
 		                                        WsIOLanguage language,
 		                                        String message) {
-			return addSuccessful(WsIOElement.basicOf(identifier, language, message));
+			return addFailure(WsIOElement.basicOf(identifier, language, message));
 		}
 
 		public static boolean removeFailureBasicOf(String identifier,
 		                                           WsIOLanguage language,
 		                                           String message) {
-			return removeSuccessful(WsIOElement.basicOf(identifier, language, message));
+			return removeFailure(WsIOElement.basicOf(identifier, language, message));
 		}
 
 		public static boolean addWarningBasicOf(String identifier,
 		                                        WsIOLanguage language,
 		                                        String message) {
-			return addSuccessful(WsIOElement.basicOf(identifier, language, message));
+			return addWarning(WsIOElement.basicOf(identifier, language, message));
 		}
 
 		public static boolean removeWarningBasicOf(String identifier,
 		                                           WsIOLanguage language,
 		                                           String message) {
-			return removeSuccessful(WsIOElement.basicOf(identifier, language, message));
+			return removeWarning(WsIOElement.basicOf(identifier, language, message));
 		}
 
 		public static boolean addSuccessfulSimpleOf(WsIOLanguage language,
@@ -953,25 +953,25 @@ public class WsIOHandler {
 		public static boolean addFailureSimpleOf(WsIOLanguage language,
 		                                         String message,
 		                                         String type) {
-			return addSuccessful(WsIOElement.simpleOf(language, message, type));
+			return addFailure(WsIOElement.simpleOf(language, message, type));
 		}
 
 		public static boolean removeFailureSimpleOf(WsIOLanguage language,
 		                                            String message,
 		                                            String type) {
-			return removeSuccessful(WsIOElement.simpleOf(language, message, type));
+			return removeFailure(WsIOElement.simpleOf(language, message, type));
 		}
 
 		public static boolean addWarningSimpleOf(WsIOLanguage language,
 		                                         String message,
 		                                         String type) {
-			return addSuccessful(WsIOElement.simpleOf(language, message, type));
+			return addWarning(WsIOElement.simpleOf(language, message, type));
 		}
 
 		public static boolean removeWarningSimpleOf(WsIOLanguage language,
 		                                            String message,
 		                                            String type) {
-			return removeSuccessful(WsIOElement.simpleOf(language, message, type));
+			return removeWarning(WsIOElement.simpleOf(language, message, type));
 		}
 
 		public static boolean addSuccessfulTextOf(WsIOLanguage language,
@@ -989,25 +989,25 @@ public class WsIOHandler {
 		public static boolean addFailureTextOf(WsIOLanguage language,
 		                                       String message,
 		                                       String description) {
-			return addSuccessful(WsIOElement.textOf(language, message, description));
+			return addFailure(WsIOElement.textOf(language, message, description));
 		}
 
 		public static boolean removeFailureTextOf(WsIOLanguage language,
 		                                          String message,
 		                                          String description) {
-			return removeSuccessful(WsIOElement.textOf(language, message, description));
+			return removeFailure(WsIOElement.textOf(language, message, description));
 		}
 
 		public static boolean addWarningTextOf(WsIOLanguage language,
 		                                       String message,
 		                                       String description) {
-			return addSuccessful(WsIOElement.textOf(language, message, description));
+			return addWarning(WsIOElement.textOf(language, message, description));
 		}
 
 		public static boolean removeWarningTextOf(WsIOLanguage language,
 		                                          String message,
 		                                          String description) {
-			return removeSuccessful(WsIOElement.textOf(language, message, description));
+			return removeWarning(WsIOElement.textOf(language, message, description));
 		}
 
 		public static boolean addSuccessfulBasicDef(String identifier,
@@ -1022,22 +1022,22 @@ public class WsIOHandler {
 
 		public static boolean addFailureBasicDef(String identifier,
 		                                         String message) {
-			return addSuccessful(WsIOElement.basicDef(identifier, message));
+			return addFailure(WsIOElement.basicDef(identifier, message));
 		}
 
 		public static boolean removeFailureBasicDef(String identifier,
 		                                            String message) {
-			return removeSuccessful(WsIOElement.basicDef(identifier, message));
+			return removeFailure(WsIOElement.basicDef(identifier, message));
 		}
 
 		public static boolean addWarningBasicDef(String identifier,
 		                                         String message) {
-			return addSuccessful(WsIOElement.basicDef(identifier, message));
+			return addWarning(WsIOElement.basicDef(identifier, message));
 		}
 
 		public static boolean removeWarningBasicDef(String identifier,
 		                                            String message) {
-			return removeSuccessful(WsIOElement.basicDef(identifier, message));
+			return removeWarning(WsIOElement.basicDef(identifier, message));
 		}
 
 		public static boolean addSuccessfulSimpleDef(String message,
@@ -1052,22 +1052,22 @@ public class WsIOHandler {
 
 		public static boolean addFailureSimpleDef(String message,
 		                                          String type) {
-			return addSuccessful(WsIOElement.simpleDef(message, type));
+			return addFailure(WsIOElement.simpleDef(message, type));
 		}
 
 		public static boolean removeFailureSimpleDef(String message,
 		                                             String type) {
-			return removeSuccessful(WsIOElement.simpleDef(message, type));
+			return removeFailure(WsIOElement.simpleDef(message, type));
 		}
 
 		public static boolean addWarningSimpleDef(String message,
 		                                          String type) {
-			return addSuccessful(WsIOElement.simpleDef(message, type));
+			return addWarning(WsIOElement.simpleDef(message, type));
 		}
 
 		public static boolean removeWarningSimpleDef(String message,
 		                                             String type) {
-			return removeSuccessful(WsIOElement.simpleDef(message, type));
+			return removeWarning(WsIOElement.simpleDef(message, type));
 		}
 
 		public static boolean addSuccessfulTextDef(String message,
@@ -1082,22 +1082,22 @@ public class WsIOHandler {
 
 		public static boolean addFailureTextDef(String message,
 		                                        String description) {
-			return addSuccessful(WsIOElement.textDef(message, description));
+			return addFailure(WsIOElement.textDef(message, description));
 		}
 
 		public static boolean removeFailureTextDef(String message,
 		                                           String description) {
-			return removeSuccessful(WsIOElement.textDef(message, description));
+			return removeFailure(WsIOElement.textDef(message, description));
 		}
 
 		public static boolean addWarningTextDef(String message,
 		                                        String description) {
-			return addSuccessful(WsIOElement.textDef(message, description));
+			return addWarning(WsIOElement.textDef(message, description));
 		}
 
 		public static boolean removeWarningTextDef(String message,
 		                                           String description) {
-			return removeSuccessful(WsIOElement.textDef(message, description));
+			return removeWarning(WsIOElement.textDef(message, description));
 		}
 
 		public static boolean addSuccessfulBasicNolang(String identifier,
@@ -1112,22 +1112,22 @@ public class WsIOHandler {
 
 		public static boolean addFailureBasicNolang(String identifier,
 		                                            String message) {
-			return addSuccessful(WsIOElement.basicNolang(identifier, message));
+			return addFailure(WsIOElement.basicNolang(identifier, message));
 		}
 
 		public static boolean removeFailureBasicNolang(String identifier,
 		                                               String message) {
-			return removeSuccessful(WsIOElement.basicNolang(identifier, message));
+			return removeFailure(WsIOElement.basicNolang(identifier, message));
 		}
 
 		public static boolean addWarningBasicNolang(String identifier,
 		                                            String message) {
-			return addSuccessful(WsIOElement.basicNolang(identifier, message));
+			return addWarning(WsIOElement.basicNolang(identifier, message));
 		}
 
 		public static boolean removeWarningBasicNolang(String identifier,
 		                                               String message) {
-			return removeSuccessful(WsIOElement.basicNolang(identifier, message));
+			return removeWarning(WsIOElement.basicNolang(identifier, message));
 		}
 
 		public static boolean addSuccessfulSimpleNolang(String message,
@@ -1142,22 +1142,22 @@ public class WsIOHandler {
 
 		public static boolean addFailureSimpleNolang(String message,
 		                                             String type) {
-			return addSuccessful(WsIOElement.simpleNolang(message, type));
+			return addFailure(WsIOElement.simpleNolang(message, type));
 		}
 
 		public static boolean removeFailureSimpleNolang(String message,
 		                                                String type) {
-			return removeSuccessful(WsIOElement.simpleNolang(message, type));
+			return removeFailure(WsIOElement.simpleNolang(message, type));
 		}
 
 		public static boolean addWarningSimpleNolang(String message,
 		                                             String type) {
-			return addSuccessful(WsIOElement.simpleNolang(message, type));
+			return addWarning(WsIOElement.simpleNolang(message, type));
 		}
 
 		public static boolean removeWarningSimpleNolang(String message,
 		                                                String type) {
-			return removeSuccessful(WsIOElement.simpleNolang(message, type));
+			return removeWarning(WsIOElement.simpleNolang(message, type));
 		}
 
 		public static boolean addSuccessfulTextNolang(String message,
@@ -1172,22 +1172,22 @@ public class WsIOHandler {
 
 		public static boolean addFailureTextNolang(String message,
 		                                           String description) {
-			return addSuccessful(WsIOElement.textNolang(message, description));
+			return addFailure(WsIOElement.textNolang(message, description));
 		}
 
 		public static boolean removeFailureTextNolang(String message,
 		                                              String description) {
-			return removeSuccessful(WsIOElement.textNolang(message, description));
+			return removeFailure(WsIOElement.textNolang(message, description));
 		}
 
 		public static boolean addWarningTextNolang(String message,
 		                                           String description) {
-			return addSuccessful(WsIOElement.textNolang(message, description));
+			return addWarning(WsIOElement.textNolang(message, description));
 		}
 
 		public static boolean removeWarningTextNolang(String message,
 		                                              String description) {
-			return removeSuccessful(WsIOElement.textNolang(message, description));
+			return removeWarning(WsIOElement.textNolang(message, description));
 		}
 
 		public static boolean addSuccessfulNotypeOf(String identifier,
@@ -1208,28 +1208,28 @@ public class WsIOHandler {
 		                                         WsIOLanguage language,
 		                                         String message,
 		                                         String description) {
-			return addSuccessful(WsIOElement.notypeOf(identifier, language, message, description));
+			return addFailure(WsIOElement.notypeOf(identifier, language, message, description));
 		}
 
 		public static boolean removeFailureNotypeOf(String identifier,
 		                                            WsIOLanguage language,
 		                                            String message,
 		                                            String description) {
-			return removeSuccessful(WsIOElement.notypeOf(identifier, language, message, description));
+			return removeFailure(WsIOElement.notypeOf(identifier, language, message, description));
 		}
 
 		public static boolean addWarningNotypeOf(String identifier,
 		                                         WsIOLanguage language,
 		                                         String message,
 		                                         String description) {
-			return addSuccessful(WsIOElement.notypeOf(identifier, language, message, description));
+			return addWarning(WsIOElement.notypeOf(identifier, language, message, description));
 		}
 
 		public static boolean removeWarningNotypeOf(String identifier,
 		                                            WsIOLanguage language,
 		                                            String message,
 		                                            String description) {
-			return removeSuccessful(WsIOElement.notypeOf(identifier, language, message, description));
+			return removeWarning(WsIOElement.notypeOf(identifier, language, message, description));
 		}
 
 		public static boolean addSuccessfulNodescOf(String identifier,
@@ -1250,28 +1250,28 @@ public class WsIOHandler {
 		                                         WsIOLanguage language,
 		                                         String message,
 		                                         String type) {
-			return addSuccessful(WsIOElement.nodescOf(identifier, language, message, type));
+			return addFailure(WsIOElement.nodescOf(identifier, language, message, type));
 		}
 
 		public static boolean removeFailureNodescOf(String identifier,
 		                                            WsIOLanguage language,
 		                                            String message,
 		                                            String type) {
-			return removeSuccessful(WsIOElement.nodescOf(identifier, language, message, type));
+			return removeFailure(WsIOElement.nodescOf(identifier, language, message, type));
 		}
 
 		public static boolean addWarningNodescOf(String identifier,
 		                                         WsIOLanguage language,
 		                                         String message,
 		                                         String type) {
-			return addSuccessful(WsIOElement.nodescOf(identifier, language, message, type));
+			return addWarning(WsIOElement.nodescOf(identifier, language, message, type));
 		}
 
 		public static boolean removeWarningNodescOf(String identifier,
 		                                            WsIOLanguage language,
 		                                            String message,
 		                                            String type) {
-			return removeSuccessful(WsIOElement.nodescOf(identifier, language, message, type));
+			return removeWarning(WsIOElement.nodescOf(identifier, language, message, type));
 		}
 
 		public static boolean addSuccessfulNoidOf(WsIOLanguage language,
@@ -1292,28 +1292,28 @@ public class WsIOHandler {
 		                                       String message,
 		                                       String description,
 		                                       String type) {
-			return addSuccessful(WsIOElement.noidOf(language, message, description, type));
+			return addFailure(WsIOElement.noidOf(language, message, description, type));
 		}
 
 		public static boolean removeFailureNoidOf(WsIOLanguage language,
 		                                          String message,
 		                                          String description,
 		                                          String type) {
-			return removeSuccessful(WsIOElement.noidOf(language, message, description, type));
+			return removeFailure(WsIOElement.noidOf(language, message, description, type));
 		}
 
 		public static boolean addWarningNoidOf(WsIOLanguage language,
 		                                       String message,
 		                                       String description,
 		                                       String type) {
-			return addSuccessful(WsIOElement.noidOf(language, message, description, type));
+			return addWarning(WsIOElement.noidOf(language, message, description, type));
 		}
 
 		public static boolean removeWarningNoidOf(WsIOLanguage language,
 		                                          String message,
 		                                          String description,
 		                                          String type) {
-			return removeSuccessful(WsIOElement.noidOf(language, message, description, type));
+			return removeWarning(WsIOElement.noidOf(language, message, description, type));
 		}
 
 		public static boolean addSuccessfulNotypeDef(String identifier,
@@ -1331,25 +1331,25 @@ public class WsIOHandler {
 		public static boolean addFailureNotypeDef(String identifier,
 		                                          String message,
 		                                          String description) {
-			return addSuccessful(WsIOElement.notypeDef(identifier, message, description));
+			return addFailure(WsIOElement.notypeDef(identifier, message, description));
 		}
 
 		public static boolean removeFailureNotypeDef(String identifier,
 		                                             String message,
 		                                             String description) {
-			return removeSuccessful(WsIOElement.notypeDef(identifier, message, description));
+			return removeFailure(WsIOElement.notypeDef(identifier, message, description));
 		}
 
 		public static boolean addWarningNotypeDef(String identifier,
 		                                          String message,
 		                                          String description) {
-			return addSuccessful(WsIOElement.notypeDef(identifier, message, description));
+			return addWarning(WsIOElement.notypeDef(identifier, message, description));
 		}
 
 		public static boolean removeWarningNotypeDef(String identifier,
 		                                             String message,
 		                                             String description) {
-			return removeSuccessful(WsIOElement.notypeDef(identifier, message, description));
+			return removeWarning(WsIOElement.notypeDef(identifier, message, description));
 		}
 
 		public static boolean addSuccessfulNodescDef(String identifier,
@@ -1367,25 +1367,25 @@ public class WsIOHandler {
 		public static boolean addFailureNodescDef(String identifier,
 		                                          String message,
 		                                          String type) {
-			return addSuccessful(WsIOElement.nodescDef(identifier, message, type));
+			return addFailure(WsIOElement.nodescDef(identifier, message, type));
 		}
 
 		public static boolean removeFailureNodescDef(String identifier,
 		                                             String message,
 		                                             String type) {
-			return removeSuccessful(WsIOElement.nodescDef(identifier, message, type));
+			return removeFailure(WsIOElement.nodescDef(identifier, message, type));
 		}
 
 		public static boolean addWarningNodescDef(String identifier,
 		                                          String message,
 		                                          String type) {
-			return addSuccessful(WsIOElement.nodescDef(identifier, message, type));
+			return addWarning(WsIOElement.nodescDef(identifier, message, type));
 		}
 
 		public static boolean removeWarningNodescDef(String identifier,
 		                                             String message,
 		                                             String type) {
-			return removeSuccessful(WsIOElement.nodescDef(identifier, message, type));
+			return removeWarning(WsIOElement.nodescDef(identifier, message, type));
 		}
 
 		public static boolean addSuccessfulNoidDef(String message,
@@ -1403,25 +1403,25 @@ public class WsIOHandler {
 		public static boolean addFailureNoidDef(String message,
 		                                        String description,
 		                                        String type) {
-			return addSuccessful(WsIOElement.noidDef(message, description, type));
+			return addFailure(WsIOElement.noidDef(message, description, type));
 		}
 
 		public static boolean removeFailureNoidDef(String message,
 		                                           String description,
 		                                           String type) {
-			return removeSuccessful(WsIOElement.noidDef(message, description, type));
+			return removeFailure(WsIOElement.noidDef(message, description, type));
 		}
 
 		public static boolean addWarningNoidDef(String message,
 		                                        String description,
 		                                        String type) {
-			return addSuccessful(WsIOElement.noidDef(message, description, type));
+			return addWarning(WsIOElement.noidDef(message, description, type));
 		}
 
 		public static boolean removeWarningNoidDef(String message,
 		                                           String description,
 		                                           String type) {
-			return removeSuccessful(WsIOElement.noidDef(message, description, type));
+			return removeWarning(WsIOElement.noidDef(message, description, type));
 		}
 
 		public static boolean addSuccessfulNotypeNolang(String identifier,
@@ -1439,25 +1439,25 @@ public class WsIOHandler {
 		public static boolean addFailureNotypeNolang(String identifier,
 		                                             String message,
 		                                             String description) {
-			return addSuccessful(WsIOElement.notypeNolang(identifier, message, description));
+			return addFailure(WsIOElement.notypeNolang(identifier, message, description));
 		}
 
 		public static boolean removeFailureNotypeNolang(String identifier,
 		                                                String message,
 		                                                String description) {
-			return removeSuccessful(WsIOElement.notypeNolang(identifier, message, description));
+			return removeFailure(WsIOElement.notypeNolang(identifier, message, description));
 		}
 
 		public static boolean addWarningNotypeNolang(String identifier,
 		                                             String message,
 		                                             String description) {
-			return addSuccessful(WsIOElement.notypeNolang(identifier, message, description));
+			return addWarning(WsIOElement.notypeNolang(identifier, message, description));
 		}
 
 		public static boolean removeWarningNotypeNolang(String identifier,
 		                                                String message,
 		                                                String description) {
-			return removeSuccessful(WsIOElement.notypeNolang(identifier, message, description));
+			return removeWarning(WsIOElement.notypeNolang(identifier, message, description));
 		}
 
 		public static boolean addSuccessfulNodescNolang(String identifier,
@@ -1475,25 +1475,25 @@ public class WsIOHandler {
 		public static boolean addFailureNodescNolang(String identifier,
 		                                             String message,
 		                                             String type) {
-			return addSuccessful(WsIOElement.nodescNolang(identifier, message, type));
+			return addFailure(WsIOElement.nodescNolang(identifier, message, type));
 		}
 
 		public static boolean removeFailureNodescNolang(String identifier,
 		                                                String message,
 		                                                String type) {
-			return removeSuccessful(WsIOElement.nodescNolang(identifier, message, type));
+			return removeFailure(WsIOElement.nodescNolang(identifier, message, type));
 		}
 
 		public static boolean addWarningNodescNolang(String identifier,
 		                                             String message,
 		                                             String type) {
-			return addSuccessful(WsIOElement.nodescNolang(identifier, message, type));
+			return addWarning(WsIOElement.nodescNolang(identifier, message, type));
 		}
 
 		public static boolean removeWarningNodescNolang(String identifier,
 		                                                String message,
 		                                                String type) {
-			return removeSuccessful(WsIOElement.nodescNolang(identifier, message, type));
+			return removeWarning(WsIOElement.nodescNolang(identifier, message, type));
 		}
 
 		public static boolean addSuccessfulNoidNolang(String message,
@@ -1511,25 +1511,25 @@ public class WsIOHandler {
 		public static boolean addFailureNoidNolang(String message,
 		                                           String description,
 		                                           String type) {
-			return addSuccessful(WsIOElement.noidNolang(message, description, type));
+			return addFailure(WsIOElement.noidNolang(message, description, type));
 		}
 
 		public static boolean removeFailureNoidNolang(String message,
 		                                              String description,
 		                                              String type) {
-			return removeSuccessful(WsIOElement.noidNolang(message, description, type));
+			return removeFailure(WsIOElement.noidNolang(message, description, type));
 		}
 
 		public static boolean addWarningNoidNolang(String message,
 		                                           String description,
 		                                           String type) {
-			return addSuccessful(WsIOElement.noidNolang(message, description, type));
+			return addWarning(WsIOElement.noidNolang(message, description, type));
 		}
 
 		public static boolean removeWarningNoidNolang(String message,
 		                                              String description,
 		                                              String type) {
-			return removeSuccessful(WsIOElement.noidNolang(message, description, type));
+			return removeWarning(WsIOElement.noidNolang(message, description, type));
 		}
 
 		public static void setMessageOf(WsIOLanguage language, String message) {
