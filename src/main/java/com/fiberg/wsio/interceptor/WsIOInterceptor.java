@@ -77,6 +77,14 @@ public final class WsIOInterceptor {
 			/* Add state annotation to the session */
 			wsio.put(WsIOData.STATE, state);
 
+			/* Set state enabled */
+			State.setEnabled(true);
+
+		} else {
+
+			/* Set state disabled */
+			State.setEnabled(false);
+
 		}
 
 		/* Put the data map in the current session map */
