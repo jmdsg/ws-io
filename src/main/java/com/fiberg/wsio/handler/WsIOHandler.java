@@ -113,6 +113,8 @@ public class WsIOHandler {
 
 		private static final ThreadLocal<Boolean> enabled = new ThreadLocal<>();
 
+		private static final ThreadLocal<String> code = new ThreadLocal<>();
+
 		private static final ThreadLocal<String> identifier = new ThreadLocal<>();
 
 		private static final ThreadLocal<WsIOText> message = new ThreadLocal<>();
@@ -184,6 +186,14 @@ public class WsIOHandler {
 
 		public static void setEnabled(Boolean enabled) {
 			State.enabled.set(enabled);
+		}
+
+		public static String getCode() {
+			return code.get();
+		}
+
+		public static void setCode(String code) {
+			State.code.set(code);
 		}
 
 		public static String getIdentifier() {
