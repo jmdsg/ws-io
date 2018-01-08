@@ -1345,7 +1345,7 @@ class WsIOGenerator {
 
 		/* List with time names */
 		List<Tuple3<String, String, String>> timeNames = List.of(
-				Tuple.of("dateTimes", "dateTime", null));
+				Tuple.of("times", "time", null));
 
 		/* List with state names */
 		List<Tuple3<String, String, String>> stateNames = List.of(

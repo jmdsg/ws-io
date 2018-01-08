@@ -4,8 +4,8 @@ import java.util.List;
 
 public interface WsIOTime {
 
-	List<WsIOInstant> getDateTimes();
+	List<WsIOInstant> getTimes();
 
-	void setDateTimes(List<WsIOInstant> dateTimes);
+	void setTimes(List<WsIOInstant> times);
 
 }

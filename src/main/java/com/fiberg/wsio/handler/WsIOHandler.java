@@ -15,94 +15,94 @@ public class WsIOHandler {
 		private Time() {
 		}
 
-		private static final ThreadLocal<List<WsIOInstant>> dateTimes = new ThreadLocal<>();
+		private static final ThreadLocal<List<WsIOInstant>> times = new ThreadLocal<>();
 
 		public static void transfer(WsIOTime timeWrapper) {
 			if (timeWrapper != null) {
-				timeWrapper.setDateTimes(dateTimes.get());
+				timeWrapper.setTimes(times.get());
 			}
 		}
 
 		public static void clear() {
-			clearDateTimes();
+			clearTimes();
 		}
 
 		public static void reset() {
-			resetDateTimes();
+			resetTimes();
 		}
 
-		public static List<WsIOInstant> getDateTimes() {
-			return Time.dateTimes.get();
+		public static List<WsIOInstant> getTimes() {
+			return Time.times.get();
 		}
 
-		public static void setDateTimes(List<WsIOInstant> dateTimes) {
-			Time.dateTimes.set(dateTimes);
+		public static void setTimes(List<WsIOInstant> times) {
+			Time.times.set(times);
 		}
 
-		public static void clearDateTimes() {
-			if (Time.dateTimes.get() != null) {
-				Time.dateTimes.get().clear();
+		public static void clearTimes() {
+			if (Time.times.get() != null) {
+				Time.times.get().clear();
 			}
 		}
 
-		public static void resetDateTimes() {
-			Time.dateTimes.set(null);
+		public static void resetTimes() {
+			Time.times.set(null);
 		}
 
 		public static boolean addDateTime(WsIOInstant dateTime) {
-			if (Time.dateTimes.get() == null) {
-				Time.dateTimes.set(new ArrayList<>());
+			if (Time.times.get() == null) {
+				Time.times.set(new ArrayList<>());
 			}
-			return Time.dateTimes.get().add(dateTime);
+			return Time.times.get().add(dateTime);
 		}
 
 		public static boolean addDateTimeOf(String id, LocalDateTime time) {
-			if (Time.dateTimes.get() == null) {
-				Time.dateTimes.set(new ArrayList<>());
+			if (Time.times.get() == null) {
+				Time.times.set(new ArrayList<>());
 			}
-			return Time.dateTimes.get().add(WsIOInstant.of(id, time));
+			return Time.times.get().add(WsIOInstant.of(id, time));
 		}
 
 		public static boolean removeDateTime(WsIOInstant dateTime) {
-			if (Time.dateTimes.get() != null) {
-				return Time.dateTimes.get().remove(dateTime);
+			if (Time.times.get() != null) {
+				return Time.times.get().remove(dateTime);
 			}
 			return false;
 		}
 
 		public static boolean removeDateTimeOf(String id, LocalDateTime time) {
-			if (Time.dateTimes.get() != null) {
-				return Time.dateTimes.get().remove(WsIOInstant.of(id, time));
+			if (Time.times.get() != null) {
+				return Time.times.get().remove(WsIOInstant.of(id, time));
 			}
 			return false;
 		}
 
 		public static boolean addDateTimeUnnamed(LocalDateTime time) {
-			if (Time.dateTimes.get() == null) {
-				Time.dateTimes.set(new ArrayList<>());
+			if (Time.times.get() == null) {
+				Time.times.set(new ArrayList<>());
 			}
-			return Time.dateTimes.get().add(WsIOInstant.unnamed(time));
+			return Time.times.get().add(WsIOInstant.unnamed(time));
 		}
 
 		public static boolean removeDateTimeUnnamed(LocalDateTime time) {
-			if (Time.dateTimes.get() == null) {
-				Time.dateTimes.set(new ArrayList<>());
+			if (Time.times.get() == null) {
+				Time.times.set(new ArrayList<>());
 			}
-			return Time.dateTimes.get().remove(WsIOInstant.unnamed(time));
+			return Time.times.get().remove(WsIOInstant.unnamed(time));
 		}
 
 		public static boolean addDateTimeNow(String id) {
-			if (Time.dateTimes.get() == null) {
-				Time.dateTimes.set(new ArrayList<>());
+			if (Time.times.get() == null) {
+				Time.times.set(new ArrayList<>());
 			}
-			return Time.dateTimes.get().add(WsIOInstant.now(id));
+			return Time.times.get().add(WsIOInstant.now(id));
 		}
 
 		public static boolean addDateTimeNow() {
-			if (Time.dateTimes.get() == null) {
-				Time.dateTimes.set(new ArrayList<>());
+			if (Time.times.get() == null) {
+				Time.times.set(new ArrayList<>());
 			}
-			return Time.dateTimes.get().add(WsIOInstant.now());
+			return Time.times.get().add(WsIOInstant.now());
 		}
 
 	}

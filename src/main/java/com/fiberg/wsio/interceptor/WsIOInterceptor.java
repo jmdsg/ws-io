@@ -124,11 +124,11 @@ public final class WsIOInterceptor {
 					}
 
 					/* Get time list, create inmmutable list and clear all dates */
-					java.util.List<WsIOInstant> timeList = Time.getDateTimes();
+					java.util.List<WsIOInstant> timeList = Time.getTimes();
 					List<WsIOInstant> times = Option.of(timeList)
 							.toList()
 							.flatMap(e -> e);
-					Time.clearDateTimes();
+					Time.clearTimes();
 
 					/* Filter not enabled date times */
 					Predicate<String> isStart = str -> StringUtils.equals(str, useTime.startName());
@@ -157,7 +157,7 @@ public final class WsIOInterceptor {
 					Predicate<WsIOInstant> isValidInstant = instant -> isValid.test(instant.getId());
 
 					/* Add java list date times and transfer info to object */
-					Time.setDateTimes(times.filter(isValidInstant).toJavaList());
+					Time.setTimes(times.filter(isValidInstant).toJavaList());
 					Time.transfer((WsIOTime) response);
 
 				}
