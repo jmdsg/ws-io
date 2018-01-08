@@ -317,7 +317,7 @@ public class WsIOElement {
 		return stateElement;
 	}
 
-	@XmlElement
+	@XmlAttribute(name = "id")
 	public String getIdentifier() {
 		return identifier;
 	}

@@ -165,6 +165,8 @@ public class WsIOHandler {
 		}
 
 		public static void reset() {
+			resetEnabled();
+			resetCode();
 			resetIdentifier();
 			resetMessage();
 			resetDescription();
@@ -298,6 +300,14 @@ public class WsIOHandler {
 
 		public static void setDefaultLanguage(WsIOLanguage defaultLanguage) {
 			State.defaultLanguage.set(defaultLanguage);
+		}
+
+		public static void resetEnabled() {
+			State.enabled.set(null);
+		}
+
+		public static void resetCode() {
+			State.code.set(null);
 		}
 
 		public static void resetIdentifier() {

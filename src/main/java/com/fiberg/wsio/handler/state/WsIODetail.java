@@ -11,8 +11,8 @@ public enum WsIODetail {
 	@XmlEnumValue("general")
 	GENERAL,
 
-	@XmlEnumValue("element")
-	ELEMENT;
+	@XmlEnumValue("specific")
+	SPECIFIC;
 
 	public String value() {
 		return name().toLowerCase();

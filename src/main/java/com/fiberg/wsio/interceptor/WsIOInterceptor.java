@@ -52,11 +52,12 @@ public final class WsIOInterceptor {
 		WsIOUseTime time = descriptor.getSingle(WsIOUseTime.class).getOrNull();
 		WsIOUseState state = descriptor.getSingle(WsIOUseState.class).getOrNull();
 
+		/* Reset current values */
+		Time.reset();
+		State.reset();
+
 		/* Check time annotation is defined */
 		if (Objects.nonNull(time)) {
-
-			/* Reset current values */
-			Time.reset();
 
 			/* Check start is enabled and add current date time to the additional */
 			if (time.start()) {
@@ -70,9 +71,6 @@ public final class WsIOInterceptor {
 
 		/* Check state annotation is defined */
 		if (Objects.nonNull(state)) {
-
-			/* Reset current values */
-			State.reset();
 
 			/* Add state annotation to the session */
 			wsio.put(WsIOData.STATE, state);
@@ -162,9 +160,6 @@ public final class WsIOInterceptor {
 
 				}
 
-				/* Reset times */
-				Time.reset();
-
 			}
 
 			/* Get time annotation and check if is non null */
@@ -230,10 +225,11 @@ public final class WsIOInterceptor {
 
 				}
 
-				/* Reset states */
-				State.reset();
-
 			}
+
+			/* Reset current values */
+			Time.reset();
+			State.reset();
 
 		}
 
