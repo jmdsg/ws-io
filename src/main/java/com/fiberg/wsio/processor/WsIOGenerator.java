@@ -1760,7 +1760,7 @@ class WsIOGenerator {
 			try {
 
 				/* Create source file and open the writer */
-				JavaFileObject jfo = filer.createSourceFile(className);
+				JavaFileObject jfo = filer.createSourceFile(WsIOUtil.addPrefixName(className, packageName));
 				Writer writer = jfo.openWriter();
 
 				/* Build the class and write to the file */
