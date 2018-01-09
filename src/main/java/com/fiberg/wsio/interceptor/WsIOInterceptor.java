@@ -67,6 +67,14 @@ public final class WsIOInterceptor {
 			/* Add time annotation to the session */
 			wsio.put(WsIOData.TIME, time);
 
+			/* Set time enabled */
+			Time.setEnabled(true);
+
+		} else {
+
+			/* Set time disabled */
+			Time.setEnabled(false);
+
 		}
 
 		/* Check state annotation is defined */

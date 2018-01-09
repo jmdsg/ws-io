@@ -12,8 +12,9 @@ public class WsIOHandler {
 
 	public static final class Time {
 
-		private Time() {
-		}
+		private Time() {  }
+
+		private static final ThreadLocal<Boolean> enabled = new ThreadLocal<>();
 
 		private static final ThreadLocal<List<WsIOInstant>> times = new ThreadLocal<>();
 
@@ -29,6 +30,18 @@ public class WsIOHandler {
 
 		public static void reset() {
 			resetTimes();
+		}
+
+		public static boolean isEnabled() {
+			return Boolean.TRUE.equals(getEnabled());
+		}
+
+		public static Boolean getEnabled() {
+			return enabled.get();
+		}
+
+		public static void setEnabled(Boolean enabled) {
+			State.enabled.set(enabled);
 		}
 
 		public static List<WsIOInstant> getTimes() {
