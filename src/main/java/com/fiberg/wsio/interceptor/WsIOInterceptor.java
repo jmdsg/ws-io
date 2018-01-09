@@ -27,6 +27,12 @@ import java.util.function.Predicate;
  */
 public final class WsIOInterceptor {
 
+	/** Start name */
+	public static final String START = "start";
+
+	/** End name */
+	public static final String END = "end";
+
 	/**
 	 * Private empty contructor.
 	 */
@@ -56,42 +62,16 @@ public final class WsIOInterceptor {
 		Time.reset();
 		State.reset();
 
-		/* Check time annotation is defined */
-		if (Objects.nonNull(time)) {
+		/* Add date time start */
+		Time.addDateTimeNow(START);
 
-			/* Check start is enabled and add current date time to the additional */
-			if (time.start()) {
-				Time.addDateTimeNow(time.startName());
-			}
+		/* Add time and state annotation to the session */
+		wsio.put(WsIOData.TIME, time);
+		wsio.put(WsIOData.STATE, state);
 
-			/* Add time annotation to the session */
-			wsio.put(WsIOData.TIME, time);
-
-			/* Set time enabled */
-			Time.setEnabled(true);
-
-		} else {
-
-			/* Set time disabled */
-			Time.setEnabled(false);
-
-		}
-
-		/* Check state annotation is defined */
-		if (Objects.nonNull(state)) {
-
-			/* Add state annotation to the session */
-			wsio.put(WsIOData.STATE, state);
-
-			/* Set state enabled */
-			State.setEnabled(true);
-
-		} else {
-
-			/* Set state disabled */
-			State.setEnabled(false);
-
-		}
+		/* Set time and state enabled or disabled */
+		Time.setEnabled(Objects.nonNull(time));
+		State.setEnabled(Objects.nonNull(state));
 
 		/* Put the data map in the current session map */
 		session.put(WsIOData.class.getCanonicalName(), wsio);
@@ -126,7 +106,7 @@ public final class WsIOInterceptor {
 
 					/* Check end is enabled and add current date time to the additional */
 					if (useTime.start()) {
-						Time.addDateTimeNow(useTime.endName());
+						Time.addDateTimeNow(END);
 					}
 
 					/* Get time list, create inmmutable list and clear all dates */
@@ -137,8 +117,8 @@ public final class WsIOInterceptor {
 					Time.clearTimes();
 
 					/* Filter not enabled date times */
-					Predicate<String> isStart = str -> StringUtils.equals(str, useTime.startName());
-					Predicate<String> isEnd = str -> StringUtils.equals(str, useTime.endName());
+					Predicate<String> isStart = str -> StringUtils.equals(str, START);
+					Predicate<String> isEnd = str -> StringUtils.equals(str, END);
 					Predicate<String> isOther = Predicates.noneOf(isStart, isEnd);
 
 					/* Enabled predicates */

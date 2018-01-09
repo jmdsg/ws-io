@@ -20,8 +20,4 @@ public @interface WsIOUseTime {
 
 	boolean end() default true;
 
-	String startName() default "start";
-
-	String endName() default "end";
-
 }
