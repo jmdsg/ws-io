@@ -20,7 +20,9 @@ public class WsIOHandler {
 
 		public static void transfer(WsIOTime timeWrapper) {
 			if (timeWrapper != null) {
-				timeWrapper.setTimes(times.get());
+				if (times.get() != null) {
+					timeWrapper.setTimes(times.get());
+				}
 			}
 		}
 
@@ -156,18 +158,42 @@ public class WsIOHandler {
 
 		public static void transfer(WsIOState stateWrapper) {
 			if (stateWrapper != null) {
-				stateWrapper.setIdentifier(identifier.get());
-				stateWrapper.setMessage(message.get());
-				stateWrapper.setDescription(description.get());
-				stateWrapper.setType(type.get());
-				stateWrapper.setStatus(status.get());
-				stateWrapper.setDetail(detail.get());
-				stateWrapper.setSuccessfuls(successfuls.get());
-				stateWrapper.setFailures(failures.get());
-				stateWrapper.setWarnings(warnings.get());
-				stateWrapper.setShowSuccessfuls(showSuccessfuls.get());
-				stateWrapper.setShowFailures(showFailures.get());
-				stateWrapper.setShowWarnings(showWarnings.get());
+				if (identifier.get() != null) {
+					stateWrapper.setIdentifier(identifier.get());
+				}
+				if (message.get() != null) {
+					stateWrapper.setMessage(message.get());
+				}
+				if (description.get() != null) {
+					stateWrapper.setDescription(description.get());
+				}
+				if (type.get() != null) {
+					stateWrapper.setType(type.get());
+				}
+				if (status.get() != null) {
+					stateWrapper.setStatus(status.get());
+				}
+				if (detail.get() != null) {
+					stateWrapper.setDetail(detail.get());
+				}
+				if (successfuls.get() != null) {
+					stateWrapper.setSuccessfuls(successfuls.get());
+				}
+				if (failures.get() != null) {
+					stateWrapper.setFailures(failures.get());
+				}
+				if (warnings.get() != null) {
+					stateWrapper.setWarnings(warnings.get());
+				}
+				if (showSuccessfuls.get() != null) {
+					stateWrapper.setShowSuccessfuls(showSuccessfuls.get());
+				}
+				if (showFailures.get() != null) {
+					stateWrapper.setShowFailures(showFailures.get());
+				}
+				if (showWarnings.get() != null) {
+					stateWrapper.setShowWarnings(showWarnings.get());
+				}
 			}
 		}
 
