@@ -182,6 +182,10 @@ public class WsIOHandler {
 			resetDefaultLanguage();
 		}
 
+		public static boolean isEnabled() {
+			return Boolean.TRUE.equals(getEnabled());
+		}
+
 		public static Boolean getEnabled() {
 			return enabled.get();
 		}
