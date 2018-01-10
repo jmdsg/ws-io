@@ -4,7 +4,7 @@ import com.fiberg.wsio.handler.state.*;
 import com.fiberg.wsio.handler.time.WsIOInstant;
 import com.fiberg.wsio.handler.time.WsIOTime;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -71,7 +71,7 @@ public class WsIOHandler {
 			return Time.times.get().add(dateTime);
 		}
 
-		public static boolean addDateTimeOf(String id, LocalDateTime time) {
+		public static boolean addDateTimeOf(String id, ZonedDateTime time) {
 			if (Time.times.get() == null) {
 				Time.times.set(new ArrayList<>());
 			}
@@ -85,21 +85,21 @@ public class WsIOHandler {
 			return false;
 		}
 
-		public static boolean removeDateTimeOf(String id, LocalDateTime time) {
+		public static boolean removeDateTimeOf(String id, ZonedDateTime time) {
 			if (Time.times.get() != null) {
 				return Time.times.get().remove(WsIOInstant.of(id, time));
 			}
 			return false;
 		}
 
-		public static boolean addDateTimeUnnamed(LocalDateTime time) {
+		public static boolean addDateTimeUnnamed(ZonedDateTime time) {
 			if (Time.times.get() == null) {
 				Time.times.set(new ArrayList<>());
 			}
 			return Time.times.get().add(WsIOInstant.unnamed(time));
 		}
 
-		public static boolean removeDateTimeUnnamed(LocalDateTime time) {
+		public static boolean removeDateTimeUnnamed(ZonedDateTime time) {
 			if (Time.times.get() == null) {
 				Time.times.set(new ArrayList<>());
 			}

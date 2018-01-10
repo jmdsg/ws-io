@@ -1,23 +1,23 @@
 package com.fiberg.wsio.handler.time;
 
 import javax.xml.bind.annotation.*;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 @XmlRootElement
 @XmlAccessorType(XmlAccessType.PROPERTY)
 public class WsIOInstant {
 	private String id;
 
-	private LocalDateTime dateTime;
+	private ZonedDateTime dateTime;
 
-	public static WsIOInstant of(String id, LocalDateTime dateTime) {
+	public static WsIOInstant of(String id, ZonedDateTime dateTime) {
 		WsIOInstant timeEntry = new WsIOInstant();
 		timeEntry.setId(id);
 		timeEntry.setDateTime(dateTime);
 		return timeEntry;
 	}
 
-	public static WsIOInstant unnamed(LocalDateTime dateTime) {
+	public static WsIOInstant unnamed(ZonedDateTime dateTime) {
 		WsIOInstant timeEntry = new WsIOInstant();
 		timeEntry.setDateTime(dateTime);
 		return timeEntry;
@@ -26,13 +26,13 @@ public class WsIOInstant {
 	public static WsIOInstant now(String id) {
 		WsIOInstant timeEntry = new WsIOInstant();
 		timeEntry.setId(id);
-		timeEntry.setDateTime(LocalDateTime.now());
+		timeEntry.setDateTime(ZonedDateTime.now());
 		return timeEntry;
 	}
 
 	public static WsIOInstant now() {
 		WsIOInstant timeEntry = new WsIOInstant();
-		timeEntry.setDateTime(LocalDateTime.now());
+		timeEntry.setDateTime(ZonedDateTime.now());
 		return timeEntry;
 	}
 
@@ -46,11 +46,11 @@ public class WsIOInstant {
 	}
 
 	@XmlValue
-	public LocalDateTime getDateTime() {
+	public ZonedDateTime getDateTime() {
 		return dateTime;
 	}
 
-	public void setDateTime(LocalDateTime dateTime) {
+	public void setDateTime(ZonedDateTime dateTime) {
 		this.dateTime = dateTime;
 	}
 
