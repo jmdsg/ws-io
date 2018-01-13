@@ -45,7 +45,7 @@ public final class WsIOAuto {
 
 		/* Get default class pool */
 		ClassPool pool = ClassPool.getDefault();
-		pool.insertClassPath(new ClassClassPath(main.getClass()));
+		pool.appendClassPath(new LoaderClassPath(main.getClassLoader()));
 
 		/* Get all ct classes when the name starts with base package */
 		Map<String, CtClass> ctClasses = classNames.toMap(className -> className,
