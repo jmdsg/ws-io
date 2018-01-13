@@ -36,7 +36,7 @@ public final class WsIOAuto {
 	 *
 	 * @param basePackage package to scan
 	 */
-	public static void annotate(String basePackage) {
+	public static void annotate(String basePackage, Class<?> main) {
 
 		/* Obtain all class names of the base package */
 		List<String> classNames = List.ofAll(new FastClasspathScanner(basePackage)
@@ -45,6 +45,7 @@ public final class WsIOAuto {
 
 		/* Get default class pool */
 		ClassPool pool = ClassPool.getDefault();
+		pool.insertClassPath(new ClassClassPath(main.getClass()));
 
 		/* Get all ct classes when the name starts with base package */
 		Map<String, CtClass> ctClasses = classNames.toMap(className -> className,
