@@ -9,6 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import javax.jws.WebMethod;
 import javax.lang.model.element.*;
+import javax.lang.model.util.ElementFilter;
 import java.util.Objects;
 import java.util.function.Predicate;
 
@@ -20,7 +21,8 @@ class WsIOFinder {
 	/**
 	 * Private empty constructor.
 	 */
-	private WsIOFinder() {  }
+	private WsIOFinder() {
+	}
 
 	/**
 	 * Method that finds the metadata info of a set of type elements.
@@ -227,7 +229,7 @@ class WsIOFinder {
 	private static Map<TypeElement, String> findMessageRecursively(TypeElement element) {
 
 		/* Check if the current element is not or not */
-		if (Objects.nonNull(element)) {
+		if (Objects.nonNull(element) && isValid(element)) {
 
 			/* Get current descriptor and the message option */
 			WsIODescriptor descriptor = WsIODescriptor.of(element);
@@ -291,7 +293,7 @@ class WsIOFinder {
 	private static Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> findCloneRecursively(TypeElement element) {
 
 		/* Check if the current element is not or not */
-		if (Objects.nonNull(element)) {
+		if (Objects.nonNull(element) && isValid(element)) {
 
 			/* Get current element descriptor with annotations info */
 			WsIODescriptor descriptor = WsIODescriptor.of(element);
@@ -335,7 +337,7 @@ class WsIOFinder {
 	 * Method that takes the message classes and clone classes and return the message clone class info.
 	 *
 	 * @param messages map with message info
-	 * @param clones map with clone info
+	 * @param clones   map with clone info
 	 * @return map with message clone class info
 	 */
 	static Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> findCloneMessage(Map<TypeElement, String> messages,
@@ -434,7 +436,7 @@ class WsIOFinder {
 				 * and if the name is equal to the request or response name */
 				return StringUtils.equals(searchedPackage, elementPackage)
 						&& (StringUtils.equals(requestName, elementName)
-								|| StringUtils.equals(responseName, elementName));
+						|| StringUtils.equals(responseName, elementName));
 
 			}
 
@@ -627,7 +629,7 @@ class WsIOFinder {
 					 * and the current class name is equal to response or request full names to return true */
 					if (StringUtils.equals(searchedPackage, elementPackage)
 							&& (StringUtils.equals(elementName, finalRequestName)
-									|| StringUtils.equals(elementName, finalResponseName))) {
+							|| StringUtils.equals(elementName, finalResponseName))) {
 						return true;
 					}
 
@@ -640,6 +642,32 @@ class WsIOFinder {
 		/* Return false when delegator type could not be found */
 		return false;
 
+	}
+
+	/**
+	 * Method that checks if a type element is valid for clone and/or message.
+	 *
+	 * @param typeElement type element to check
+	 * @return {@code true} if the type element is valid or {@code false} otherwise
+	 */
+	private static boolean isValid(TypeElement typeElement) {
+		return Objects.nonNull(typeElement)
+				&& typeElement.getModifiers().contains(Modifier.PUBLIC)
+				&& (ElementKind.INTERFACE.equals(typeElement.getKind())
+				|| ElementKind.ENUM.equals(typeElement.getKind())
+				|| (ElementKind.CLASS.equals(typeElement.getKind())) && hasPublicEmptyConstructor(typeElement));
+	}
+
+	/**
+	 * Method that checks if a type element has an empty public constructor.
+	 *
+	 * @param typeElement type element to check
+	 * @return {@code true} if the type element has an empty public constructor or {@code false} otherwise
+	 */
+	private static boolean hasPublicEmptyConstructor(TypeElement typeElement) {
+		return List.ofAll(ElementFilter.constructorsIn(typeElement.getEnclosedElements()))
+				.filter(contructor -> contructor.getParameters().isEmpty())
+				.exists(constructor -> constructor.getModifiers().contains(Modifier.PUBLIC));
 	}
 
 }
