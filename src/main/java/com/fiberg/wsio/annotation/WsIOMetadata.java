@@ -1,5 +1,7 @@
 package com.fiberg.wsio.annotation;
 
+import com.fiberg.wsio.processor.WsIOConstant;
+
 import java.lang.annotation.*;
 
 /**
@@ -28,7 +30,7 @@ public @interface WsIOMetadata {
 	String packageMiddle() default "";
 
 	/** Package end to be appended after package name, it does not need to start with dot '.' */
-	String packageEnd() default "";
+	String packageEnd() default WsIOConstant.PACKAGE_END;
 
 	/**
 	 * <p>Function in javascript to generate the package name, if none is specified the default behavier is used.</p><br>

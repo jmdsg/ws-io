@@ -52,4 +52,6 @@ public final class WsIOConstant {
 
 	public static final String NO_SWAP_SEPARATOR = "_";
 
+	public static final String PACKAGE_END = "wsio";
+
 }
