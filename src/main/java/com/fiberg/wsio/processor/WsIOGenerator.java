@@ -1,5 +1,6 @@
 package com.fiberg.wsio.processor;
 
+import com.fiberg.wsio.annotation.Case;
 import com.fiberg.wsio.annotation.WsIOAnnotate;
 import com.fiberg.wsio.annotation.WsIOUseHideEmpty;
 import com.fiberg.wsio.handler.state.*;
@@ -55,16 +56,18 @@ class WsIOGenerator {
 	/**
 	 * Method that generates all classes from WsIO, it generates the clones, the messages and wrappers.
 	 *
-	 * @param messageByType map containing type element and destination package
-	 * @param cloneByGroup map containing the identifier { prefix name - suffix name } and a set of type elements
+	 * @param messageByType       map containing type element and destination package
+	 * @param cloneByGroup        map containing the identifier { prefix name - suffix name } and a set of type elements
 	 * @param cloneMessageByGroup map containing type element and a inner map with method name and a tuple of { method info - destination package }
-	 * @param wrapperByType map containing type element and a inner map with method name and a tuple of { method info - destination package }
+	 * @param wrapperByType       map containing type element and a inner map with method name and a tuple of { method info - destination package }
+	 * @param metadataByType      map containing type element and a tuple of { package name - cases to generate - set fo field names }
 	 * @return {@code true} when all classes were generated ok, {@code false} otherwise
 	 */
 	boolean generateClasses(Map<TypeElement, String> messageByType,
 	                        Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneByGroup,
 	                        Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneMessageByGroup,
-	                        Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> wrapperByType) {
+	                        Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> wrapperByType,
+	                        Map<TypeElement, Tuple3<String, Set<Case>, Map<String, Boolean>>> metadataByType) {
 
 		/* Get all class names that are message annotated */
 		Map<String, String> messageClasses = messageByType.mapKeys(element ->
@@ -288,6 +291,46 @@ class WsIOGenerator {
 				createJavaClass(response, packageName, responseClassName);
 
 			});
+
+		});
+
+		/* Iterate for each type */
+		metadataByType.forEach((type, info) -> {
+
+			/* Get package name, set of cases and map with fields */
+			String packageName = info._1();
+			Set<Case> cases = info._2();
+			Map<String, Boolean> fields = info._3();
+
+			/* Build all the field specs */
+			List<FieldSpec> fieldSpecs = fields.toStream()
+					.flatMap(fieldInfo -> {
+
+						/* Get field name and is static flag */
+						String fieldName = fieldInfo._1();
+						Boolean isStatic = fieldInfo._2();
+
+						/* Transform the values and return the set */
+						return cases.toStream()
+								.map(destination ->
+										Tuple.of(WsIOUtils.transformField(fieldName,
+												isStatic, destination), fieldName));
+
+					}).map(tuple -> FieldSpec.builder(ClassName.get(String.class), tuple._1(),
+							Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+							.initializer("$S", tuple._2())
+							.build()).toList();
+
+			/* Get class name, full class name and create the type spec */
+			String className = WsIOUtil.addWrap(type.getSimpleName().toString(),
+					WsIOConstant.METADATA_PREFIX, WsIOConstant.METADATA_SUFFIX);
+			TypeSpec typeSpec = TypeSpec.classBuilder(className)
+					.addFields(fieldSpecs)
+					.addModifiers(Modifier.PUBLIC)
+					.build();
+
+			/* Create the java class */
+			createJavaClass(typeSpec, packageName, className);
 
 		});
 

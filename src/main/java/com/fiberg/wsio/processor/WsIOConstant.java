@@ -38,6 +38,10 @@ public final class WsIOConstant {
 
 	public static final String REQUEST_WRAPPER_SUFFIX = "Request";
 
+	public static final String METADATA_PREFIX = "";
+
+	public static final String METADATA_SUFFIX = "_";
+
 	public static final String DEFAULT_RESULT = "return";
 
 	public static final String DEFAULT_PARAMETER = "arg";

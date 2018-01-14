@@ -81,7 +81,7 @@ public final class WsIOUtil {
 
 					try {
 
-						@SuppressWarnings("unchecked")
+						@SuppressWarnings({ "unchecked" })
 						IFACE delegate = (IFACE) Class.forName(fullName)
 								.getConstructor(clazz)
 								.newInstance(o);

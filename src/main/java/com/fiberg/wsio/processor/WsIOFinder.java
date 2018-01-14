@@ -8,10 +8,9 @@ import io.vavr.control.Option;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.jws.WebMethod;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Name;
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.*;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 /**
  * Class to extract clone, wrapper, message and clone message annotations info.
@@ -22,6 +21,105 @@ class WsIOFinder {
 	 * Private empty constructor.
 	 */
 	private WsIOFinder() {  }
+
+	/**
+	 * Method that finds the metadata info of a set of type elements.
+	 *
+	 * @param elements set of type elements
+	 * @return map identified by the element type containing a tuple of 3 elements with
+	 * package name, cases and a set of field names
+	 */
+	static Map<TypeElement, Tuple3<String, Set<Case>, Map<String, Boolean>>> findMetadataRecursively(Set<TypeElement> elements) {
+
+		/* Return the map for each element and finally fold the results with an empty map */
+		return elements.map(WsIOFinder::findMetadataRecursively)
+				.fold(HashMap.empty(), Map::merge);
+
+	}
+
+	/**
+	 * Method that finds the metadata info of a single type elements.
+	 *
+	 * @param element type element
+	 * @return map identified by the element type containing a tuple of 3 elements with
+	 * package name, cases and a set of field names
+	 */
+	private static Map<TypeElement, Tuple3<String, Set<Case>, Map<String, Boolean>>> findMetadataRecursively(TypeElement element) {
+
+		/* Check if the current element is not or not */
+		if (Objects.nonNull(element)) {
+
+			/* Stream of executable methods */
+			Stream<VariableElement> fields = Stream.ofAll(element.getEnclosedElements())
+					.filter(VariableElement.class::isInstance)
+					.map(VariableElement.class::cast);
+
+			/* Descriptor of the type element and optional metadata */
+			WsIODescriptor typeDescriptor = WsIODescriptor.of(element);
+			Option<WsIOMetadata> typeMetadataOption = typeDescriptor.getSingle(WsIOMetadata.class);
+
+
+			Option<Tuple3<String, Set<Case>, Map<String, Boolean>>> currentInfo = typeMetadataOption.map(metadata -> {
+
+				/* Get class name and package name */
+				String className = element.getSimpleName().toString();
+				String packageName = WsIOUtils.extractPackage(element).getQualifiedName().toString();
+
+				/* Get final package name */
+				String finalPackage = WsIOEngine.obtainPackage(StringUtils.EMPTY, className, packageName,
+						metadata.packageName(), metadata.packagePath(), metadata.packagePrefix(),
+						metadata.packageSuffix(), metadata.packageStart(), metadata.packageMiddle(),
+						metadata.packageEnd(), metadata.packageJs());
+
+				/* Get enabled field names */
+				Map<String, Boolean> fieldNames = fields.flatMap(field -> {
+
+					/* Descriptor of the field element and optional metadata */
+					WsIODescriptor fieldDescriptor = WsIODescriptor.of(field);
+					Option<WsIOMetadata> fieldMetadataOption = fieldDescriptor.getSingle(WsIOMetadata.class);
+
+					/* Check if the field is static and create is valid predicate.
+					 * The predicate checks if the metadata is defined (not skipped) and the field
+					 * is not static or the static fields are enabled */
+					boolean isStatic = field.getModifiers().contains(Modifier.STATIC);
+					Predicate<String> isValid = ign -> fieldMetadataOption.isDefined()
+							&& (!isStatic || metadata.staticFields());
+
+					/* Return an optional tuple of field name and flag indicating if is static or not */
+					return Option.of(field)
+							.map(VariableElement::getSimpleName)
+							.map(Name::toString)
+							.filter(isValid)
+							.map(name -> Tuple.of(name, isStatic));
+
+				}).toMap(tuple -> tuple);
+
+				/* Create a hashset with all the enabled cases */
+				Set<Case> cases = HashSet.of(metadata.cases());
+
+				/* Return the tuple with all the info */
+				return Tuple.of(finalPackage, cases, fieldNames);
+
+			});
+
+			/* Create zero map with current element, call recursively this function with each declared class
+			 * and finally fold the results with zero map */
+			Map<TypeElement, Tuple3<String, Set<Case>, Map<String, Boolean>>> zeroMap = currentInfo
+					.toMap(ign -> element, identity -> identity);
+			return Stream.ofAll(element.getEnclosedElements())
+					.filter(TypeElement.class::isInstance)
+					.map(TypeElement.class::cast)
+					.map(WsIOFinder::findMetadataRecursively)
+					.fold(zeroMap, Map::merge);
+
+		} else {
+
+			/* Return empty hashmap when element is null */
+			return HashMap.empty();
+
+		}
+
+	}
 
 	/**
 	 * Method that finds the wrapper info of a set of type elements.

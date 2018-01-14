@@ -1,5 +1,6 @@
 package com.fiberg.wsio.processor;
 
+import com.fiberg.wsio.annotation.Case;
 import com.fiberg.wsio.annotation.WsIOClone;
 import com.fiberg.wsio.annotation.WsIOMessage;
 import com.fiberg.wsio.annotation.WsIOMessageWrapper;
@@ -7,6 +8,7 @@ import com.google.auto.service.AutoService;
 import io.vavr.Function1;
 import io.vavr.Predicates;
 import io.vavr.Tuple2;
+import io.vavr.Tuple3;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.Map;
 import io.vavr.collection.Set;
@@ -33,7 +35,7 @@ public class WsIOProcessor extends AbstractProcessor {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public synchronized void init(ProcessingEnvironment processingEnv) {
+	public synchronized void init(final ProcessingEnvironment processingEnv) {
 		super.init(processingEnv);
 		this.filer = processingEnv.getFiler();
 		this.messager = processingEnv.getMessager();
@@ -43,49 +45,55 @@ public class WsIOProcessor extends AbstractProcessor {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public boolean process(java.util.Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+	public boolean process(final java.util.Set<? extends TypeElement> annotations,
+	                       final RoundEnvironment roundEnv) {
 
 		/* Get all root elements */
-		Set<Element> rootElements = HashSet.ofAll(roundEnv.getRootElements());
+		final Set<Element> rootElements = HashSet.ofAll(roundEnv.getRootElements());
 
 		/* Function used to get type elements from a element iterable */
-		Function1<Iterable<? extends Element>, Set<TypeElement>> obtainTypeElements = elements ->
+		final Function1<Iterable<? extends Element>, Set<TypeElement>> obtainTypeElements = elements ->
 				Stream.ofAll(elements)
 						.filter(TypeElement.class::isInstance)
 						.map(TypeElement.class::cast)
 				.toSet();
 
 		/* Set of all root elements of type elements */
-		Set<TypeElement> rootTypeElements = obtainTypeElements.apply(rootElements);
+		final Set<TypeElement> rootTypeElements = obtainTypeElements.apply(rootElements);
 
 		/* Set of root elements that are not clones, messages or messages of clone classes */
-		Set<TypeElement> rootTypeNotGeneratedElements = rootTypeElements
+		final Set<TypeElement> rootTypeNotGeneratedElements = rootTypeElements
 				.filter(Predicates.noneOf(WsIOFinder::isMessageGenerated,
 						WsIOFinder::isCloneGenerated, WsIOFinder::isCloneMessageGenerated));
 
 		/* Find message classes recursively */
-		Map<TypeElement, String> messageByType = WsIOFinder.findMessageRecursively(rootTypeNotGeneratedElements);
+		final Map<TypeElement, String> messageByType = WsIOFinder.findMessageRecursively(rootTypeNotGeneratedElements);
 
 		/* Find clone classes recursively */
-		Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneByGroup =
+		final Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneByGroup =
 				WsIOFinder.findCloneRecursively(rootTypeNotGeneratedElements)
 						.filterValues(Set::nonEmpty);
 
 		/* Find wrapper classes recursively */
-		Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> wrapperByType =
+		final Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> wrapperByType =
 				WsIOFinder.findWrapperRecursively(rootTypeElements)
 						.filterValues(Map::nonEmpty);
 
 		/* Find message of cloned classes from the current clone and message classes */
-		Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneMessageByGroup =
+		final Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneMessageByGroup =
 				WsIOFinder.findCloneMessage(messageByType, cloneByGroup)
 						.filterValues(Set::nonEmpty);
 
+		final Map<TypeElement, Tuple3<String, Set<Case>, Map<String, Boolean>>> metadataByType =
+				WsIOFinder.findMetadataRecursively(rootTypeNotGeneratedElements)
+						.filterValues(tuple -> tuple._2().nonEmpty() && tuple._3().nonEmpty());
+
 		/* Create the generator class */
-		WsIOGenerator generator = new WsIOGenerator(messager, filer);
+		final WsIOGenerator generator = new WsIOGenerator(messager, filer);
 
 		/* Return the result of generating the classes */
-		return generator.generateClasses(messageByType, cloneByGroup, cloneMessageByGroup, wrapperByType);
+		return generator.generateClasses(messageByType, cloneByGroup,
+				cloneMessageByGroup, wrapperByType, metadataByType);
 
 	}
 
@@ -94,7 +102,7 @@ public class WsIOProcessor extends AbstractProcessor {
 	 */
 	@Override
 	public java.util.Set<String> getSupportedAnnotationTypes() {
-		java.util.Set<String> annotataions = new java.util.LinkedHashSet<>();
+		final java.util.Set<String> annotataions = new java.util.LinkedHashSet<>();
 		annotataions.add(WsIOMessage.class.getCanonicalName());
 		annotataions.add(WsIOMessageWrapper.class.getCanonicalName());
 		annotataions.add(WsIOClone.class.getCanonicalName());

@@ -2,6 +2,7 @@ package com.fiberg.wsio.processor;
 
 import com.fiberg.wsio.annotation.*;
 import com.fiberg.wsio.util.WsIOUtil;
+import com.google.common.base.CaseFormat;
 import com.squareup.javapoet.*;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -611,7 +612,7 @@ final class WsIOUtils {
 	 * @param <T> type argument of the annotation class
 	 * @return annotation extracted from ct class
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked" })
 	static <T extends Annotation> T extractAnnotation(CtClass ctClass , Class<T> annotation) {
 
 		/* Return the annotation or null */
@@ -629,13 +630,127 @@ final class WsIOUtils {
 	 * @param <T> type argument of the annotation method
 	 * @return annotation extracted from ct method
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked" })
 	static <T extends Annotation> T extractAnnotation(CtMethod ctMethod , Class<T> annotation) {
 
 		/* Return the annotation or null */
 		return Option.of(ctMethod).toTry()
 				.mapTry(ct -> (T) ct.getAnnotation(annotation))
 				.getOrNull();
+
+	}
+
+	/**
+	 * Method that checks if the string is upper case or not.
+	 *
+	 * @param name name to check
+	 * @return {@code true} when the name is not null and all its characters
+	 * are upper case or underscore.
+	 */
+	static boolean isUpperCase(String name) {
+		return Objects.nonNull(name)
+				&& name.matches("^([A-Z]+(_[A-Z]+)?)+$");
+	}
+
+	/**
+	 * Method that checks if the string is snake case or not.
+	 *
+	 * @param name name to check
+	 * @return {@code true} when the name is not null and is snake case.
+	 */
+	static boolean isSnakeCase(String name) {
+		return Objects.nonNull(name)
+				&& name.matches("^([a-z]+(_[a-z]+)?)+$");
+	}
+
+	/**
+	 * Method that transforms a lower camel case name to a snake case.
+	 *
+	 * @param name name to transform
+	 * @return the name transformed to snake case
+	 */
+	static String toSnakeCase(String name) {
+		return Objects.nonNull(name) ?
+				CaseFormat.LOWER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, name) : null;
+	}
+
+	/**
+	 * Method that transforms a lower camel case name to a upper case separated by underscores.
+	 *
+	 * @param name name to transform
+	 * @return the name transformed to upper underscode case
+	 */
+	static String toUpperCase(String name) {
+		return Objects.nonNull(name) ?
+				CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_UNDERSCORE, name) : null;
+	}
+
+	/**
+	 * Method that transforms a field name to the destination depending if the field is static or not.
+	 *
+	 * @param field       field name
+	 * @param isStatic    flag indicating if the field is static or not
+	 * @param destination destination case
+	 * @return the transformed name or {@code null} when the destination or field is {@code null}
+	 * or the destination is unknown.
+	 */
+	static String transformField(String field, boolean isStatic, Case destination) {
+
+		/* Check if the field is null or not */
+		if (Objects.nonNull(field) && Objects.nonNull(destination)) {
+
+			/* Switch the destination and transform the string depending on the destination */
+			switch (destination) {
+
+				case ORIGINAL:
+
+					/* Return the original field */
+					return field;
+
+				case UPPER:
+
+					/* Check if the field is static or not */
+					if (isStatic && isUpperCase(field)) {
+
+						/* Return the field when is upper case and destination is upper case */
+						return field;
+
+					} else {
+
+						/* Transform to upper case and return */
+						return toUpperCase(field);
+
+					}
+
+				case SNAKE:
+
+					/* Check if the field is static or not, and if is snake or upper case */
+					if (isStatic && isSnakeCase(field)) {
+
+						/* Return the field when is upper case and destination is upper case */
+						return field;
+
+					} else if (isStatic && isUpperCase(field)) {
+
+						/* Return the lower case field when is upper case */
+						return field.toLowerCase();
+
+					} else {
+
+						/* Transform to upper case and return */
+						return toUpperCase(field);
+
+					}
+
+				default:
+					break;
+
+			}
+
+		}
+
+		/* Return null when field or destination are null */
+		return null;
 
 	}
 

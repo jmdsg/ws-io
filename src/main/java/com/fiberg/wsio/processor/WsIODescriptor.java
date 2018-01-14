@@ -7,6 +7,7 @@ import io.vavr.collection.*;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
 import javassist.CtClass;
+import javassist.CtField;
 import javassist.CtMethod;
 
 import javax.lang.model.element.Element;
@@ -29,7 +30,8 @@ public class WsIODescriptor {
 			WsIOUseHideEmpty.class, WsIODescriptor.skipSingleDescriptor(WsIOIgnoreUseHideEmpty.class, WsIOIgnoreUseHideEmpty::skip),
 			WsIOMessage.class, WsIODescriptor.skipSingleDescriptor(WsIOSkipMessage.class, WsIOSkipMessage::skip),
 			WsIOMessageWrapper.class, WsIODescriptor.skipSingleDescriptor(WsIOSkipMessageWrapper.class, WsIOSkipMessageWrapper::skip),
-			WsIOAnnotate.class, WsIODescriptor.skipSingleDescriptor(WsIOSkipAnnotate.class, WsIOSkipAnnotate::skip)
+			WsIOAnnotate.class, WsIODescriptor.skipSingleDescriptor(WsIOSkipAnnotate.class, WsIOSkipAnnotate::skip),
+			WsIOMetadata.class, WsIODescriptor.skipSingleDescriptor(WsIOSkipMetadata.class, WsIOSkipMetadata::skip)
 	);
 
 	/** Descriptor of the multiple annotations */
@@ -46,14 +48,14 @@ public class WsIODescriptor {
 	/**
 	 * Method that create a descriptor for the skip annotations
 	 *
-	 * @param skip skip class extending annotation
+	 * @param skip     skip class extending annotation
 	 * @param function function to transform
-	 * @param <S> type argument extending annotation
+	 * @param <S>      type argument extending annotation
 	 * @return tuple containing the skip descriptor of the annotation
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked" })
 	private static <S extends Annotation> Tuple2<Class<? extends Annotation>, Function1<Annotation, SkipType>>
-	skipSingleDescriptor(Class<S> skip, Function1<S, SkipType> function) {
+	skipSingleDescriptor(final Class<S> skip, final Function1<S, SkipType> function) {
 
 		/* Return the skip class, and the skip method */
 		return Tuple.of(skip, annotation -> {
@@ -76,29 +78,29 @@ public class WsIODescriptor {
 	/**
 	 * Method that create a descriptor for the skip annotations
 	 *
-	 * @param main main class extending annotation
-	 * @param multiple multiple class extending annotation
-	 * @param skip skip class extending annotation
+	 * @param main             main class extending annotation
+	 * @param multiple         multiple class extending annotation
+	 * @param skip             skip class extending annotation
 	 * @param multipleFunction multiple function to transform
-	 * @param skipFunction skip function to transform
-	 * @param mainComparator main annotation comparator
-	 * @param skipComparator skip annotation comparator
-	 * @param <A> type argument extending the annotation
-	 * @param <M> type argument extending the multiple annotation
-	 * @param <S> type argument extending the skip annotation
+	 * @param skipFunction     skip function to transform
+	 * @param mainComparator   main annotation comparator
+	 * @param skipComparator   skip annotation comparator
+	 * @param <A>              type argument extending the annotation
+	 * @param <M>              type argument extending the multiple annotation
+	 * @param <S>              type argument extending the skip annotation
 	 * @return tuple containing the skip descriptor of the annotation
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked" })
 	private static <A extends Annotation, M extends Annotation, S extends Annotation> Tuple6<Class<? extends Annotation>,
 			Class<? extends Annotation>, Function1<Annotation, Annotation[]>, Function1<Annotation, SkipType>,
 			Function1<Annotation, Comparable<?>>, Function1<Annotation, Comparable<?>>> skipMultipleDescriptor(
-					Class<A> main,
-					Class<M> multiple,
-					Class<S> skip,
-					Function1<M, A[]> multipleFunction,
-					Function1<S, SkipType> skipFunction,
-					Function1<A, Comparable<?>> mainComparator,
-					Function1<S, Comparable<?>> skipComparator) {
+				final Class<A> main,
+				final Class<M> multiple,
+				final Class<S> skip,
+				final Function1<M, A[]> multipleFunction,
+				final Function1<S, SkipType> skipFunction,
+				final Function1<A, Comparable<?>> mainComparator,
+				final Function1<S, Comparable<?>> skipComparator) {
 
 		/* Return the annotation class, the skip function and the comparator function */
 		return Tuple.of(multiple, skip,
@@ -162,12 +164,12 @@ public class WsIODescriptor {
 	 * Method that returns the annotation wrapper in a option.
 	 *
 	 * @param annotations map of annotations
-	 * @param clazz class of the annoation
-	 * @param <T> type argument of the annotation
+	 * @param clazz       class of the annoation
+	 * @param <T>         type argument of the annotation
 	 * @return option containing the possible annotation
 	 */
-	private static <T extends Annotation> Option<T> getSingle(Map<Class<? extends Annotation>, ? extends Annotation> annotations,
-	                                                          Class<T> clazz) {
+	private static <T extends Annotation> Option<T> getSingle(final Map<Class<? extends Annotation>, ? extends Annotation> annotations,
+	                                                          final Class<T> clazz) {
 
 		/* Check class is not null */
 		if (Objects.nonNull(clazz)) {
@@ -190,13 +192,13 @@ public class WsIODescriptor {
 	 * Method that returns the annotation wrapper in a option.
 	 *
 	 * @param annotations map of annotations
-	 * @param clazz class of the annoation
-	 * @param <T> type argument of the annotation
+	 * @param clazz       class of the annoation
+	 * @param <T>         type argument of the annotation
 	 * @return option containing the possible annotation
 	 */
 	private static <T extends Annotation> Map<Comparable<?>, T> getMultiple(
-			Map<Class<? extends Annotation>, Map<Comparable<?>, ? extends Annotation>> annotations,
-			Class<T> clazz) {
+			final Map<Class<? extends Annotation>, Map<Comparable<?>, ? extends Annotation>> annotations,
+			final Class<T> clazz) {
 
 		/* Check class is not null */
 		if (Objects.nonNull(clazz)) {
@@ -222,7 +224,7 @@ public class WsIODescriptor {
 	 * @return list of tuples with annotation and skip type of all recursive annotated elements
 	 */
 	private static Map<Class<? extends Annotation>, Map<Comparable<?>, List<Tuple2<Annotation, SkipType>>>>
-	extractAnnotationsInfos(Annotated annotated) {
+	extractAnnotationsInfos(final Annotated annotated) {
 
 		/* Return annotations info */
 		return extractAnnotationsInfos(annotated, WsIODescriptor::extractElementHierarchy,
@@ -237,7 +239,7 @@ public class WsIODescriptor {
 	 * @return list of tuples with annotation and skip type of all recursive methods
 	 */
 	private static Map<Class<? extends Annotation>, Map<Comparable<?>, List<Tuple2<Annotation, SkipType>>>>
-	extractAnnotationsInfos(Element element) {
+	extractAnnotationsInfos(final Element element) {
 
 		/* Return annotations info */
 		return extractAnnotationsInfos(element, WsIODescriptor::extractElementHierarchy,
@@ -252,7 +254,7 @@ public class WsIODescriptor {
 	 * @return list of tuples with annotation and skip type of all recursive methods
 	 */
 	private static Map<Class<? extends Annotation>, Map<Comparable<?>, List<Tuple2<Annotation, SkipType>>>>
-	extractAnnotationsInfos(AnnotatedElement annotated) {
+	extractAnnotationsInfos(final AnnotatedElement annotated) {
 
 		/* Return annotations info */
 		return extractAnnotationsInfos(annotated, WsIODescriptor::extractElementHierarchy,
@@ -263,27 +265,27 @@ public class WsIODescriptor {
 	/**
 	 * Method that extracts the info for all generics.
 	 *
-	 * @param element type, package or executable generic
+	 * @param element   type, package or executable generic
 	 * @param hierarchy hierarchy function
 	 * @param extractor extractor function
-	 * @param <E> type argument of the extractor
+	 * @param <E>       type argument of the extractor
 	 * @return list of tuples with annotation and skip type of all recursive methods
 	 */
 	private static <E> Map<Class<? extends Annotation>, Map<Comparable<?>, List<Tuple2<Annotation, SkipType>>>>
-	extractAnnotationsInfos(E element,
-	                        Function1<E, List<E>> hierarchy,
-	                        Function2<E, Class<? extends Annotation>, Map<Comparable<?>, Tuple2<Annotation, SkipType>>> extractor) {
+	extractAnnotationsInfos(final E element,
+	                        final Function1<E, List<E>> hierarchy,
+	                        final Function2<E, Class<? extends Annotation>, Map<Comparable<?>, Tuple2<Annotation, SkipType>>> extractor) {
 
 		/* Map with all classes info */
 		return MULTIPLES.keySet().toMap(annot -> annot,
 				annot -> {
 
 					/* Get all annotations for each element */
-					List<Map<Comparable<?>, Tuple2<Annotation, SkipType>>> annotations = hierarchy.apply(element)
+					final List<Map<Comparable<?>, Tuple2<Annotation, SkipType>>> annotations = hierarchy.apply(element)
 							.map(elem -> extractor.apply(elem, annot));
 
 					/* Get all keys */
-					Set<Comparable<?>> keys = annotations.flatMap(Map::keySet).toSet();
+					final Set<Comparable<?>> keys = annotations.flatMap(Map::keySet).toSet();
 
 					/* Return the map of annotation class and the info by comparable */
 					return keys.toMap(comparable -> comparable,
@@ -300,7 +302,7 @@ public class WsIODescriptor {
 	 * @return list of tuples with annotation and skip type of all recursive annotated elements
 	 */
 	private static Map<Class<? extends Annotation>, List<Tuple2<Annotation, SkipType>>>
-	extractAnnotationInfos( Annotated annotated) {
+	extractAnnotationInfos(final Annotated annotated) {
 
 		/* Map with all classes info */
 		return SINGLES.keySet().toMap(annot -> annot,
@@ -316,7 +318,7 @@ public class WsIODescriptor {
 	 * @return list of tuples with annotation and skip type of all recursive methods
 	 */
 	private static Map<Class<? extends Annotation>, List<Tuple2<Annotation, SkipType>>>
-	extractAnnotationInfos(Element element) {
+	extractAnnotationInfos(final Element element) {
 
 		/* Map with all classes info */
 		return SINGLES.keySet().toMap(annot -> annot,
@@ -332,7 +334,7 @@ public class WsIODescriptor {
 	 * @return list of tuples with annotation and skip type of all recursive methods
 	 */
 	private static Map<Class<? extends Annotation>, List<Tuple2<Annotation, SkipType>>>
-	extractAnnotationInfos(AnnotatedElement annotated) {
+	extractAnnotationInfos(final AnnotatedElement annotated) {
 
 		/* Map with all classes info */
 		return SINGLES.keySet().toMap(annot -> annot,
@@ -342,13 +344,28 @@ public class WsIODescriptor {
 	}
 
 	/**
+	 * Method that extracts the ct annotated from a ct field.
+	 *
+	 * @param pool    pool of classes to search
+	 * @param ctField ct field
+	 * @return the annotated element
+	 */
+	private static Annotated extractCtAnnotated(final Map<String, CtClass> pool, final CtField ctField) {
+
+		/* Extract and return the annotated element */
+		return extractCtAnnotated(ctField, pool, ct -> null, CtField::getAnnotation,
+				CtField::getDeclaringClass, ct -> extractCtAnnotated(pool, ct));
+
+	}
+
+	/**
 	 * Method that extracts the ct annotated from a ct method.
 	 *
-	 * @param pool pool of classes to search
+	 * @param pool     pool of classes to search
 	 * @param ctMethod ct method
 	 * @return the annotated element
 	 */
-	private static Annotated extractCtAnnotated(Map<String, CtClass> pool, CtMethod ctMethod) {
+	private static Annotated extractCtAnnotated(final Map<String, CtClass> pool, final CtMethod ctMethod) {
 
 		/* Extract and return the annotated element */
 		return extractCtAnnotated(ctMethod, pool, ct -> null, CtMethod::getAnnotation,
@@ -359,11 +376,11 @@ public class WsIODescriptor {
 	/**
 	 * Method that extracts the ct annotated from a ct class.
 	 *
-	 * @param pool pool of classes to search
+	 * @param pool    pool of classes to search
 	 * @param ctClass ct class
 	 * @return the annotated element
 	 */
-	private static Annotated extractCtAnnotated(Map<String, CtClass> pool, CtClass ctClass) {
+	private static Annotated extractCtAnnotated(final Map<String, CtClass> pool, final CtClass ctClass) {
 
 		/* Extract and return the annotated element */
 		return extractCtAnnotated(ctClass, pool, ct -> {
@@ -372,7 +389,7 @@ public class WsIODescriptor {
 			if (!"package-info".equals(ct.getSimpleName())) {
 
 				/* Get package name and return package info name*/
-				String packageName = ct.getPackageName();
+				final String packageName = ct.getPackageName();
 				return WsIOUtil.addPrefixName("package-info", packageName);
 
 			} else {
@@ -389,22 +406,22 @@ public class WsIODescriptor {
 	/**
 	 * Method that extracts the ct annotated from a ct method or class.
 	 *
-	 * @param ct ct method or class
-	 * @param pool pool of classes to search
-	 * @param getName function to extract the name
-	 * @param getAnnotation checked function to extract annotations
-	 * @param getEnclosing checked function that get enclosing element
+	 * @param ct                 ct method or class
+	 * @param pool               pool of classes to search
+	 * @param getName            function to extract the name
+	 * @param getAnnotation      checked function to extract annotations
+	 * @param getEnclosing       checked function that get enclosing element
 	 * @param transformEnclosing function that transform enclosing element to annotated
-	 * @param <CT> type argument of ct method or class
-	 * @param <ENC> type argument of enclosing element
+	 * @param <CT>               type argument of ct method or class
+	 * @param <ENC>              type argument of enclosing element
 	 * @return the annotated element
 	 */
-	private static <CT, ENC> Annotated extractCtAnnotated(CT ct,
-	                                                      Map<String, ENC> pool,
-	                                                      Function1<CT, String> getName,
-	                                                      CheckedFunction2<CT, Class, Object> getAnnotation,
-	                                                      CheckedFunction1<CT, ENC> getEnclosing,
-	                                                      Function1<ENC, Annotated> transformEnclosing) {
+	private static <CT, ENC> Annotated extractCtAnnotated(final CT ct,
+	                                                      final Map<String, ENC> pool,
+	                                                      final Function1<CT, String> getName,
+	                                                      final CheckedFunction2<CT, Class, Object> getAnnotation,
+	                                                      final CheckedFunction1<CT, ENC> getEnclosing,
+	                                                      final Function1<ENC, Annotated> transformEnclosing) {
 
 		/* Create a new annotated object */
 		return new Annotated() {
@@ -413,8 +430,8 @@ public class WsIODescriptor {
 			 * {@inheritDoc}
 			 */
 			@Override
-			@SuppressWarnings("unchecked")
-			public <T extends Annotation> T getAnnotation(Class<T> anotation) {
+			@SuppressWarnings({ "unchecked" })
+			public <T extends Annotation> T getAnnotation(final Class<T> anotation) {
 
 				/* Try to obtain the annotation and check if is instance of the annotation class */
 				return Try.of(() -> getAnnotation.apply(ct, anotation))
@@ -428,7 +445,7 @@ public class WsIODescriptor {
 			 * {@inheritDoc}
 			 */
 			@Override
-			public <T extends Annotation> T[] getAnnotationsByType(Class<T> anotation) {
+			public <T extends Annotation> T[] getAnnotationsByType(final Class<T> anotation) {
 
 				/* Get the annotation info, try to get the multiple annotation, check is instance of multiple,
 				 * then apply multiple function and check each element is instance of the main class.
@@ -476,7 +493,7 @@ public class WsIODescriptor {
 	 * @param annotated annotated class
 	 * @return list of annotated elements
 	 */
-	private static List<Annotated> extractElementHierarchy(Annotated annotated) {
+	private static List<Annotated> extractElementHierarchy(final Annotated annotated) {
 
 		/* Return the list of elements */
 		return Stream.iterate(annotated, Annotated::getEnclosingAnnotated)
@@ -492,7 +509,7 @@ public class WsIODescriptor {
 	 * @param element type, package or executable element
 	 * @return list of elements
 	 */
-	private static List<Element> extractElementHierarchy(Element element) {
+	private static List<Element> extractElementHierarchy(final Element element) {
 
 		/* Return the list of elements */
 		return Stream.iterate(element, Element::getEnclosingElement)
@@ -508,7 +525,7 @@ public class WsIODescriptor {
 	 * @param annotated type, package or executable annotated element
 	 * @return list of annotateds
 	 */
-	private static List<AnnotatedElement> extractElementHierarchy(AnnotatedElement annotated) {
+	private static List<AnnotatedElement> extractElementHierarchy(final AnnotatedElement annotated) {
 
 		/* Return the list of annotated elements */
 		return Stream.iterate(annotated, element -> {
@@ -522,7 +539,7 @@ public class WsIODescriptor {
 			} else if (element instanceof Class) {
 
 				/* Get declaring class and check if is null or not */
-				Class<?> declaring = ((Class) element).getDeclaringClass();
+				final Class<?> declaring = ((Class) element).getDeclaringClass();
 				if (Objects.isNull(declaring)) {
 
 					/* Return the package of the class */
@@ -549,13 +566,13 @@ public class WsIODescriptor {
 	/**
 	 * Method that extracts the info for current annotated element.
 	 *
-	 * @param annotated annotated element
+	 * @param annotated  annotated element
 	 * @param annotation class of the annotation
 	 * @return tuple with annotation and skip type
 	 */
 	private static Map<Comparable<?>, Tuple2<Annotation, SkipType>> extractElementAnnotationsInfo(
-			Annotated annotated,
-			Class<? extends Annotation> annotation) {
+			final Annotated annotated,
+			final Class<? extends Annotation> annotation) {
 
 		/* Return the map of multiples */
 		return extractElementAnnotationsInfo(annotated, annotation, Annotated::getAnnotationsByType);
@@ -565,13 +582,13 @@ public class WsIODescriptor {
 	/**
 	 * Method that extracts the info for current element.
 	 *
-	 * @param element type, package or executable element
+	 * @param element    type, package or executable element
 	 * @param annotation class of the annotation
 	 * @return tuple with annotation and skip type
 	 */
 	private static Map<Comparable<?>, Tuple2<Annotation, SkipType>> extractElementAnnotationsInfo(
-			Element element,
-			Class<? extends Annotation> annotation) {
+			final Element element,
+			final Class<? extends Annotation> annotation) {
 
 		/* Return the map of multiples */
 		return extractElementAnnotationsInfo(element, annotation, Element::getAnnotationsByType);
@@ -581,13 +598,13 @@ public class WsIODescriptor {
 	/**
 	 * Method that extracts the info for current annotated element.
 	 *
-	 * @param annotated type, package or executable annotated element
+	 * @param annotated  type, package or executable annotated element
 	 * @param annotation class of the annotation
 	 * @return tuple with annotation and skip type
 	 */
 	private static Map<Comparable<?>, Tuple2<Annotation, SkipType>> extractElementAnnotationsInfo(
-			AnnotatedElement annotated,
-			Class<? extends Annotation> annotation) {
+			final AnnotatedElement annotated,
+			final Class<? extends Annotation> annotation) {
 
 		/* Return the map of multiples */
 		return extractElementAnnotationsInfo(annotated, annotation, AnnotatedElement::getAnnotationsByType);
@@ -597,16 +614,16 @@ public class WsIODescriptor {
 	/**
 	 * Method that extracts the info for current generic.
 	 *
-	 * @param element type, package or executable generic
+	 * @param element    type, package or executable generic
 	 * @param annotation class of the annotation
-	 * @param extractor extractor function
-	 * @param <E> type argument of the extractor
+	 * @param extractor  extractor function
+	 * @param <E>        type argument of the extractor
 	 * @return tuple with annotation and skip type
 	 */
 	private static <E> Map<Comparable<?>, Tuple2<Annotation, SkipType>> extractElementAnnotationsInfo(
-			E element,
-			Class<? extends Annotation> annotation,
-			Function2<E, Class<? extends Annotation>, ? extends Annotation[]> extractor) {
+			final E element,
+			final Class<? extends Annotation> annotation,
+			final Function2<E, Class<? extends Annotation>, ? extends Annotation[]> extractor) {
 
 		/* Return the annotations info */
 		return Map.narrow(MULTIPLES.get(annotation)
@@ -625,12 +642,12 @@ public class WsIODescriptor {
 	/**
 	 * Method that extracts the info for current annotated element.
 	 *
-	 * @param annotated annotated element
+	 * @param annotated  annotated element
 	 * @param annotation class of the annotation
 	 * @return tuple with annotation and skip type
 	 */
-	private static Tuple2<Annotation, SkipType> extractElementAnnotationInfo(Annotated annotated,
-	                                                                         Class<? extends Annotation> annotation) {
+	private static Tuple2<Annotation, SkipType> extractElementAnnotationInfo(final Annotated annotated,
+	                                                                         final Class<? extends Annotation> annotation) {
 
 		/* Return annotation info */
 		return extractElementAnnotationInfo(annotated, annotation, Annotated::getAnnotation);
@@ -640,12 +657,12 @@ public class WsIODescriptor {
 	/**
 	 * Method that extracts the info for current element.
 	 *
-	 * @param element type, package or executable element
+	 * @param element    type, package or executable element
 	 * @param annotation class of the annotation
 	 * @return tuple with annotation and skip type
 	 */
-	private static Tuple2<Annotation, SkipType> extractElementAnnotationInfo(Element element,
-	                                                                         Class<? extends Annotation> annotation) {
+	private static Tuple2<Annotation, SkipType> extractElementAnnotationInfo(final Element element,
+	                                                                         final Class<? extends Annotation> annotation) {
 
 		/* Return annotation info */
 		return extractElementAnnotationInfo(element, annotation, Element::getAnnotation);
@@ -655,12 +672,12 @@ public class WsIODescriptor {
 	/**
 	 * Method that extracts the info for current annotated element.
 	 *
-	 * @param annotated type, package or executable annotated element
+	 * @param annotated  type, package or executable annotated element
 	 * @param annotation class of the annotation
 	 * @return tuple with annotation and skip type
 	 */
-	private static Tuple2<Annotation, SkipType> extractElementAnnotationInfo(AnnotatedElement annotated,
-	                                                                         Class<? extends Annotation> annotation) {
+	private static Tuple2<Annotation, SkipType> extractElementAnnotationInfo(final AnnotatedElement annotated,
+	                                                                         final Class<? extends Annotation> annotation) {
 
 		/* Return annotation info */
 		return extractElementAnnotationInfo(annotated, annotation, AnnotatedElement::getAnnotation);
@@ -670,16 +687,16 @@ public class WsIODescriptor {
 	/**
 	 * Method that extracts the info for current annotated generic.
 	 *
-	 * @param element type, package or executable generic
+	 * @param element    type, package or executable generic
 	 * @param annotation class of the annotation
-	 * @param extractor extractor function
-	 * @param <E> type argument of the extractor
+	 * @param extractor  extractor function
+	 * @param <E>        type argument of the extractor
 	 * @return tuple with annotation and skip type
 	 */
 	private static <E> Tuple2<Annotation, SkipType> extractElementAnnotationInfo(
-			E element,
-			Class<? extends Annotation> annotation,
-			Function2<E, Class<? extends Annotation>, ? extends Annotation> extractor) {
+			final E element,
+			final Class<? extends Annotation> annotation,
+			final Function2<E, Class<? extends Annotation>, ? extends Annotation> extractor) {
 
 		/* Get annotation, and skip type from function call, finally filter tuple of nulls and return */
 		return Tuple.of(extractor.apply(element, annotation),
@@ -695,18 +712,18 @@ public class WsIODescriptor {
 	 * @param hierarchy list of hierarchy annotations and skips
 	 * @return option with the annotation
 	 */
-	private static Option<Annotation> resolve(List<Tuple2<Annotation, SkipType>> hierarchy) {
+	private static Option<Annotation> resolve(final List<Tuple2<Annotation, SkipType>> hierarchy) {
 
 		/* Get last index and iterate for each element of hierarchy in reverse order */
-		int lastIndex = hierarchy.size() - 1;
+		final int lastIndex = hierarchy.size() - 1;
 		for (int index = lastIndex; index >= 0; index--) {
 
 			/* Check tuple is not null */
 			if (Objects.nonNull(hierarchy.get(index))) {
 
 				/* Get current annotation and skip */
-				Annotation annotation = hierarchy.get(index)._1();
-				SkipType skip = hierarchy.get(index)._2();
+				final Annotation annotation = hierarchy.get(index)._1();
+				final SkipType skip = hierarchy.get(index)._2();
 
 				/* Check if annotation is null and the if skip is defined */
 				if (Objects.nonNull(annotation)) {
@@ -735,11 +752,26 @@ public class WsIODescriptor {
 	/**
 	 * Method that creates a descriptor starting from specified element.
 	 *
-	 * @param pool pool of classes to search
+	 * @param pool    pool of classes to search
+	 * @param ctField ct field
+	 * @return descriptor from the element
+	 */
+	public static WsIODescriptor of(final Map<String, CtClass> pool, CtField ctField) {
+
+		/* Return of element type */
+		return of(extractCtAnnotated(pool, ctField), WsIODescriptor::extractAnnotationInfos,
+				WsIODescriptor::extractAnnotationsInfos);
+
+	}
+
+	/**
+	 * Method that creates a descriptor starting from specified element.
+	 *
+	 * @param pool     pool of classes to search
 	 * @param ctMethod ct method
 	 * @return descriptor from the element
 	 */
-	public static WsIODescriptor of(Map<String, CtClass> pool, CtMethod ctMethod) {
+	public static WsIODescriptor of(final Map<String, CtClass> pool, CtMethod ctMethod) {
 
 		/* Return of element type */
 		return of(extractCtAnnotated(pool, ctMethod), WsIODescriptor::extractAnnotationInfos,
@@ -750,11 +782,11 @@ public class WsIODescriptor {
 	/**
 	 * Method that creates a descriptor starting from specified element.
 	 *
-	 * @param pool pool of classes to search
+	 * @param pool    pool of classes to search
 	 * @param ctClass ct class
 	 * @return descriptor from the element
 	 */
-	public static WsIODescriptor of(Map<String, CtClass> pool, CtClass ctClass) {
+	public static WsIODescriptor of(final Map<String, CtClass> pool, CtClass ctClass) {
 
 		/* Return of element type */
 		return of(extractCtAnnotated(pool, ctClass), WsIODescriptor::extractAnnotationInfos,
@@ -768,7 +800,7 @@ public class WsIODescriptor {
 	 * @param element package, type or executable element to extract descriptor
 	 * @return descriptor from the element
 	 */
-	public static WsIODescriptor of(Element element) {
+	public static WsIODescriptor of(final Element element) {
 
 		/* Return of element type */
 		return of(element, WsIODescriptor::extractAnnotationInfos,
@@ -782,7 +814,7 @@ public class WsIODescriptor {
 	 * @param annotated package, type or executable element to extract descriptor
 	 * @return descriptor from the element
 	 */
-	public static WsIODescriptor of(AnnotatedElement annotated) {
+	public static WsIODescriptor of(final AnnotatedElement annotated) {
 
 		/* Return of annotated type */
 		return of(annotated, WsIODescriptor::extractAnnotationInfos,
@@ -793,19 +825,19 @@ public class WsIODescriptor {
 	/**
 	 * Method that creates a descriptor starting from specified generic.
 	 *
-	 * @param element package, type or executable element to extract descriptor
-	 * @param singleExtractor single extractor function
+	 * @param element           package, type or executable element to extract descriptor
+	 * @param singleExtractor   single extractor function
 	 * @param multipleExtractor multiple extractor function
-	 * @param <E> type argument of the extractor
+	 * @param <E>               type argument of the extractor
 	 * @return descriptor from the element
 	 */
 	private static <E> WsIODescriptor of(
-			E element,
-			Function1<E, Map<Class<? extends Annotation>, List<Tuple2<Annotation, SkipType>>>> singleExtractor,
-			Function1<E, Map<Class<? extends Annotation>, Map<Comparable<?>, List<Tuple2<Annotation, SkipType>>>>> multipleExtractor) {
+			final E element,
+			final Function1<E, Map<Class<? extends Annotation>, List<Tuple2<Annotation, SkipType>>>> singleExtractor,
+			final Function1<E, Map<Class<? extends Annotation>, Map<Comparable<?>, List<Tuple2<Annotation, SkipType>>>>> multipleExtractor) {
 
 		/* Create descriptor */
-		WsIODescriptor descriptor = new WsIODescriptor();
+		final WsIODescriptor descriptor = new WsIODescriptor();
 
 		/* Initialize single elements */
 		descriptor.singles = singleExtractor.apply(element)
@@ -857,10 +889,10 @@ public class WsIODescriptor {
 	 * Method that returns the annotation wrapper in a option.
 	 *
 	 * @param clazz class of the annoation
-	 * @param <T> type argument of the annotation
+	 * @param <T>   type argument of the annotation
 	 * @return option containing the possible annotation
 	 */
-	public <T extends Annotation> Option<T> getSingle(Class<T> clazz) {
+	public <T extends Annotation> Option<T> getSingle(final Class<T> clazz) {
 
 		/* Return annotation option */
 		return WsIODescriptor.getSingle(singles, clazz);
@@ -871,10 +903,10 @@ public class WsIODescriptor {
 	 * Method that returns the annotation wrapper in a option.
 	 *
 	 * @param clazz class of the annoation
-	 * @param <T> type argument of the annotation
+	 * @param <T>   type argument of the annotation
 	 * @return option containing the possible annotation
 	 */
-	public <T extends Annotation> Map<Comparable<?>, T> getMultiple(Class<T> clazz) {
+	public <T extends Annotation> Map<Comparable<?>, T> getMultiple(final Class<T> clazz) {
 
 		/* Return annotation option */
 		return WsIODescriptor.getMultiple(multiples, clazz);
@@ -890,7 +922,7 @@ public class WsIODescriptor {
 		 * Method to extract the annotation of an element.
 		 *
 		 * @param anotation class of the annotation
-		 * @param <T> annotation type argument
+		 * @param <T>       annotation type argument
 		 * @return annotation of the specified type
 		 */
 		<T extends Annotation> T getAnnotation(Class<T> anotation);
@@ -899,7 +931,7 @@ public class WsIODescriptor {
 		 * Method to extract the annotations of an element by type.
 		 *
 		 * @param anotation class of the annotation
-		 * @param <T> annotation type argument
+		 * @param <T>       annotation type argument
 		 * @return array with all annotations of the specified type
 		 */
 		<T extends Annotation> T[] getAnnotationsByType(Class<T> anotation);

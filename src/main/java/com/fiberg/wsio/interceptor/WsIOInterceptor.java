@@ -87,7 +87,7 @@ public final class WsIOInterceptor {
 	public static void out(java.util.List<Object> objects, java.util.Map<String, Object> session) {
 
 		/* Get current wsio data */
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings({ "unchecked" })
 		java.util.Map<WsIOData, Object> wsio = (java.util.Map<WsIOData, Object>)
 				session.get(WsIOData.class.getCanonicalName());
 
@@ -232,7 +232,7 @@ public final class WsIOInterceptor {
 	 * @param <G> type argument with generics
 	 * @return java array of the list
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked" })
 	private static <R, G extends R> G[] toJavaArray(List<G> list, Class<R> clazz) {
 
 		/* Return the java array */
