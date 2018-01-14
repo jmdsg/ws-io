@@ -189,6 +189,42 @@ final class WsIOUtils {
 	}
 
 	/**
+	 * Method that extracts the delegate type of a metadata class.
+	 *
+	 * @param element type element ot extract the delegate
+	 * @return delegate type of a metadata class
+	 */
+	static TypeElement extractMetadataType(TypeElement element) {
+
+		/* Get all fields, check the name and type of the field.
+		 * Check the generics size is of size 1 and return the type element or null */
+		return Option.of(element)
+				.toStream()
+				.flatMap(TypeElement::getEnclosedElements)
+				.filter(variableElement -> ElementKind.FIELD.equals(variableElement.getKind()))
+				.filter(VariableElement.class::isInstance)
+				.map(VariableElement.class::cast)
+				.filter(variableElement -> WsIOConstant.METADATA_DELEGATE_FIELD
+						.equals(variableElement.getSimpleName().toString()))
+				.map(Element::asType)
+				.filter(DeclaredType.class::isInstance)
+				.map(DeclaredType.class::cast)
+				.filter(declared -> "Class".equals(declared.asElement()
+						.getSimpleName()
+						.toString()))
+				.map(DeclaredType::getTypeArguments)
+				.filter(arguments -> arguments.size() == 1)
+				.flatMap(list -> list)
+				.filter(DeclaredType.class::isInstance)
+				.map(DeclaredType.class::cast)
+				.map(DeclaredType::asElement)
+				.filter(TypeElement.class::isInstance)
+				.map(TypeElement.class::cast)
+				.getOrNull();
+
+	}
+
+	/**
 	 * Method that checks if an element implements a interface or extends a class
 	 *
 	 * @param subclass class to check if is sub class of the super class

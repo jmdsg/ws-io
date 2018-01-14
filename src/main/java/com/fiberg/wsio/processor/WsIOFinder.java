@@ -445,6 +445,29 @@ class WsIOFinder {
 	}
 
 	/**
+	 * Method that checks is a type element is a metadata generated class.
+	 *
+	 * @param element type element to check
+	 * @return {@code true} if type is a metadata generated class.
+	 */
+	static boolean isMetadataGenerated(TypeElement element) {
+
+		/* Extract the current type delegate type and check if is non null */
+		TypeElement type = WsIOUtils.extractMetadataType(element);
+		if (Objects.nonNull(type)) {
+
+			/* Check if the field is annotated for metadata */
+			return findMetadataRecursively(type)
+					.containsKey(type);
+
+		}
+
+		/* Return false when delegator type could not be found */
+		return false;
+
+	}
+
+	/**
 	 * Method that checks is a type element is a clone generated class.
 	 *
 	 * @param element type element to check

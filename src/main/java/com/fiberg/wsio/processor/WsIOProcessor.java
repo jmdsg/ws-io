@@ -63,7 +63,7 @@ public class WsIOProcessor extends AbstractProcessor {
 
 		/* Set of root elements that are not clones, messages or messages of clone classes */
 		final Set<TypeElement> rootTypeNotGeneratedElements = rootTypeElements
-				.filter(Predicates.noneOf(WsIOFinder::isMessageGenerated,
+				.filter(Predicates.noneOf(WsIOFinder::isMetadataGenerated, WsIOFinder::isMessageGenerated,
 						WsIOFinder::isCloneGenerated, WsIOFinder::isCloneMessageGenerated));
 
 		/* Find message classes recursively */

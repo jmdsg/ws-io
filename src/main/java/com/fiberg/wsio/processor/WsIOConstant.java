@@ -42,6 +42,8 @@ public final class WsIOConstant {
 
 	public static final String METADATA_SUFFIX = "_";
 
+	public static final String METADATA_DELEGATE_FIELD = "DELEGATE";
+
 	public static final String DEFAULT_RESULT = "return";
 
 	public static final String DEFAULT_PARAMETER = "arg";

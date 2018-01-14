@@ -303,7 +303,7 @@ class WsIOGenerator {
 			Map<String, Boolean> fields = info._3();
 
 			/* Build all the field specs */
-			List<FieldSpec> fieldSpecs = fields.toStream()
+			List<FieldSpec> constantFieldSpecs = fields.toStream()
 					.flatMap(fieldInfo -> {
 
 						/* Get field name and is static flag */
@@ -321,11 +321,27 @@ class WsIOGenerator {
 							.initializer("$S", tuple._2())
 							.build()).toList();
 
+			/* Generate delegate field spec */
+			Option<FieldSpec> delegateFieldSpec = Option.of(type)
+					.map(typeElement -> {
+
+						/* Create generic type name */
+						TypeName typeName = ParameterizedTypeName.get(ClassName.get(Class.class),
+								TypeName.get(typeElement.asType()));
+
+						/* Build and return the field */
+						return FieldSpec.builder(typeName, WsIOConstant.METADATA_DELEGATE_FIELD,
+								Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+								.initializer("$T.class", typeElement)
+								.build();
+
+					});
+
 			/* Get class name, full class name and create the type spec */
 			String className = WsIOUtil.addWrap(type.getSimpleName().toString(),
 					WsIOConstant.METADATA_PREFIX, WsIOConstant.METADATA_SUFFIX);
 			TypeSpec typeSpec = TypeSpec.classBuilder(className)
-					.addFields(fieldSpecs)
+					.addFields(Stream.concat(delegateFieldSpec, constantFieldSpecs))
 					.addModifiers(Modifier.PUBLIC)
 					.build();
 
