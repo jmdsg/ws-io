@@ -726,17 +726,17 @@ public class WsIODescriptor {
 				final SkipType skip = hierarchy.get(index)._2();
 
 				/* Check if annotation is null and the if skip is defined */
-				if (Objects.nonNull(annotation)) {
-
-					/* Return current annotation */
-					return Option.of(annotation);
-
-				} else if (SkipType.CHILDS.equals(skip)
-						|| SkipType.ALL.equals(skip)
+				if (SkipType.ALL.equals(skip)
+						|| (SkipType.CHILDS.equals(skip) && index != lastIndex)
 						|| (SkipType.CURRENT.equals(skip) && index == lastIndex)) {
 
 					/* Break to return default value */
 					break;
+
+				} else if (Objects.nonNull(annotation)) {
+
+					/* Return current annotation */
+					return Option.of(annotation);
 
 				}
 
