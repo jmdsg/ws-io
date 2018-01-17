@@ -380,7 +380,10 @@ public class WsIODescriptor {
 		/* Create the annotated element */
 		return new AnnotatedImpl(element::getAnnotation,
 				annotation -> Arrays.asList(element.getAnnotationsByType(annotation)),
-				() -> Option.of(element).map(WsIODescriptor::toAnnotated).getOrNull());
+				() -> Option.of(element).map(Element::getEnclosingElement)
+						.filter(Objects::nonNull)
+						.map(WsIODescriptor::toAnnotated)
+						.getOrNull());
 
 	}
 
