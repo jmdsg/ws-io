@@ -21,8 +21,7 @@ class WsIOFinder {
 	/**
 	 * Private empty constructor.
 	 */
-	private WsIOFinder() {
-	}
+	private WsIOFinder() {  }
 
 	/**
 	 * Method that finds the metadata info of a set of type elements.
