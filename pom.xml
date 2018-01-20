@@ -24,6 +24,7 @@
 
         <plugin-install.version>2.5.2</plugin-install.version>
         <plugin-sources.version>3.0.1</plugin-sources.version>
+        <plugin.jar.version>3.0.2</plugin.jar.version>
         <plugin.compiler.version>3.6.1</plugin.compiler.version>
         <plugin.compiler.source.version>1.8</plugin.compiler.source.version>
         <plugin.compiler.target.version>1.8</plugin.compiler.target.version>
@@ -120,6 +121,24 @@
                     <compilerArgs>
                         <arg>-verbose</arg>
                     </compilerArgs>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${plugin.jar.version}</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>false</addClasspath>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                        </manifest>
+                        <manifestEntries>
+                            <Class-Path>config/</Class-Path>
+                        </manifestEntries>
+                    </archive>
                 </configuration>
             </plugin>
 
