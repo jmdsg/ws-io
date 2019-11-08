@@ -21,10 +21,10 @@ final class WsIOScript {
 	private WsIOScript() {}
 
 	/** Script engine manager */
-	private final static ScriptEngineManager MANAGER = new ScriptEngineManager();
+	private final static ScriptEngineManager MANAGER = new ScriptEngineManager(null);
 
 	/** Script engine */
-	final static ScriptEngine ENGINE = MANAGER.getEngineByName("JavaScript");
+	final static ScriptEngine ENGINE = MANAGER.getEngineByName("nashorn");
 
 	/** Javascript invicable */
 	final static Invocable INVOCABLE = (Invocable) ENGINE;

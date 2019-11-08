@@ -6,11 +6,12 @@
 
     <groupId>com.fiberg</groupId>
     <artifactId>wsio</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.2.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>WsIO</name>
 
     <properties>
+
         <auto-service.version>1.0-rc2</auto-service.version>
         <java-writer.version>2.5.1</java-writer.version>
         <java-poet.version>1.9.0</java-poet.version>
@@ -32,6 +33,7 @@
         <plugin.compiler.version>3.6.1</plugin.compiler.version>
         <plugin.compiler.source.version>11</plugin.compiler.source.version>
         <plugin.compiler.target.version>11</plugin.compiler.target.version>
+
     </properties>
 
     <dependencies>
