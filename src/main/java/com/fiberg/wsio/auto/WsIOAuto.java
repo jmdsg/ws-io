@@ -3,6 +3,7 @@ package com.fiberg.wsio.auto;
 import com.fiberg.wsio.annotation.WsIOAnnotate;
 import com.fiberg.wsio.processor.*;
 import com.fiberg.wsio.util.WsIOUtil;
+import com.google.common.collect.Comparators;
 import io.github.lukehutch.fastclasspathscanner.FastClasspathScanner;
 import io.vavr.*;
 import io.vavr.collection.HashMap;
@@ -19,6 +20,7 @@ import javax.jws.WebParam;
 import javax.jws.WebResult;
 import javax.xml.ws.RequestWrapper;
 import javax.xml.ws.ResponseWrapper;
+import java.util.Comparator;
 import java.util.Objects;
 
 /**

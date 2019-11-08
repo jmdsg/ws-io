@@ -22,12 +22,16 @@
         <javassist.version>3.21.0-GA</javassist.version>
 	    <fast-classpath.version>2.7.2</fast-classpath.version>
 
+	    <javax.jaxb.version>2.3.1</javax.jaxb.version>
+	    <javax.jaxws.version>2.3.1</javax.jaxws.version>
+	    <javax.jws.version>1.0-MR1</javax.jws.version>
+
         <plugin-install.version>2.5.2</plugin-install.version>
         <plugin-sources.version>3.0.1</plugin-sources.version>
         <plugin.jar.version>3.0.2</plugin.jar.version>
         <plugin.compiler.version>3.6.1</plugin.compiler.version>
-        <plugin.compiler.source.version>1.8</plugin.compiler.source.version>
-        <plugin.compiler.target.version>1.8</plugin.compiler.target.version>
+        <plugin.compiler.source.version>11</plugin.compiler.source.version>
+        <plugin.compiler.target.version>11</plugin.compiler.target.version>
     </properties>
 
     <dependencies>
@@ -81,6 +85,21 @@
             <groupId>io.github.lukehutch</groupId>
             <artifactId>fast-classpath-scanner</artifactId>
             <version>${fast-classpath.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.jws</groupId>
+            <artifactId>jsr181-api</artifactId>
+            <version>${javax.jws.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.xml.bind</groupId>
+            <artifactId>jaxb-api</artifactId>
+            <version>${javax.jaxb.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.xml.ws</groupId>
+            <artifactId>jaxws-api</artifactId>
+            <version>${javax.jaxws.version}</version>
         </dependency>
     </dependencies>
 
