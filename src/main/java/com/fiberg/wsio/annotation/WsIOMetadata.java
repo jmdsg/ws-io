@@ -1,6 +1,5 @@
 package com.fiberg.wsio.annotation;
 
-import com.fiberg.wsio.namer.WsIONamer;
 import com.fiberg.wsio.processor.WsIOConstant;
 
 import java.lang.annotation.*;
@@ -34,16 +33,70 @@ public @interface WsIOMetadata {
 	String packageEnd() default WsIOConstant.PACKAGE_END;
 
 	/**
-	 * <p>Class that must have public without argument constructor.</p><br>
-	 * <p>The class passed must implement the {@link com.fiberg.wsio.namer.WsIONamer} interface.</p>
+	 * <p>Function in javascript to generate the package name, if none is specified the default behavier is used.</p><br>
 	 *
-	 * <p>The default behavior is:</p>
+	 * <p>The function used is the following and the variable <code>packageJs</code> is used in the return of the function.</p><br>
+	 *
+	 * <pre>{@code
+	 * var generatePackageName = function (currentMethod, className, packageName, packagePath, packagePrefix, packageSuffix, packageStart, packageMiddle, packageEnd) {
+	 *     return ${packageJs};
+	 * };
+	 * }</pre>
+	 *
+	 * <p>Additionally a function called 'join' is provided to join multiple names with dot '.' sign,
+	 * a function called 'backward' to get back one level in the package <br>
+	 * and a function called 'forward' which starts at the begining of the package name.</p>
+	 *
+	 * <p>The default value is:</p>
 	 * <pre>join(packageStart, packagePath, packageMiddle, packagePrefix + packageName + packageSuffix, packageEnd)</pre>
 	 *
-	 * <p>Where <pre>join(...)</pre> performs a join with the '.' character.</p>
+	 * <p>The definitions of the functions are the following:</p>
+	 *
+	 * <pre>{@code
+	 * var join = function() {
+	 *     var name = '';
+	 *     for(var i = 0; i < arguments.length; i++) {
+	 *         if (arguments[i] !== null) {
+	 *             var next = arguments[i].replace(/^\.+/, '').replace(/\.+$/, '');
+	 *             if (next !== '') {
+	 *                 if (name !== '') {
+	 *                     name += '.';
+	 *                 }
+	 *                 name += next;
+	 *             }
+	 *         }
+	 *     }
+	 *     return name;
+	 * };
+	 * }</pre>
+	 *
+	 * <pre>{@code
+	 * var backward = function(packageName, lvl) {
+	 *     lvl = (typeof lvl !== 'undefined') ? lvl : 1;
+	 *     var finalName = packageName;
+	 *     for (var i = 0; i < lvl; i++) {
+	 *         if (packageName.lastIndexOf('.') >= 0) {
+	 *             finalName = finalName.substring(0, finalName.lastIndexOf('.'));
+	 *         }
+	 *     }
+	 *     return finalName;
+	 * };
+	 * }</pre>
+	 *
+	 * <pre>{@code
+	 * var forward = function(packageName, lvl) {
+	 *     lvl = (typeof lvl !== 'undefined') ? lvl : 1;
+	 *     return backward(packageName, packageName.split(".").length - lvl);
+	 * };
+	 * }</pre>
 	 *
 	 * */
-	Class<? extends WsIONamer> packageNamer() default WsIONamer.Default.class;
+	String packageJs() default "join(" +
+			"packageStart, " +
+			"packagePath, " +
+			"packageMiddle, " +
+			"packagePrefix + packageName + packageSuffix, " +
+			"packageEnd)";
 
 	/** Cases to generate the fields */
 	Case[] cases() default { Case.UPPER };
