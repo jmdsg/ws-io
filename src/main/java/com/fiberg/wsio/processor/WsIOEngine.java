@@ -1,6 +1,5 @@
 package com.fiberg.wsio.processor;
 
-import groovy.lang.GroovyShell;
 import io.vavr.Predicates;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -52,12 +51,12 @@ final class WsIOEngine {
 				.filter(Predicates.noneOf("##default"::equals))
 				.getOrElse(currentPackagePath);
 
-		final GroovyShell shell = WsIOScript.createShell(
-				currentMethod, currentClass, currentPackage, actualPackageName, actualPackagePath,
-				packagePrefix, packageSuffix, packageStart, packageMiddle, packageEnd
+		return WsIOScript.evaluate(
+				currentMethod, currentClass, currentPackage,
+				actualPackageName, actualPackagePath,
+				packagePrefix, packageSuffix, packageStart, packageMiddle, packageEnd,
+				packageFunc
 		);
-
-		return (String) shell.evaluate(packageFunc);
 
 	}
 

@@ -13,6 +13,8 @@ final class WsIOScript {
 	 */
 	private WsIOScript() {}
 
+	private static final GroovyShell GROOVY_SHELL = WsIOScript.createShell();
+
 	/**
 	 * Method that creates the groovy shell with the specified variables.
 	 *
@@ -26,26 +28,42 @@ final class WsIOScript {
 	 * @param packageStart start of the package
 	 * @param packageMiddle middle of the package
 	 * @param packageEnd end of the package
+	 * @return the groovy shell with the variables set
+	 */
+	public static String evaluate(final String currentMethod, final String currentClass,
+								  final String currentPackage, final String packageName,
+								  final String packagePath, final String packagePrefix,
+								  final String packageSuffix, final String packageStart,
+								  final String packageMiddle, final String packageEnd,
+								  final String packageFunc) {
+
+		synchronized (GROOVY_SHELL) {
+
+			GROOVY_SHELL.setVariable("currentMethod", currentMethod);
+			GROOVY_SHELL.setVariable("currentClass", currentClass);
+			GROOVY_SHELL.setVariable("currentPackage", currentPackage);
+			GROOVY_SHELL.setVariable("packageName", packageName);
+			GROOVY_SHELL.setVariable("packagePath", packagePath);
+			GROOVY_SHELL.setVariable("packagePrefix", packagePrefix);
+			GROOVY_SHELL.setVariable("packageSuffix", packageSuffix);
+			GROOVY_SHELL.setVariable("packageStart", packageStart);
+			GROOVY_SHELL.setVariable("packageMiddle", packageMiddle);
+			GROOVY_SHELL.setVariable("packageEnd", packageEnd);
+
+			return (String) GROOVY_SHELL.evaluate(packageFunc);
+
+		}
+
+	}
+
+	/**
+	 * Method that creates the groovy shell with the specified variables.
+	 *
 	 * @return shell ready to execute the groovy function with an evaluate
 	 */
-	public static GroovyShell createShell(final String currentMethod, final String currentClass,
-										  final String currentPackage, final String packageName,
-										  final String packagePath, final String packagePrefix,
-										  final String packageSuffix, final String packageStart,
-										  final String packageMiddle, final String packageEnd) {
+	private static GroovyShell createShell() {
 
 		final Binding binding = new Binding();
-
-		binding.setVariable("currentMethod", currentMethod);
-		binding.setVariable("currentClass", currentClass);
-		binding.setVariable("currentPackage", currentPackage);
-		binding.setVariable("packageName", packageName);
-		binding.setVariable("packagePath", packagePath);
-		binding.setVariable("packagePrefix", packagePrefix);
-		binding.setVariable("packageSuffix", packageSuffix);
-		binding.setVariable("packageStart", packageStart);
-		binding.setVariable("packageMiddle", packageMiddle);
-		binding.setVariable("packageEnd", packageEnd);
 
 		final GroovyShell shell = new GroovyShell(binding);
 
