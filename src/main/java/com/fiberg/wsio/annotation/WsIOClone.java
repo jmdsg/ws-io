@@ -66,7 +66,8 @@ public @interface WsIOClone {
 	 *
 	 * <pre>{@code
 	 *     join = {
-	 *         list -> list.collect { str -> str.replaceAll(/(^\\.+)|(\\.+$)/, '') }
+	 *         list -> list.findAll { str -> str != null }
+	 *             .collect { str -> str.replaceAll(/(^\\.+)|(\\.+$)/, '') }
 	 *             .findAll { str -> str != '' }
 	 *             .join('.')
 	 *     }
