@@ -70,7 +70,7 @@ class WsIOFinder {
 				String finalPackage = WsIOEngine.obtainPackage(StringUtils.EMPTY, className, packageName,
 						metadata.packageName(), metadata.packagePath(), metadata.packagePrefix(),
 						metadata.packageSuffix(), metadata.packageStart(), metadata.packageMiddle(),
-						metadata.packageEnd(), metadata.packageJs());
+						metadata.packageEnd(), metadata.packageFunc());
 
 				/* Get enabled field names */
 				Map<String, Boolean> fieldNames = fields.flatMap(field -> {
@@ -174,7 +174,7 @@ class WsIOFinder {
 					String finalPackage = WsIOEngine.obtainPackage(executableName, className, packageName,
 							wrapper.getPackageName(), wrapper.getPackagePath(), wrapper.getPackagePrefix(),
 							wrapper.getPackageSuffix(), wrapper.getPackageStart(), wrapper.getPackageMiddle(),
-							wrapper.getPackageEnd(), wrapper.getPackageJs());
+							wrapper.getPackageEnd(), wrapper.getPackageFunc());
 
 					/* Get current info of the executable with descriptor annotations descriptor */
 					WsIOInfo info = WsIOUtils.extractInfo(executable, descriptor);
@@ -247,7 +247,7 @@ class WsIOFinder {
 						return WsIOEngine.obtainPackage(StringUtils.EMPTY, className, packageName,
 								message.getPackageName(), message.getPackagePath(), message.getPackagePrefix(),
 								message.getPackageSuffix(), message.getPackageStart(), message.getPackageMiddle(),
-								message.getPackageEnd(), message.getPackageJs());
+								message.getPackageEnd(), message.getPackageFunc());
 
 					});
 
@@ -309,7 +309,7 @@ class WsIOFinder {
 				String finalPackage = WsIOEngine.obtainPackage(StringUtils.EMPTY, className, packageName,
 						clone.getPackageName(), clone.getPackagePath(), clone.getPackagePrefix(),
 						clone.getPackageSuffix(), clone.getPackageStart(), clone.getPackageMiddle(),
-						clone.getPackageEnd(), clone.getPackageJs());
+						clone.getPackageEnd(), clone.getPackageFunc());
 
 				/* Return the tuple of element and final package name */
 				return Tuple.of(element, finalPackage);
@@ -363,7 +363,7 @@ class WsIOFinder {
 								String finalPackage = WsIOEngine.obtainPackage(StringUtils.EMPTY, className, packageName,
 										clone.getPackageName(), clone.getPackagePath(), clone.getPackagePrefix(),
 										clone.getPackageSuffix(), clone.getPackageStart(), clone.getPackageMiddle(),
-										clone.getPackageEnd(), clone.getPackageJs());
+										clone.getPackageEnd(), clone.getPackageFunc());
 
 								/* Return tuple with type element and package name */
 								return Tuple.of(element, finalPackage);

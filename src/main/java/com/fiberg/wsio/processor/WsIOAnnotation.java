@@ -20,7 +20,7 @@ class WsIOAnnotation {
 
 	private String packageEnd;
 
-	private String packageJs;
+	private String packageFunc;
 
 	static WsIOAnnotation ofNull(WsIOMessage annotation) {
 		if (annotation != null) {
@@ -39,19 +39,19 @@ class WsIOAnnotation {
 	static WsIOAnnotation of(WsIOMessage annotation) {
 		return of(annotation.packageName(), annotation.packagePath(), annotation.packagePrefix(),
 				annotation.packageSuffix(), annotation.packageStart(), annotation.packageMiddle(),
-				annotation.packageEnd(), annotation.packageJs());
+				annotation.packageEnd(), annotation.packageFunc());
 	}
 
 	static WsIOAnnotation of(WsIOMessageWrapper annotation) {
 		return of(annotation.packageName(), annotation.packagePath(), annotation.packagePrefix(),
 				annotation.packageSuffix(), annotation.packageStart(), annotation.packageMiddle(),
-				annotation.packageEnd(), annotation.packageJs());
+				annotation.packageEnd(), annotation.packageFunc());
 	}
 
 	static WsIOAnnotation of(WsIOClone annotation) {
 		return of(annotation.packageName(), annotation.packagePath(), annotation.packagePrefix(),
 				annotation.packageSuffix(), annotation.packageStart(), annotation.packageMiddle(),
-				annotation.packageEnd(), annotation.packageJs());
+				annotation.packageEnd(), annotation.packageFunc());
 	}
 
 	private static WsIOAnnotation of(String packageName,
@@ -61,7 +61,7 @@ class WsIOAnnotation {
 	                                 String packageStart,
 	                                 String packageMiddle,
 	                                 String packageEnd,
-	                                 String packageJs) {
+	                                 String packageFunc) {
 		WsIOAnnotation generator = new WsIOAnnotation();
 		generator.setPackageName(packageName);
 		generator.setPackagePath(packagePath);
@@ -70,7 +70,7 @@ class WsIOAnnotation {
 		generator.setPackageStart(packageStart);
 		generator.setPackageMiddle(packageMiddle);
 		generator.setPackageEnd(packageEnd);
-		generator.setPackageJs(packageJs);
+		generator.setPackageFunc(packageFunc);
 		return generator;
 	}
 
@@ -130,12 +130,12 @@ class WsIOAnnotation {
 		this.packageEnd = packageEnd;
 	}
 
-	public String getPackageJs() {
-		return packageJs;
+	public String getPackageFunc() {
+		return packageFunc;
 	}
 
-	public void setPackageJs(String packageJs) {
-		this.packageJs = packageJs;
+	public void setPackageFunc(String packageFunc) {
+		this.packageFunc = packageFunc;
 	}
 
 	/**
@@ -158,7 +158,7 @@ class WsIOAnnotation {
 		if (packageMiddle != null ? !packageMiddle.equals(that.packageMiddle) : that.packageMiddle != null)
 			return false;
 		if (packageEnd != null ? !packageEnd.equals(that.packageEnd) : that.packageEnd != null) return false;
-		return packageJs != null ? packageJs.equals(that.packageJs) : that.packageJs == null;
+		return packageFunc != null ? packageFunc.equals(that.packageFunc) : that.packageFunc == null;
 	}
 
 	/**
@@ -173,7 +173,7 @@ class WsIOAnnotation {
 		result = 31 * result + (packageStart != null ? packageStart.hashCode() : 0);
 		result = 31 * result + (packageMiddle != null ? packageMiddle.hashCode() : 0);
 		result = 31 * result + (packageEnd != null ? packageEnd.hashCode() : 0);
-		result = 31 * result + (packageJs != null ? packageJs.hashCode() : 0);
+		result = 31 * result + (packageFunc != null ? packageFunc.hashCode() : 0);
 		return result;
 	}
 
@@ -190,7 +190,7 @@ class WsIOAnnotation {
 				", packageStart='" + packageStart + '\'' +
 				", packageMiddle='" + packageMiddle + '\'' +
 				", packageEnd='" + packageEnd + '\'' +
-				", packageJs='" + packageJs + '\'' +
+				", packageFunc='" + packageFunc + '\'' +
 				'}';
 	}
 

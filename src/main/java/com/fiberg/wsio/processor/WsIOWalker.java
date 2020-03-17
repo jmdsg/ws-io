@@ -84,7 +84,7 @@ public final class WsIOWalker {
 					final String finalPackage = WsIOEngine.obtainPackage(methodName, className, packageName,
 							wrapper.getPackageName(), wrapper.getPackagePath(), wrapper.getPackagePrefix(),
 							wrapper.getPackageSuffix(), wrapper.getPackageStart(), wrapper.getPackageMiddle(),
-							wrapper.getPackageEnd(), wrapper.getPackageJs());
+							wrapper.getPackageEnd(), wrapper.getPackageFunc());
 
 					/* Map with the prefix and suffix for response and request wrappers */
 					final Map<WsIOType, Tuple2<String, String>> messageMap = HashMap.of(
@@ -156,7 +156,7 @@ public final class WsIOWalker {
 				WsIOEngine.obtainPackage(StringUtils.EMPTY, currentClass, currentPackage,
 				annotation.getPackageName(), annotation.getPackagePath(), annotation.getPackagePrefix(),
 				annotation.getPackageSuffix(), annotation.getPackageStart(), annotation.getPackageMiddle(),
-				annotation.getPackageEnd(), annotation.getPackageJs());
+				annotation.getPackageEnd(), annotation.getPackageFunc());
 
 		/* Get the message names with the package generated and the response and request identifiers */
 		final Set<String> messageNames = messageOpt.map(getPackageName.apply(currentPackage)).toSet()

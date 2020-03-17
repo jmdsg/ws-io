@@ -1,14 +1,7 @@
 package com.fiberg.wsio.processor;
 
-import com.google.common.base.Charsets;
-import org.apache.commons.io.IOUtils;
-
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
-import java.io.IOException;
-import java.io.InputStream;
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
 
 /**
  * Class that loads the script engine manager and evaluates javascript code.
@@ -20,41 +13,68 @@ final class WsIOScript {
 	 */
 	private WsIOScript() {}
 
-	/** Script engine manager */
-	private final static ScriptEngineManager MANAGER = new ScriptEngineManager(null);
-
-	/** Script engine */
-	final static ScriptEngine ENGINE = MANAGER.getEngineByName("nashorn");
-
-	/** Javascript invicable */
-	final static Invocable INVOCABLE = (Invocable) ENGINE;
-
-	/** Flag that indicates is the script engine is loaded or not */
-	private static boolean UTIL_LOADED = false;
-
 	/**
-	 * Method that loads the input string as the script.
+	 * Method that creates the groovy shell with the specified variables.
 	 *
-	 * @param script input string as the script.
-	 * @throws ScriptException when an error processing the script code occurs
-	 * @throws IOException when a io error occurs
+	 * @param currentMethod name of the method
+	 * @param currentClass name of the current class
+	 * @param currentPackage name of the current package
+	 * @param packageName name of the package
+	 * @param packagePath path of the package
+	 * @param packagePrefix prefix of the package
+	 * @param packageSuffix suffix of the package
+	 * @param packageStart start of the package
+	 * @param packageMiddle middle of the package
+	 * @param packageEnd end of the package
+	 * @return shell ready to execute the groovy function with an evaluate
 	 */
-	private static void loadScript(String script) throws ScriptException, IOException {
-		InputStream inputStream = WsIOScript.class.getResourceAsStream(script);
-		ENGINE.eval(IOUtils.toString(inputStream, Charsets.UTF_8));
-	}
+	public static GroovyShell createShell(final String currentMethod, final String currentClass,
+										  final String currentPackage, final String packageName,
+										  final String packagePath, final String packagePrefix,
+										  final String packageSuffix, final String packageStart,
+										  final String packageMiddle, final String packageEnd) {
 
-	/**
-	 * Method that loads the util script from the path.
-	 *
-	 * @throws ScriptException when an error processing the script code occurs
-	 * @throws IOException when an error reading script occurs
-	 */
-	static void loadUtilScript() throws ScriptException, IOException {
-		if (!UTIL_LOADED) {
-			WsIOScript.loadScript(WsIOConstant.SCRIPT_UTIL_PATH);
-			UTIL_LOADED = true;
-		}
+		final Binding binding = new Binding();
+
+		binding.setVariable("currentMethod", currentMethod);
+		binding.setVariable("currentClass", currentClass);
+		binding.setVariable("currentPackage", currentPackage);
+		binding.setVariable("packageName", packageName);
+		binding.setVariable("packagePath", packagePath);
+		binding.setVariable("packagePrefix", packagePrefix);
+		binding.setVariable("packageSuffix", packageSuffix);
+		binding.setVariable("packageStart", packageStart);
+		binding.setVariable("packageMiddle", packageMiddle);
+		binding.setVariable("packageEnd", packageEnd);
+
+		final GroovyShell shell = new GroovyShell(binding);
+
+		final String join = "join = {" +
+				"list -> list.collect { str -> str.replaceAll(/(^\\.+)|(\\.+$)/, '') }" +
+						".findAll { str -> str != '' }" +
+						".join('.')" +
+		"}";
+
+		final String forward = "forward = {" +
+				"path, elements -> path.tokenize('.')" +
+						".take(elements)" +
+						".inject('') { acc, cur -> join([acc, cur]) }" +
+		"}";
+
+		final String backward = "backward = {" +
+				"path, elements -> path.tokenize('.')" +
+						".reverse()" +
+						".drop(elements)" +
+						".reverse()" +
+						".inject('') { acc, cur -> join([acc, cur]) }" +
+		"}";
+
+		shell.parse(join).run();
+		shell.parse(forward).run();
+		shell.parse(backward).run();
+
+		return shell;
+
 	}
 
 }

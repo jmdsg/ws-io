@@ -6,7 +6,7 @@
 
     <groupId>com.fiberg</groupId>
     <artifactId>wsio</artifactId>
-    <version>0.3.0-SNAPSHOT</version>
+    <version>0.5.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>WsIO</name>
 
@@ -22,6 +22,7 @@
         <vavr.version>0.9.1</vavr.version>
         <javassist.version>3.21.0-GA</javassist.version>
 	    <fast-classpath.version>2.7.2</fast-classpath.version>
+	    <groovy.all.version>3.0.2</groovy.all.version>
 
 	    <javax.jaxb.version>2.3.1</javax.jaxb.version>
 	    <javax.jaxws.version>2.3.1</javax.jaxws.version>
@@ -102,6 +103,12 @@
             <groupId>javax.xml.ws</groupId>
             <artifactId>jaxws-api</artifactId>
             <version>${javax.jaxws.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-all</artifactId>
+            <version>${groovy.all.version}</version>
+            <type>pom</type>
         </dependency>
     </dependencies>
 
