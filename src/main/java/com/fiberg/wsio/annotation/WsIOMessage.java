@@ -46,7 +46,8 @@ public @interface WsIOMessage {
 	 * <p>The function used is the evaluation of the variable <code>packageFunc</code> and it can use the following parameters:</p><br>
 	 * <ul>
 	 *     <li>currentMethod</li>
-	 *     <li>className</li>
+	 *     <li>currentClass</li>
+	 *     <li>currentPackage</li>
 	 *     <li>packageName</li>
 	 *     <li>packagePath</li>
 	 *     <li>packagePrefix</li>

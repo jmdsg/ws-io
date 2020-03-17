@@ -1,12 +1,12 @@
 package com.fiberg.wsio.processor;
 
-import groovy.lang.GroovyShell;
+import groovy.lang.*;
 
 public class Test {
     public static void main(String[] args) {
         final GroovyShell shell = WsIOScript.createShell(
                 "a", "B", "c",
-                "d", null, "f",
+                "d", "e", "f",
                 "g", "h", "i", "j"
         );
         final String packageFunc = "join([" +
@@ -16,6 +16,6 @@ public class Test {
                 "packagePrefix + packageName + packageSuffix, " +
                 "packageEnd" +
         "])";
-        System.out.println(shell.evaluate(packageFunc));
+        assert "h.e.i.fdg.j".equals(shell.evaluate(packageFunc));
     }
 }

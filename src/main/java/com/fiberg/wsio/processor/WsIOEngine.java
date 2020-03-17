@@ -1,6 +1,9 @@
 package com.fiberg.wsio.processor;
 
 import groovy.lang.GroovyShell;
+import io.vavr.Predicates;
+import io.vavr.collection.List;
+import io.vavr.control.Option;
 
 /**
  * Class that handle the execution of js function to obtain package names.
@@ -33,9 +36,25 @@ final class WsIOEngine {
 								final String packageSuffix, final String packageStart, final String packageMiddle,
 								final String packageEnd, final String packageFunc) {
 
+		/* Split package chunks and obtain name and path */
+		final List<String> packageChunks = List.of(currentPackage.split("\\."));
+		final String currentPackageName = packageChunks.last();
+		final String currentPackagePath = packageChunks.dropRight(1)
+				.mkString(".");
+
+		/* Get actual package name */
+		final String actualPackageName = Option.of(packageName)
+				.filter(Predicates.noneOf("##default"::equals))
+				.getOrElse(currentPackageName);
+
+		/* Get actual package path */
+		final String actualPackagePath = Option.of(packagePath)
+				.filter(Predicates.noneOf("##default"::equals))
+				.getOrElse(currentPackagePath);
+
 		final GroovyShell shell = WsIOScript.createShell(
-				currentMethod, currentClass, currentPackage, packageName,
-				packagePath, packagePrefix, packageSuffix, packageStart, packageMiddle, packageEnd
+				currentMethod, currentClass, currentPackage, actualPackageName, actualPackagePath,
+				packagePrefix, packageSuffix, packageStart, packageMiddle, packageEnd
 		);
 
 		return (String) shell.evaluate(packageFunc);
