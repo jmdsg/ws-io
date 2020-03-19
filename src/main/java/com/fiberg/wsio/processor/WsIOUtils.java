@@ -8,8 +8,6 @@ import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.*;
 import io.vavr.control.Option;
-import javassist.CtClass;
-import javassist.CtMethod;
 import org.apache.commons.lang3.ObjectUtils;
 
 import javax.jws.WebMethod;
@@ -19,22 +17,21 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.*;
 import javax.xml.bind.annotation.XmlElementWrapper;
-import java.lang.annotation.Annotation;
 import java.util.Objects;
 
 /**
- * Class of utilities with herlper methods over classes derivated from
+ * Class of utilities with helper methods over classes derived from
  * {@link Element} and {@link com.squareup.javapoet.TypeName}
  */
 final class WsIOUtils {
 
 	/**
-	 * Private empty contructor.
+	 * Private empty constructor.
 	 */
 	private WsIOUtils() {}
 
 	/** List of priorities levels */
-	private static final List<WsIOLevel> priotities = List.of(
+	private static final List<WsIOLevel> priorities = List.of(
 			WsIOLevel.NONE,
 			WsIOLevel.LOCAL,
 			WsIOLevel.CLASS_INTERNAL,
@@ -91,15 +88,15 @@ final class WsIOUtils {
 		} else {
 
 			/* Throw exception when enclosing element type is unknown */
-			throw new IllegalStateException(String.format("Unknow type of the element %s", element));
+			throw new IllegalStateException(String.format("Unknown type of the element %s", element));
 		}
 
 	}
 
 	/**
-	 * Method that extracts the method and additionals info.
+	 * Method that extracts the method and additional info.
 	 *
-	 * @param executable excecutable element
+	 * @param executable executable element
 	 * @param descriptor object with all element annotations
 	 * @return object containing all the info required for the generation of a wrapper element.
 	 */
@@ -500,12 +497,12 @@ final class WsIOUtils {
 	}
 
 	/**
-	 * Method that searches the maximun priority level of a method name staring in the specified level.
+	 * Method that searches the maximum priority level of a method name staring in the specified level.
 	 *
 	 * @param executables map with all executables to search
 	 * @param methodName name of the method to search
 	 * @param from min priority level to search
-	 * @return the maximun priority level of a method name
+	 * @return the maximum priority level of a method name
 	 */
 	static WsIOLevel getPriorityLevelByNameFromExclusive(Map<WsIOLevel, Map<String, ExecutableElement>> executables,
 	                                                      String methodName, WsIOLevel from) {
@@ -514,7 +511,7 @@ final class WsIOUtils {
 		WsIOLevel fromLevel = ObjectUtils.firstNonNull(from, WsIOLevel.NONE);
 
 		/* Check each in level from the specified one if method is defined */
-		for (WsIOLevel level : priotities.dropUntil(fromLevel::equals).drop(1)) {
+		for (WsIOLevel level : priorities.dropUntil(fromLevel::equals).drop(1)) {
 			if (executables.getOrElse(level, HashMap.empty()).get(methodName).isDefined()) {
 				return level;
 			}
@@ -641,42 +638,6 @@ final class WsIOUtils {
 	}
 
 	/**
-	 * Method used to extract the annotation in a ct class.
-	 *
-	 * @param ctClass ct class to extract the annotation
-	 * @param annotation annotation class
-	 * @param <T> type argument of the annotation class
-	 * @return annotation extracted from ct class
-	 */
-	@SuppressWarnings({ "unchecked" })
-	static <T extends Annotation> T extractAnnotation(CtClass ctClass , Class<T> annotation) {
-
-		/* Return the annotation or null */
-		return Option.of(ctClass).toTry()
-				.mapTry(ct -> (T) ct.getAnnotation(annotation))
-				.getOrNull();
-
-	}
-
-	/**
-	 * Method used to extract the annotation in a ct method.
-	 *
-	 * @param ctMethod ct method to extract the annotation
-	 * @param annotation annotation class
-	 * @param <T> type argument of the annotation method
-	 * @return annotation extracted from ct method
-	 */
-	@SuppressWarnings({ "unchecked" })
-	static <T extends Annotation> T extractAnnotation(CtMethod ctMethod , Class<T> annotation) {
-
-		/* Return the annotation or null */
-		return Option.of(ctMethod).toTry()
-				.mapTry(ct -> (T) ct.getAnnotation(annotation))
-				.getOrNull();
-
-	}
-
-	/**
 	 * Method that checks if the string is upper case or not.
 	 *
 	 * @param name name to check
@@ -714,7 +675,7 @@ final class WsIOUtils {
 	 * Method that transforms a lower camel case name to a upper case separated by underscores.
 	 *
 	 * @param name name to transform
-	 * @return the name transformed to upper underscode case
+	 * @return the name transformed to upper underscore case
 	 */
 	static String toUpperCase(String name) {
 		return Objects.nonNull(name) ?
