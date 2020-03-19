@@ -1,13 +1,16 @@
 package com.fiberg.wsio.processor;
 
 import com.fiberg.wsio.annotation.*;
-import com.fiberg.wsio.util.WsIOUtil;
 import io.vavr.*;
 import io.vavr.collection.*;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
-import javassist.CtClass;
-import javassist.CtMember;
+import net.bytebuddy.description.annotation.AnnotationDescription;
+import net.bytebuddy.description.annotation.AnnotationSource;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.type.PackageDescription;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.description.type.TypeDescription;
 
 import javax.lang.model.element.Element;
 import java.lang.annotation.Annotation;
@@ -58,8 +61,8 @@ public class WsIODescriptor {
 
 		return annotation -> {
 
-			/* Check class is not null, annotaiton is not null and is instance of the class */
-			if (clazz != null && annotation != null && clazz.isInstance(annotation)) {
+			/* Check class is not null, annotation is not null and is instance of the class */
+			if (clazz != null && clazz.isInstance(annotation)) {
 
 				/* Return the function applied */
 				@SuppressWarnings({ "unchecked" })
@@ -113,7 +116,6 @@ public class WsIODescriptor {
 	 * @param <SR>                      type argument extending the skip repeatable annotation
 	 * @return tuple containing the main class and the descriptor
 	 */
-	@SuppressWarnings({ "unchecked" })
 	private static <M extends Annotation, S extends Annotation, MR extends Annotation, SR extends Annotation>
 	Tuple2<Class<M>, RepeatableDescriptor> describeRepeatable(
 			final Class<M> mainClass,
@@ -409,11 +411,11 @@ public class WsIODescriptor {
 					} else if (element instanceof Class) {
 
 						/* Get declaring class and check if is null or not */
-						final Class<?> declaring = ((Class) element).getDeclaringClass();
+						final Class<?> declaring = ((Class<?>) element).getDeclaringClass();
 						if (Objects.isNull(declaring)) {
 
 							/* Return the package of the class */
-							return ((Class) element).getPackage();
+							return ((Class<?>) element).getPackage();
 
 						} else {
 
@@ -436,126 +438,129 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Transform to annotated the ct member.
+	 * Transform to annotated the method member.
 	 *
-	 * @param pool     pool of classes to search
-	 * @param ctMember ct member
+	 * @param pack package member
 	 * @return the annotated
 	 */
-	private static Annotated toAnnotated(final Map<String, CtClass> pool, final CtMember ctMember) {
+	private static Annotated toAnnotated(final PackageDescription pack) {
 
-		/* Extract and return the annotated element */
-		return toAnnotated(
-				ctMember,
-				pool,
-				ct -> null,
-				CtMember::getAnnotation,
-				CtMember::getAnnotations,
-				CtMember::getDeclaringClass);
+		final Function1<Class<? extends Annotation>, java.util.List<? extends Annotation>> getAnnotationsByType =
+				annotation -> getAnnotationsByType(pack, annotation);
+
+		final Function1<Class<? extends Annotation>, ? extends Annotation> getAnnotation =
+				annotation -> getAnnotation(pack, annotation);
+
+		final Function0<Annotated> getEnclosingAnnotated = () -> null;
+
+		return new AnnotatedImpl(getAnnotation, getAnnotationsByType, getEnclosingAnnotated);
 
 	}
 
 	/**
-	 * Transform to annotated the ct class.
+	 * Transform to annotated the method member.
 	 *
-	 * @param pool    pool of classes to search
-	 * @param ctClass ct class
+	 * @param method method member
 	 * @return the annotated
 	 */
-	private static Annotated toAnnotated(final Map<String, CtClass> pool, final CtClass ctClass) {
+	private static Annotated toAnnotated(final MethodDescription method) {
 
-		/* Extract and return the annotated element */
-		return toAnnotated(
-				ctClass,
-				pool,
-				ct -> Option.of(ct)
-						.filter(current -> !"package-info".equals(current.getSimpleName()))
-						.map(CtClass::getPackageName)
-						.map(packageName -> WsIOUtil.addPrefixName("package-info", packageName))
-						.getOrNull(),
-				CtClass::getAnnotation,
-				CtClass::getAnnotations,
-				CtClass::getDeclaringClass);
+		final Function1<Class<? extends Annotation>, java.util.List<? extends Annotation>> getAnnotationsByType =
+				annotation -> getAnnotationsByType(method, annotation);
+
+		final Function1<Class<? extends Annotation>, ? extends Annotation> getAnnotation =
+				annotation -> getAnnotation(method, annotation);
+
+		final Function0<Annotated> getEnclosingAnnotated = () -> {
+
+			final TypeDefinition typeDefinition = method.getDeclaringType();
+			final TypeDescription typeDescription = typeDefinition.asErasure();
+
+			return Option.of(typeDescription)
+					.map(WsIODescriptor::toAnnotated)
+					.getOrElse(() -> null);
+
+		};
+
+		return new AnnotatedImpl(getAnnotation, getAnnotationsByType, getEnclosingAnnotated);
 
 	}
 
 	/**
-	 * Transform to annotated the ct type.
+	 * Transform to annotated the type class.
 	 *
-	 * @param ct             ct method or class
-	 * @param pool           pool of classes to search
-	 * @param getName        function to extract the name
-	 * @param getAnnotation  checked function to extract annotation
-	 * @param getAnnotations checked function to extract annotations
-	 * @param getEnclosing   checked function that get enclosing element
-	 * @param <CT>           type argument of ct method or class
+	 * @param type class
 	 * @return the annotated
 	 */
-	private static <CT> Annotated toAnnotated(final CT ct,
-	                                          final Map<String, CtClass> pool,
-	                                          final Function1<CT, String> getName,
-	                                          final CheckedFunction2<CT, Class, Object> getAnnotation,
-	                                          final CheckedFunction1<CT, Object[]> getAnnotations,
-	                                          final CheckedFunction1<CT, CtClass> getEnclosing) {
+	private static Annotated toAnnotated(final TypeDescription type) {
 
-		/* Return the annotated implementation */
-		return new AnnotatedImpl(annotation -> {
+		final Function1<Class<? extends Annotation>, java.util.List<? extends Annotation>> getAnnotationsByType =
+				annotation -> getAnnotationsByType(type, annotation);
 
-			/* Try to obtain the annotation and check if is instance of the annotation class */
-			return Try.of(() -> getAnnotation.apply(ct, annotation))
-					.filter(annotation::isInstance)
-					.map(annotation::cast)
-					.getOrNull();
+		final Function1<Class<? extends Annotation>, ? extends Annotation> getAnnotation =
+				annotation -> getAnnotation(type, annotation);
 
-		}, annotation -> {
+		// get the enclosing package only of the class, not the enclosing classes
+		final Function0<Annotated> getEnclosingAnnotated = () -> {
 
-			/* Get all annotations, filter by instance, cast and then return the java list */
-			return Try.of(() -> getAnnotations.apply(ct))
-					.toOption().filter(Objects::nonNull)
-					.map(Stream::of)
-					.getOrElse(Stream::empty)
-					.filter(annotation::isInstance)
-					.map(annotation::cast)
-					.toJavaList();
+			final TypeDefinition typeDefinition = type.getDeclaringType();
 
-		}, () -> {
+			if (typeDefinition == null) {
+				return Option.of(type.getPackage())
+						.map(WsIODescriptor::toAnnotated)
+						.getOrElse(() -> null);
+			} else {
+				final TypeDescription typeDescription = typeDefinition.asErasure();
+				return Option.of(typeDescription)
+						.map(WsIODescriptor::toAnnotated)
+						.getOrElse(() -> null);
+			}
 
-			/* Call function to return enclosing */
-			return Try.of(() -> getEnclosing.apply(ct))
-					.toOption().filter(Objects::nonNull)
-					.orElse(Option.of(ct)
-							.map(getName)
-							.filter(Objects::nonNull)
-							.flatMap(pool::get))
-					.map(current -> toAnnotated(pool, current))
-					.getOrNull();
+		};
 
-		});
+		return new AnnotatedImpl(getAnnotation, getAnnotationsByType, getEnclosingAnnotated);
 
+	}
+
+	private static java.util.List<? extends Annotation> getAnnotationsByType(final AnnotationSource source,
+																			 final Class<? extends Annotation> type) {
+		return Option.of(source)
+				.toStream()
+				.flatMap(AnnotationSource::getDeclaredAnnotations)
+				.flatMap(description -> Try.of(() -> description.prepare(type)))
+				.filter(Objects::nonNull)
+				.map(AnnotationDescription.Loadable::load)
+				.toJavaList();
+	}
+
+	private static Annotation getAnnotation(final AnnotationSource source,
+											final Class<? extends Annotation> type) {
+		return Option.of(source)
+				.map(AnnotationSource::getDeclaredAnnotations)
+				.map(annotations -> annotations.ofType(type))
+				.filter(Objects::nonNull)
+				.map(AnnotationDescription.Loadable::load)
+				.getOrElse(() -> null);
 	}
 
 	/**
 	 * Method that creates a descriptor starting from specified element.
 	 *
-	 * @param pool     pool of classes to search
-	 * @param ctMember ct member
+	 * @param method method member
 	 * @return descriptor from the element
 	 */
-	public static WsIODescriptor of(final Map<String, CtClass> pool,
-	                                 final CtMember ctMember) {
-		return of(toAnnotated(pool, ctMember));
+	public static WsIODescriptor of(final MethodDescription method) {
+		return of(toAnnotated(method));
 	}
 
 	/**
 	 * Method that creates a descriptor starting from specified element.
 	 *
-	 * @param pool    pool of classes to search
-	 * @param ctClass ct class
+	 * @param type class
 	 * @return descriptor from the element
 	 */
-	public static WsIODescriptor of(final Map<String, CtClass> pool,
-	                                 final CtClass ctClass) {
-		return of(toAnnotated(pool, ctClass));
+	public static WsIODescriptor of(final TypeDescription type) {
+		return of(toAnnotated(type));
 	}
 
 	/**
@@ -638,7 +643,7 @@ public class WsIODescriptor {
 	/**
 	 * Method that returns the annotation wrapper in a option.
 	 *
-	 * @param clazz class of the annoation
+	 * @param clazz class of the annotation
 	 * @param <T>   type argument of the annotation
 	 * @return option containing the possible annotation
 	 */
@@ -652,7 +657,7 @@ public class WsIODescriptor {
 	/**
 	 * Method that returns the annotation wrapper in a option.
 	 *
-	 * @param clazz class of the annoation
+	 * @param clazz class of the annotation
 	 * @param <T>   type argument of the annotation
 	 * @return option containing the possible annotation
 	 */
@@ -758,20 +763,20 @@ public class WsIODescriptor {
 		/**
 		 * Method to extract the annotation of an element.
 		 *
-		 * @param anotation class of the annotation
-		 * @param <T>       annotation type argument
+		 * @param annotation class of the annotation
+		 * @param <T>        annotation type argument
 		 * @return annotation of the specified type
 		 */
-		<T extends Annotation> T getAnnotation(Class<T> anotation);
+		<T extends Annotation> T getAnnotation(Class<T> annotation);
 
 		/**
 		 * Method to extract the annotations of an element by type.
 		 *
-		 * @param anotation class of the annotation
-		 * @param <T>       annotation type argument
+		 * @param annotation class of the annotation
+		 * @param <T>        annotation type argument
 		 * @return list with all annotations of the specified type
 		 */
-		<T extends Annotation> java.util.List<T> getAnnotationsByType(Class<T> anotation);
+		<T extends Annotation> java.util.List<T> getAnnotationsByType(Class<T> annotation);
 
 		/**
 		 * Method that returns the enclosing annotated.
@@ -783,7 +788,7 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Single descriptor class to hold the necesary values.
+	 * Single descriptor class to hold the necessary values.
 	 */
 	static class SingleDescriptor {
 
@@ -841,7 +846,7 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Repeatable descriptor class to hold the necesary values.
+	 * Repeatable descriptor class to hold the necessary values.
 	 */
 	static class RepeatableDescriptor {
 

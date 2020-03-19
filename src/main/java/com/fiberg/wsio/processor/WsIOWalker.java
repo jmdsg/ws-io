@@ -8,12 +8,13 @@ import io.vavr.Tuple2;
 import io.vavr.collection.*;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
-import javassist.CtClass;
-import javassist.CtMethod;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.type.TypeDescription;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.jws.WebMethod;
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * Class used to get the prefix, suffix and package name of the wrapper in a ct class.
@@ -21,23 +22,21 @@ import java.util.Objects;
 public final class WsIOWalker {
 
 	/**
-	 * Private empty contructor.
+	 * Private empty constructor.
 	 */
 	private WsIOWalker() {  }
 
 	/**
 	 * Method that finds the wrapper info of a set of type elements.
 	 *
-	 * @param pool      pool of classes to search
-	 * @param ctClasses list of ct classes
+	 * @param types list of ct classes
 	 * @return map identified by the element type containing wrapper annotations info of all elements
 	 */
 	public static Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>>
-	findWrapperRecursively(final Map<String, CtClass> pool,
-	                       final List<CtClass> ctClasses) {
+	findWrapperRecursively(final List<TypeDescription> types) {
 
 		/* Return the map for each element and finally fold the results with an empty map */
-		return ctClasses.map(ctClass -> WsIOWalker.findWrapperRecursively(pool, ctClass))
+		return types.map(WsIOWalker::findWrapperRecursively)
 				.fold(HashMap.empty(), Map::merge);
 
 	}
@@ -45,31 +44,29 @@ public final class WsIOWalker {
 	/**
 	 * Method that finds the wrapper info of a single type elements.
 	 *
-	 * @param pool    pool of classes to search
-	 * @param ctClass type element
+	 * @param type type element
 	 * @return map identified by the element type containing wrapper annotations info of a single element
 	 */
 	private static Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>>
-	findWrapperRecursively(final Map<String, CtClass> pool,
-	                       final CtClass ctClass) {
+	findWrapperRecursively(final TypeDescription type) {
 
 		/* Check if the current class is null or not */
-		if (Objects.nonNull(ctClass)) {
+		if (Objects.nonNull(type)) {
 
 			/* Stream of executable methods */
-			final Stream<CtMethod> methods = Stream.of(ctClass.getMethods())
-					.filter(method -> !"<init>".equals(method.getName()))
-					.filter(method -> Try.success(WebMethod.class)
-							.mapTry(method::getAnnotation)
-							.isSuccess());
+			final Stream<? extends MethodDescription> methods = Stream.of(type)
+					.flatMap(TypeDescription::getDeclaredMethods)
+					.filter(descriptor -> !descriptor.isConstructor())
+					.filter(descriptor -> descriptor.getDeclaredAnnotations()
+							.isAnnotationPresent(WebMethod.class));
 
 			/* Get current element info for every method */
 			final Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> currentInfo = methods.flatMap(method -> {
 
 				/* Get simple name, long name, current descriptor and annotation option */
 				final String methodName = method.getName();
-				final String methodLongName = method.getLongName();
-				final WsIODescriptor descriptor = WsIODescriptor.of(pool, method);
+				final String methodLongName = method.toString();
+				final WsIODescriptor descriptor = WsIODescriptor.of(method);
 				final Option<WsIOAnnotation> messageWrapperOption = descriptor.getSingle(WsIOMessageWrapper.class)
 						.map(WsIOAnnotation::of);
 
@@ -77,8 +74,9 @@ public final class WsIOWalker {
 				return messageWrapperOption.map(wrapper -> {
 
 					/* Method, class and package names */
-					final String className = ctClass.getSimpleName();
-					final String packageName = ctClass.getPackageName();
+					final String className = type.getSimpleName();
+					final String packageName = type.getPackage()
+							.getName();
 
 					/* Obtain the package name */
 					final String finalPackage = WsIOEngine.obtainPackage(methodName, className, packageName,
@@ -103,18 +101,19 @@ public final class WsIOWalker {
 
 			/* Create zero map with current element */
 			final Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>> zeroMap =
-					HashMap.of(ctClass.getName(), currentInfo);
+					HashMap.of(type.getName(), currentInfo);
 
 			/* Call recursively this function with each declared class
 			 * and finally fold the results with zero map */
-			return Try.of(ctClass::getDeclaredClasses)
-					.toStream().flatMap(Stream::of)
-					.map(ct -> WsIOWalker.findWrapperRecursively(pool, ct))
+			return Try.of(type::getDeclaredTypes)
+					.toStream()
+					.flatMap(Function.identity())
+					.map(WsIOWalker::findWrapperRecursively)
 					.fold(zeroMap, Map::merge);
 
 		} else {
 
-			/* Return empty hashmap when element is null */
+			/* Return empty hash map when element is null */
 			return HashMap.empty();
 
 		}

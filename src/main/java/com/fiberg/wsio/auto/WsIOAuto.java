@@ -8,18 +8,38 @@ import io.vavr.*;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.collection.Map;
+import io.vavr.collection.Set;
+import io.vavr.collection.Stream;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
-import javassist.*;
-import javassist.bytecode.*;
-import javassist.bytecode.annotation.*;
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.asm.AsmVisitorWrapper;
+import net.bytebuddy.asm.MemberAttributeExtension;
+import net.bytebuddy.description.annotation.AnnotationDescription;
+import net.bytebuddy.description.annotation.AnnotationSource;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.ParameterDescription;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.jar.asm.AnnotationVisitor;
+import net.bytebuddy.jar.asm.MethodVisitor;
+import net.bytebuddy.jar.asm.Opcodes;
+import net.bytebuddy.jar.asm.Type;
+import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.matcher.ElementMatchers;
+import net.bytebuddy.pool.TypePool;
 import org.apache.commons.text.WordUtils;
 
 import javax.jws.WebParam;
 import javax.jws.WebResult;
 import javax.xml.ws.RequestWrapper;
 import javax.xml.ws.ResponseWrapper;
+import java.lang.annotation.Annotation;
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * Class used to annotate web service classes with response and request wrappers.
@@ -39,397 +59,372 @@ public final class WsIOAuto {
 	public static void annotate(String basePackage, Class<?> main) {
 
 		/* Obtain all class names of the base package */
+		ClassLoader classLoader = main.getClassLoader();
 		List<String> classNames = List.ofAll(new FastClasspathScanner(basePackage)
 				.scan()
 				.getNamesOfAllClasses());
 
-		/* Get default class pool */
-		ClassPool pool = ClassPool.getDefault();
-		pool.appendClassPath(new LoaderClassPath(main.getClassLoader()));
-
-		/* Get all ct classes when the name starts with base package */
-		Map<String, CtClass> ctClasses = classNames.toMap(className -> className,
+		/* Get all types when the name starts with base package */
+		TypePool pool = TypePool.Default.of(classLoader);
+		Map<String, TypeDescription> types = classNames.toMap(className -> className,
 				className -> Try.success(className)
 						.filter(name -> name.startsWith(basePackage))
-						.mapTry(pool::getCtClass)
+						.mapTry(pool::describe)
+						.mapTry(TypePool.Resolution::resolve)
 						.getOrNull())
 				.filterValues(Objects::nonNull);
 
 		/* Get current wrappers of the class */
 		Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>> wrappers =
-				WsIOWalker.findWrapperRecursively(ctClasses, ctClasses.values().toList());
+				WsIOWalker.findWrapperRecursively(types.values().toList());
 
 		/* Iterate for each wrapper class */
-		for (String className : wrappers.keySet()) {
+		List<DynamicType.Unloaded<Object>> unloadeds = wrappers.keySet()
+				.toList()
+				.flatMap(className -> {
 
-			/* Check ct class is defined */
-			Option<CtClass> ctClassOpt = ctClasses.get(className);
-			if (ctClassOpt.isDefined()) {
+					/* Check ct class is defined */
+					Option<TypeDescription> typeOpt = types.get(className);
+					if (!typeOpt.isDefined()) return Stream.of();
+					else {
 
-				/* Get main, root class and the wrappers */
-				CtClass ctClass = ctClassOpt.get();
-				CtClass root = WsIOAuto.extractRootCtClass(ctClass);
-				Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> wrapper =
-						wrappers.getOrElse(root.getName(), HashMap.empty());
+						/* Get main, root class and the wrappers */
+						TypeDescription type = typeOpt.get();
+						String typeName = type.getName();
+						Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> wrapper =
+								wrappers.getOrElse(typeName, HashMap.empty());
 
-				/* Iterate for each method */
-				boolean annotationAdded = false;
-				for (CtMethod ctMethod : ctClass.getDeclaredMethods()) {
+						/* Iterate for each method */
+						List<Tuple2<MethodDescription, Map<Class<? extends Annotation>, List<AnnotationDescription>>>>
+						annotated = List.ofAll(type.getDeclaredMethods())
+								.flatMap(method -> {
 
-					/* Define class file and class pool */
-					ClassFile ccFile = ctClass.getClassFile();
-					ConstPool constpool = ccFile.getConstPool();
+									/* Get method info */
+									Option<Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> info = wrapper
+											.get(method.toString());
 
-					/* Get method info */
-					Option<Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> info = wrapper
-							.get(ctMethod.getLongName());
+									/* Get package, response and request options */
+									Option<String> packageOpt = info.map(Tuple2::_1).filter(Objects::nonNull);
+									Option<Tuple2<String, String>> responseOpt = info.map(Tuple2::_2)
+											.flatMap(map -> map.get(WsIOType.RESPONSE));
+									Option<Tuple2<String, String>> requestOpt = info.map(Tuple2::_2)
+											.flatMap(map -> map.get(WsIOType.REQUEST));
 
-					/* Get package, response and request options */
-					Option<String> packageOpt = info.map(Tuple2::_1).filter(Objects::nonNull);
-					Option<Tuple2<String, String>> responseOpt = info.map(Tuple2::_2)
-							.flatMap(map -> map.get(WsIOType.RESPONSE));
-					Option<Tuple2<String, String>> requestOpt = info.map(Tuple2::_2)
-							.flatMap(map -> map.get(WsIOType.REQUEST));
+									/* Check if all fields are present */
+									if (packageOpt.isDefined() && responseOpt.isDefined() && requestOpt.isDefined()) {
 
-					/* Check if all fields are present */
-					if (packageOpt.isDefined() && responseOpt.isDefined() && requestOpt.isDefined()) {
+										/* Get method descriptor and annotate annotation */
+										WsIODescriptor descriptor = WsIODescriptor.of(method);
+										Map<Class<? extends Annotation>, List<AnnotationDescription>>
+										webResultAnnotation = getWebAnnotation(
+												method, descriptor
+										);
 
-						/* Get method descriptor and annotate annotation */
-						WsIODescriptor descriptor = WsIODescriptor.of(ctClasses, ctMethod);
-						Option<WsIOAnnotate> annotate = descriptor.getSingle(WsIOAnnotate.class);
+										/* Get package name, response and request info with prefixes and suffixes */
+										String packageName = packageOpt.get();
+										Tuple2<String, String> response = responseOpt.get();
+										Tuple2<String, String> request = requestOpt.get();
+										Map<Class<? extends Annotation>, List<AnnotationDescription>>
+										wrapperAnnotation = getWrapperAnnotation(
+												method, packageName, response, request, classNames
+										);
 
-						/* Check if annotate is defined and rename is enabled */
-						if (annotate.isDefined() && annotate.get().nameSwap()) {
+										Map<Class<? extends Annotation>, List<AnnotationDescription>> descriptions =
+												Stream.of(webResultAnnotation, wrapperAnnotation)
+														.flatMap(Function.identity())
+														.toMap(Function.identity());
 
-							/* Get current method annotations atribute and execute when present */
-							Option.of(ctMethod.getMethodInfo())
-									.map(methodInfo -> methodInfo.getAttribute(AnnotationsAttribute.visibleTag))
-									.filter(AnnotationsAttribute.class::isInstance)
-									.map(AnnotationsAttribute.class::cast)
-									.forEach(annotationsAttribute -> {
+										return List.of(
+												Tuple.of(method, descriptions)
+										);
 
-										/* Get annotation name and current web result annotation option */
-										String annotationName = WebResult.class.getCanonicalName();
-										Option<Annotation> annotationOpt = Option.of(annotationsAttribute
-												.getAnnotation(annotationName));
+									}
 
-										/* Check if the annotation is defined or not */
-										if (annotationOpt.isDefined()) {
+									return List.of();
 
-											/* Change the annotation when defined */
-											annotationOpt.get().getMemberValue("name")
-													.accept((StringVisitor) stringMember -> {
+								});
 
-														/* Get name or default, add the underscore and set the value */
-														String name = Option.of(stringMember.getValue())
-																.getOrElse(WsIOConstant.DEFAULT_RESULT);
-														stringMember.setValue(String.format("%s%s", name, WsIOConstant.SWAP_SEPARATOR));
+						List<Tuple2<MethodDescription, Map<Class<? extends Annotation>, List<AnnotationDescription>>>>
+						filtered = annotated.filter(tuple -> !tuple._2().isEmpty());
 
-													});
+						if (filtered.isEmpty()) return List.of();
+						else {
 
-											/* Remove the annotation and add it again */
-											annotationsAttribute.removeAnnotation(annotationName);
-											annotationsAttribute.addAnnotation(annotationOpt.get());
+							List<ElementMatcher.Junction<MethodDescription>> junctions = filtered.map(Tuple2::_1)
+									.map(descriptor -> {
 
-										} else {
+										String name = descriptor.getName();
+										TypeDescription.Generic returnType = descriptor.getReturnType();
+										List<ParameterDescription> parameterDescriptions = List.ofAll(
+												descriptor.getParameters()
+														.asDefined()
+										);
 
-											/* Create the annotation, add the member name and add the annotation to attribute */
-											Annotation annotation = new Annotation(annotationName, constpool);
-											annotation.addMemberValue("name",
-													new StringMemberValue(String.format("%s%s", WsIOConstant.DEFAULT_RESULT,
-															WsIOConstant.SWAP_SEPARATOR), ccFile.getConstPool()));
-											annotationsAttribute.addAnnotation(annotation);
+										List<TypeDescription.Generic> argumentTypes = parameterDescriptions
+												.map(ParameterDescription::getType);
 
-										}
+										return ElementMatchers.named(name)
+												.and(ElementMatchers.returnsGeneric(returnType))
+												.and(ElementMatchers.takesGenericArguments(argumentTypes.toJavaList()));
 
 									});
 
-							/* Get current method parameter annotations atribute and execute when present */
-							Option.of(ctMethod.getMethodInfo())
-									.map(methodInfo -> methodInfo.getAttribute(ParameterAnnotationsAttribute.visibleTag))
-									.filter(ParameterAnnotationsAttribute.class::isInstance)
-									.map(ParameterAnnotationsAttribute.class::cast)
-									.forEach(parameterAnnotationsAttribute -> {
+							DynamicType.Builder<Object> builder = new ByteBuddy()
+									.redefine(type, ClassFileLocator.ForClassLoader.of(classLoader));
 
-										/* Get the annotation name */
-										String annotationName = WebParam.class.getCanonicalName();
+							DynamicType.Builder<Object> addAnnotationVisitorBuilder = Stream.range(0, filtered.size())
+									.foldLeft(builder, (next, index) -> {
 
-										/* Get the paramters array and list of lists */
-										Annotation[][] paramArrays = parameterAnnotationsAttribute.getAnnotations();
-										List<List<Annotation>> parameters = List.of(paramArrays).map(List::of);
+										MemberAttributeExtension.ForMethod forMethod = new MemberAttributeExtension.ForMethod();
+										Map<Class<? extends Annotation>, List<AnnotationDescription>>
+										annotations = filtered.get(index)._2();
 
-										/* Transform the parameters */
-										List<List<Annotation>> transformed = parameters.zipWithIndex().map(tuple -> {
+										MemberAttributeExtension.ForMethod methodVisitForMethod = forMethod
+												.annotateMethod(annotations
+														.filterKeys(key -> !WebParam.class.equals(key))
+														.values()
+														.flatMap(Function.identity())
+														.toJavaList());
 
-											/* Get all annotations and index of current parameter */
-											List<Annotation> argParameters = tuple._1();
-											int index = tuple._2();
+										Map<Class<? extends Annotation>, List<AnnotationDescription>>
+										paramAnnotations = annotations.filterKeys(WebParam.class::equals)
+												.filterValues(values -> !values.isEmpty());
 
-											/* Check if the annotation already exists */
-											boolean contains = argParameters.exists(parameter ->
-													annotationName.equals(parameter.getTypeName()));
-											if (contains) {
+										MemberAttributeExtension.ForMethod paramVisitForMethod = paramAnnotations.keySet()
+												.foldLeft(methodVisitForMethod, (visitor, annotation) -> {
 
-												/* Iterate for each annotation */
-												argParameters.forEach(parameter -> {
+													List<AnnotationDescription> params = paramAnnotations.get(annotation)
+															.getOrElse(List::of);
 
-													/* Check if the annotatio is the searched one */
-													if (annotationName.equals(parameter.getTypeName())) {
+													return params.zipWithIndex()
+															.foldLeft(visitor, (visit, tuple) -> {
 
-														/* Visit the member name and change its value */
-														parameter.getMemberValue("name").accept((StringVisitor) stringMember -> {
+																int param = tuple._2();
+																AnnotationDescription description = tuple._1();
 
-															/* Get name or default, add the underscore and set the value */
-															String name = Option.of(stringMember.getValue())
-																	.getOrElse(String.format("%s%d", WsIOConstant.DEFAULT_PARAMETER, index));
-															stringMember.setValue(String.format("%s%s", name, WsIOConstant.SWAP_SEPARATOR));
+																return visit.annotateParameter(param, description);
 
-														});
-
-													}
+															});
 
 												});
 
-												/* Return the modified annotations of the parameter */
-												return argParameters;
-
-											} else {
-
-												/* Create the annotation, add the member name and add the annotation to annotations list */
-												Annotation annotation = new Annotation(annotationName, constpool);
-												annotation.addMemberValue("name",
-														new StringMemberValue(String.format("%s%d%s", WsIOConstant.DEFAULT_PARAMETER,
-																index, WsIOConstant.SWAP_SEPARATOR), ccFile.getConstPool()));
-												return argParameters.append(annotation);
-
-											}
-
-										});
-
-										/* Transform the list of list into a array of arrays and set the annotations */
-										parameterAnnotationsAttribute.setAnnotations(transformed
-												.map(argParameters -> argParameters.toJavaArray(Annotation.class))
-												.toJavaArray(Annotation[].class));
+										return next.visit(paramVisitForMethod.on(junctions.get(index)));
 
 									});
 
-						}
+							// this must be last since the visits are performed in inversed order
+							DynamicType.Builder<Object> removeAnnotationVisitorBuilder = addAnnotationVisitorBuilder
+									.visit(new AsmVisitorWrapper.ForDeclaredMethods()
+									.method(ElementMatchers.any(), new AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper() {
+										@Override
+										public MethodVisitor wrap(TypeDescription instrumentedType,
+																  MethodDescription instrumentedMethod,
+																  MethodVisitor methodVisitor,
+																  Implementation.Context implementationContext,
+																  TypePool typePool,
+																  int writerFlags,
+																  int readerFlags) {
 
-						/* Get package name, response and request info with prefixes and suffixes */
-						String packageName = packageOpt.get();
-						Tuple2<String, String> response = responseOpt.get();
-						Tuple2<String, String> request = requestOpt.get();
+											int index = junctions.indexWhere(junction -> junction.matches(instrumentedMethod));
+											Map<Class<? extends Annotation>, List<AnnotationDescription>> map =
+													filtered.get(index)._2();
 
-						/* Get method name and upper name to create wrapper names */
-						String methodName = ctMethod.getName();
-						String upperName = WordUtils.capitalize(methodName);
+											// erase the current annotations only when there are new ones defined
+											Set<String> methodNames = map.filterValues(values -> !values.isEmpty())
+													.keySet()
+													.filter(key -> !WebParam.class.equals(key))
+													.map(Type::getDescriptor);
 
-						/* Response and request names with prefix and suffix */
-						String responseName = WsIOUtil.addWrap(upperName, response._1(), response._2());
-						String requestName = WsIOUtil.addWrap(upperName, request._1(), request._2());
+											// erase the current annotations only when there are new ones defined
+											Set<String> paramNames = map.filterValues(values -> !values.isEmpty())
+													.keySet()
+													.filter(WebParam.class::equals)
+													.map(Type::getDescriptor);
 
-						/* Get full qualified response and request class names */
-						String responseClass = WsIOUtil.addPrefixName(responseName, packageName);
-						String requestClass = WsIOUtil.addPrefixName(requestName, packageName);
+											return new MethodVisitor(Opcodes.ASM5, methodVisitor) {
+												@Override
+												public AnnotationVisitor visitParameterAnnotation(
+														int parameter,
+														String desc,
+														boolean visible) {
+													if (paramNames.contains(desc)) {
+														return null;
+													}
+													return super.visitParameterAnnotation(parameter, desc, visible);
+												}
+												@Override
+												public AnnotationVisitor visitAnnotation(String desc,
+																						 boolean visible) {
+													if (methodNames.contains(desc)) {
+														return null;
+													}
+													return super.visitAnnotation(desc, visible);
+												}
+											};
 
-						/* Check is the response and request names are valid */
-						boolean validResponse = classNames.contains(responseClass);
-						boolean validRequest = classNames.contains(requestClass);
-						if (validResponse || validRequest) {
+										}
+									}));
 
-							try {
-								/* Get annotations attribute */
-								AnnotationsAttribute attribute = Option.of(ctMethod.getMethodInfo()
-										.getAttribute(AnnotationsAttribute.visibleTag))
-										.filter(AnnotationsAttribute.class::isInstance)
-										.map(AnnotationsAttribute.class::cast)
-										.getOrElse(new AnnotationsAttribute(constpool,
-												AnnotationsAttribute.visibleTag));
+							DynamicType.Unloaded<Object> unloaded = removeAnnotationVisitorBuilder.make();
 
-								/*  Check if response name is valid to be added */
-								if (validResponse) {
-
-									/* Define wrapper class name, create annotation, add the wrapper name
-									 * and add the annotation to the attribute */
-									String responseAnnotation = ResponseWrapper.class.getCanonicalName();
-									Annotation annotation = new Annotation(responseAnnotation, constpool);
-									annotation.addMemberValue("className",
-											new StringMemberValue(responseClass, ccFile.getConstPool()));
-									attribute.addAnnotation(annotation);
-
-								}
-
-								/*  Check if request name is valid to be added */
-								if (validRequest) {
-
-									/* Define wrapper class name, create annotation, add the wrapper name
-									 * and add the annotation to the attribute */
-									String requestAnnotation = RequestWrapper.class.getCanonicalName();
-									Annotation annotation = new Annotation(requestAnnotation, constpool);
-									annotation.addMemberValue("className",
-											new StringMemberValue(requestClass, ccFile.getConstPool()));
-									attribute.addAnnotation(annotation);
-
-								}
-
-								/* Add attribute to the method and set flag to true */
-								ctMethod.getMethodInfo().addAttribute(attribute);
-								annotationAdded = true;
-
-							} catch (Exception e) {
-								// ignore class does not exists
-							}
+							return List.of(unloaded);
 
 						}
 
 					}
 
-				}
+				});
 
-				/* Check if the class has been annotated or not */
-				if (annotationAdded) {
+		if (unloadeds.size() >= 1) {
 
-					try {
+			DynamicType.Unloaded<Object> first = unloadeds.get(0);
+			List<DynamicType.Unloaded<Object>> tail = unloadeds.tail();
 
-						/* Compile the class */
-						ctClass.toClass();
-
-					} catch (CannotCompileException e) {
-
-						/* Throw when the class could not be compiles */
-						throw new IllegalStateException(String.format("Could not compile the class %s", ctClass), e);
-
-					}
-
-				}
-
-			}
+			// load the classes and the includes
+			first.include(tail.toJavaList())
+					.load(classLoader, ClassLoadingStrategy.Default.INJECTION);
 
 		}
 
 	}
 
-	/**
-	 * Method that extracts the root ct class.
-	 *
-	 * @param ctClass ct class to extract the root class
-	 * @return root ct class
-	 */
-	private static CtClass extractRootCtClass(CtClass ctClass) {
-		try {
+	private static Map<Class<? extends Annotation>, List<AnnotationDescription>>
+	getWrapperAnnotation(MethodDescription method,
+						 String packageName,
+						 Tuple2<String, String> response,
+						 Tuple2<String, String> request,
+						 List<String> classNames) {
 
-			/* Check ct class is not null */
-			if (Objects.nonNull(ctClass)) {
+		/* Get method name and upper name to create wrapper names */
+		String methodName = method.getName();
+		String upperName = WordUtils.capitalize(methodName);
 
-				/* Get the declaring class */
-				CtClass declaring = ctClass.getDeclaringClass();
-				if (Objects.nonNull(declaring)) {
+		/* Response and request names with prefix and suffix */
+		String responseName = WsIOUtil.addWrap(upperName, response._1(), response._2());
+		String requestName = WsIOUtil.addWrap(upperName, request._1(), request._2());
 
-					/* Return recursive call to extract declaring class */
-					return extractRootCtClass(declaring);
+		/* Get full qualified response and request class names */
+		String responseClass = WsIOUtil.addPrefixName(responseName, packageName);
+		String requestClass = WsIOUtil.addPrefixName(requestName, packageName);
 
-				}
+		/* Check is the response and request names are valid */
+		boolean validResponse = classNames.contains(responseClass);
+		boolean validRequest = classNames.contains(requestClass);
 
-			}
+		if (!validResponse && !validRequest) return HashMap.empty();
+		else {
 
-		} catch (NotFoundException e) {
-			// ignore return current class
+			Class<? extends java.lang.annotation.Annotation> requestAnnotationClass = RequestWrapper.class;
+			Class<? extends java.lang.annotation.Annotation> responseAnnotationClass = ResponseWrapper.class;
+
+			Option<Tuple2<Class<? extends Annotation>, String>> requestAnnotationOpt = !validRequest
+					? Option.none()
+					: Option.of(Tuple.of(requestAnnotationClass, requestClass));
+
+			Option<Tuple2<Class<? extends Annotation>, String>> responseAnnotationOpt = !validResponse
+					? Option.none()
+					: Option.of(Tuple.of(responseAnnotationClass, responseClass));
+
+			Map<Class<? extends Annotation>, String> validAnnotations = HashMap.ofEntries(
+					Stream.concat(requestAnnotationOpt, responseAnnotationOpt)
+			);
+
+			return validAnnotations
+					.map((annotationClass, className) -> Tuple.of(annotationClass, List.of(
+							AnnotationDescription.Builder.ofType(annotationClass)
+									.define("className", className)
+									.build()
+					)));
+
 		}
-
-		/* Return current class by default */
-		return ctClass;
 
 	}
 
-	/**
-	 * Functional interface for string visitor only.
-	 */
-	@FunctionalInterface
-	private interface StringVisitor extends MemberValueVisitor {
+	private static Map<Class<? extends Annotation>, List<AnnotationDescription>>
+	getWebAnnotation(MethodDescription method,
+					 WsIODescriptor descriptor) {
 
-		/**
-		 * {@inheritDoc}
-		 */
-		default void visitAnnotationMemberValue(AnnotationMemberValue node) {
+		/* Check if annotate is defined and rename is enabled */
+		Option<WsIOAnnotate> annotate = descriptor.getSingle(WsIOAnnotate.class);
+		if (annotate.isDefined() && annotate.get().nameSwap()) {
 
-		}
+			/* Get annotation name and current web result annotation option */
+			Class<WebParam> paramAnnotationClass = WebParam.class;
+			Class<WebResult> resultAnnotationClass = WebResult.class;
+			AnnotationDescription.Loadable<WebResult> resultLoadable = method.getDeclaredAnnotations()
+					.ofType(resultAnnotationClass);
 
-		/**
-		 * {@inheritDoc}
-		 */
-		default void visitArrayMemberValue(ArrayMemberValue node) {
+			Option<WebResult> resultValueOpt = Option.of(resultLoadable)
+					.flatMap(loadable -> Try.of(loadable::load)
+							.toOption());
 
-		}
+			String resultName = resultValueOpt.map(WebResult::name)
+					.getOrElse(WsIOConstant.DEFAULT_RESULT);
 
-		/**
-		 * {@inheritDoc}
-		 */
-		default void visitBooleanMemberValue(BooleanMemberValue node) {
+			String resultContent = String.format("%s%s", resultName, WsIOConstant.SWAP_SEPARATOR);
+			Option<AnnotationDescription> resultAnnotationOpt = Option.of(resultAnnotationClass)
+					.map(AnnotationDescription.Builder::ofType)
+					.map(builder -> builder.define("name", resultContent))
+					.map(builder -> resultValueOpt.isDefined()
+							? builder.define("header", resultValueOpt.get().header())
+							: builder)
+					.map(builder -> resultValueOpt.isDefined()
+							? builder.define("targetNamespace", resultValueOpt.get().targetNamespace())
+							: builder)
+					.map(builder -> resultValueOpt.isDefined()
+							? builder.define("partName", resultValueOpt.get().partName())
+							: builder)
+					.map(AnnotationDescription.Builder::build);
 
-		}
+			List<ParameterDescription.InDefinedShape> parameters = List.ofAll(
+					method.getParameters().asDefined()
+			);
 
-		/**
-		 * {@inheritDoc}
-		 */
-		default void visitByteMemberValue(ByteMemberValue node) {
+			List<AnnotationDescription> resultAnnotations = resultAnnotationOpt.toList();
+			List<AnnotationDescription> paramAnnotations = parameters
+					.map(parameter -> Option.of(parameter)
+							.map(AnnotationSource::getDeclaredAnnotations)
+							.map(source -> source.ofType(paramAnnotationClass))
+							.filter(Objects::nonNull)
+							.map(AnnotationDescription.Loadable::load))
+					.zipWithIndex()
+					.map(tuple -> {
 
-		}
+						int index = tuple._2();
+						Option<WebParam> paramValueOpt = tuple._1();
+						String paramName = paramValueOpt.map(WebParam::name)
+								.getOrElse(() -> String.format("%s%d", WsIOConstant.DEFAULT_PARAMETER, index));
 
-		/**
-		 * {@inheritDoc}
-		 */
-		default void visitCharMemberValue(CharMemberValue node) {
+						String paramContent = String.format("%s%s", paramName, WsIOConstant.SWAP_SEPARATOR);
+						Option<AnnotationDescription> paramAnnotation = Option.of(paramAnnotationClass)
+								.map(AnnotationDescription.Builder::ofType)
+								.map(builder -> builder.define("name", paramContent))
+								.map(builder -> paramValueOpt.isDefined()
+										? builder.define("header", paramValueOpt.get().header())
+										: builder)
+								.map(builder -> paramValueOpt.isDefined()
+										? builder.define("targetNamespace", paramValueOpt.get().targetNamespace())
+										: builder)
+								.map(builder -> paramValueOpt.isDefined()
+										? builder.define("partName", paramValueOpt.get().partName())
+										: builder)
+								.map(builder -> paramValueOpt.isDefined()
+										? builder.define("mode", paramValueOpt.get().mode())
+										: builder)
+								.map(AnnotationDescription.Builder::build);
 
-		}
+						return paramAnnotation.get();
 
-		/**
-		 * {@inheritDoc}
-		 */
-		default void visitDoubleMemberValue(DoubleMemberValue node) {
+					});
 
-		}
-
-		/**
-		 * {@inheritDoc}
-		 */
-		default void visitEnumMemberValue(EnumMemberValue node) {
-
-		}
-
-		/**
-		 * {@inheritDoc}
-		 */
-		default void visitFloatMemberValue(FloatMemberValue node) {
-
-		}
-
-		/**
-		 * {@inheritDoc}
-		 */
-		default void visitIntegerMemberValue(IntegerMemberValue node) {
-
-		}
-
-		/**
-		 * {@inheritDoc}
-		 */
-		default void visitLongMemberValue(LongMemberValue node) {
-
-		}
-
-		/**
-		 * {@inheritDoc}
-		 */
-		default void visitShortMemberValue(ShortMemberValue node) {
-
-		}
-
-		/**
-		 * {@inheritDoc}
-		 */
-		default void visitClassMemberValue(ClassMemberValue node) {
+			return HashMap.of(
+					resultAnnotationClass, resultAnnotations,
+					paramAnnotationClass, paramAnnotations
+			);
 
 		}
+
+		return HashMap.empty();
 
 	}
 

@@ -20,7 +20,8 @@
         <commons-io.version>2.5</commons-io.version>
         <guava.version>23.0</guava.version>
         <vavr.version>0.9.1</vavr.version>
-        <javassist.version>3.21.0-GA</javassist.version>
+        <javassist.version>3.26.0-GA</javassist.version>
+	    <byte.buddy.version>1.10.8</byte.buddy.version>
 	    <fast-classpath.version>2.7.2</fast-classpath.version>
 	    <groovy.all.version>2.5.10</groovy.all.version>
 
@@ -83,6 +84,11 @@
             <groupId>org.javassist</groupId>
             <artifactId>javassist</artifactId>
             <version>${javassist.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <version>${byte.buddy.version}</version>
         </dependency>
         <dependency>
             <groupId>io.github.lukehutch</groupId>
