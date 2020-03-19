@@ -68,7 +68,7 @@ public @interface WsIOMessageWrapper {
 	 *     packagePath,
 	 *     packageMiddle,
 	 *     packagePrefix + packageName + packageSuffix,
-	 *     className.toLowerCase(),
+	 *     currentClass.toLowerCase(),
 	 *     packageEnd
 	 * ])
 	 * </pre>
@@ -108,7 +108,7 @@ public @interface WsIOMessageWrapper {
 			"packagePath, " +
 			"packageMiddle, " +
 			"packagePrefix + packageName + packageSuffix, " +
-			"className.toLowerCase(), " +
+			"currentClass.toLowerCase(), " +
 			"packageEnd" +
 	"])";
 
