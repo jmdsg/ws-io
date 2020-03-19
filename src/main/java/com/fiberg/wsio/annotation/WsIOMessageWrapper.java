@@ -62,7 +62,16 @@ public @interface WsIOMessageWrapper {
 	 * and a function called 'forward' which starts at the beginning of the package name.</p>
 	 *
 	 * <p>The default value is:</p>
-	 * <pre>join([packageStart, packagePath, packageMiddle, packagePrefix + packageName + packageSuffix, packageEnd])</pre>
+	 * <pre>
+	 * join([
+	 *     packageStart,
+	 *     packagePath,
+	 *     packageMiddle,
+	 *     packagePrefix + packageName + packageSuffix,
+	 *     className.toLowerCase(),
+	 *     packageEnd
+	 * ])
+	 * </pre>
 	 *
 	 * <p>The definitions of the functions are the following:</p>
 	 *
@@ -99,6 +108,7 @@ public @interface WsIOMessageWrapper {
 			"packagePath, " +
 			"packageMiddle, " +
 			"packagePrefix + packageName + packageSuffix, " +
+			"className.toLowerCase(), " +
 			"packageEnd" +
 	"])";
 
