@@ -17,7 +17,7 @@
         <java-poet.version>1.9.0</java-poet.version>
         <commons.version>3.6</commons.version>
         <commons-text.version>1.1</commons-text.version>
-        <commons-io.version>2.5</commons-io.version>
+        <commons-io.version>2.7</commons-io.version>
         <guava.version>23.0</guava.version>
         <vavr.version>0.9.1</vavr.version>
 	    <byte.buddy.version>1.10.8</byte.buddy.version>
