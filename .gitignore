@@ -29,3 +29,7 @@ hs_err_pid*
 
 # -- Emacs
 .#*
+
+# -- Folders
+log/
+repository/

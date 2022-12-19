@@ -6,7 +6,7 @@
 
     <groupId>com.fiberg</groupId>
     <artifactId>wsio</artifactId>
-    <version>0.5.0-SNAPSHOT</version>
+    <version>0.6.0</version>
     <packaging>jar</packaging>
     <name>WsIO</name>
 
@@ -28,16 +28,148 @@
 	    <javax.jaxws.version>2.3.1</javax.jaxws.version>
 	    <javax.jws.version>1.0-MR1</javax.jws.version>
 
-        <plugin-install.version>2.5.2</plugin-install.version>
-        <plugin-sources.version>3.0.1</plugin-sources.version>
+        <plugin.install.version>2.5.2</plugin.install.version>
         <plugin.jar.version>3.0.2</plugin.jar.version>
-        <plugin.compiler.version>3.6.1</plugin.compiler.version>
-        <plugin.compiler.source.version>1.8</plugin.compiler.source.version>
-        <plugin.compiler.target.version>1.8</plugin.compiler.target.version>
+        <plugin.sources.version>3.0.1</plugin.sources.version>
+        <plugin.javadoc.version>3.1.1</plugin.javadoc.version>
+        <plugin.compiler.version>3.7.0</plugin.compiler.version>
+
+        <javadoc.java.version>11</javadoc.java.version>
+
+        <java.version>11</java.version>
+        <java.target.version>11</java.target.version>
+
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     </properties>
 
+    <profiles>
+
+        <!-- Snapshot profile -->
+        <profile>
+
+            <!-- Id and activation -->
+            <id>snapshot</id>
+            <activation>
+                <property>
+                    <name>version</name>
+                    <value>snapshot</value>
+                </property>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+
+            <!-- Properties -->
+            <properties>
+                <profiled.version.suffix>SNAPSHOT</profiled.version.suffix>
+            </properties>
+
+        </profile>
+
+        <!-- Release profile -->
+        <profile>
+
+            <!-- Id and activation -->
+            <id>release</id>
+            <activation>
+                <property>
+                    <name>version</name>
+                    <value>release</value>
+                </property>
+            </activation>
+
+            <!-- Properties -->
+            <properties>
+                <profiled.version.suffix>RELEASE</profiled.version.suffix>
+            </properties>
+
+        </profile>
+
+        <profile>
+
+            <id>javac</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>compiler</name>
+                    <value>default</value>
+                </property>
+            </activation>
+
+            <build>
+                <plugins>
+                    <!-- Compiler plugin Javac -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>${plugin.compiler.version}</version><!-- $NO-MVN-MAN-VER$ -->
+                        <configuration>
+                            <source>${java.version}</source>
+                            <target>${java.target.version}</target>
+                            <fork>true</fork>
+                            <meminitial>128m</meminitial>
+                            <maxmem>2048m</maxmem>
+                            <compilerArgs>
+                                <arg>-Averbose=true</arg>
+                                <arg>-verbose</arg>
+                            </compilerArgs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+
+        </profile>
+
+        <profile>
+
+            <id>javadoc</id>
+            <activation>
+                <property>
+                    <name>javadoc</name>
+                </property>
+            </activation>
+
+            <build>
+                <plugins>
+                    <!-- Javadoc plugin -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>${plugin.javadoc.version}</version>
+                        <configuration>
+                            <tags>
+                                <tag>
+                                    <name>arg</name>
+                                    <placement>a</placement>
+                                    <head>Argument:</head>
+                                </tag>
+                            </tags>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                                <configuration>
+                                    <!--
+                                    <additionalparam>-Xdoclint:none</additionalparam>
+                                    -->
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+
+            </build>
+        </profile>
+
+    </profiles>
+
     <dependencies>
+
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
@@ -110,21 +242,28 @@
             <version>${groovy.all.version}</version>
             <type>pom</type>
         </dependency>
+
     </dependencies>
 
     <build>
+
+        <!-- Final name -->
+        <finalName>${project.artifactId}-${project.version}-${profiled.version.suffix}</finalName>
+
         <plugins>
 
+            <!-- Plugin install -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-install-plugin</artifactId>
-                <version>${plugin-install.version}</version>
+                <version>${plugin.install.version}</version>
             </plugin>
 
+            <!-- Generate sources -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>${plugin-sources.version}</version>
+                <version>${plugin.sources.version}</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -136,6 +275,7 @@
                 </executions>
             </plugin>
 
+            <!-- Compiler plugin Javac -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -152,6 +292,7 @@
                 </configuration>
             </plugin>
 
+            <!-- Make this jar executable -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -171,6 +312,7 @@
             </plugin>
 
         </plugins>
+
     </build>
 
 </project>
