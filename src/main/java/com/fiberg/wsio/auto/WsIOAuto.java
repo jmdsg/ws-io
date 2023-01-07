@@ -3,7 +3,9 @@ package com.fiberg.wsio.auto;
 import com.fiberg.wsio.annotation.WsIOAnnotate;
 import com.fiberg.wsio.processor.*;
 import com.fiberg.wsio.util.WsIOUtil;
-import io.github.lukehutch.fastclasspathscanner.FastClasspathScanner;
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ClassInfo;
+import io.github.classgraph.ScanResult;
 import io.vavr.*;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
@@ -12,6 +14,10 @@ import io.vavr.collection.Set;
 import io.vavr.collection.Stream;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
+import jakarta.jws.WebParam;
+import jakarta.jws.WebResult;
+import jakarta.xml.ws.RequestWrapper;
+import jakarta.xml.ws.ResponseWrapper;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.asm.AsmVisitorWrapper;
 import net.bytebuddy.asm.MemberAttributeExtension;
@@ -33,10 +39,6 @@ import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.pool.TypePool;
 import org.apache.commons.text.WordUtils;
 
-import javax.jws.WebParam;
-import javax.jws.WebResult;
-import javax.xml.ws.RequestWrapper;
-import javax.xml.ws.ResponseWrapper;
 import java.lang.annotation.Annotation;
 import java.util.Objects;
 import java.util.function.Function;
@@ -58,11 +60,17 @@ public final class WsIOAuto {
 	 */
 	public static void annotate(String basePackage, Class<?> main) {
 
+		ScanResult scanResult = new ClassGraph()
+				.verbose()
+				.enableAllInfo()
+				.acceptPackages(basePackage)
+				.scan();
+
 		/* Obtain all class names of the base package */
 		ClassLoader classLoader = main.getClassLoader();
-		List<String> classNames = List.ofAll(new FastClasspathScanner(basePackage)
-				.scan()
-				.getNamesOfAllClasses());
+		List<String> classNames = List.ofAll(scanResult.getAllClasses()
+				.stream()
+				.map(ClassInfo::getName));
 
 		/* Get all types when the name starts with base package */
 		TypePool pool = TypePool.Default.of(classLoader);
@@ -79,7 +87,7 @@ public final class WsIOAuto {
 				WsIOWalker.findWrapperRecursively(types.values().toList());
 
 		/* Iterate for each wrapper class */
-		List<DynamicType.Unloaded<Object>> unloadeds = wrappers.keySet()
+		List<DynamicType.Unloaded<Object>> uploads = wrappers.keySet()
 				.toList()
 				.flatMap(className -> {
 
@@ -212,7 +220,7 @@ public final class WsIOAuto {
 
 									});
 
-							// this must be last since the visits are performed in inversed order
+							// this must be last since the visits are performed in inverse order
 							DynamicType.Builder<Object> removeAnnotationVisitorBuilder = addAnnotationVisitorBuilder
 									.visit(new AsmVisitorWrapper.ForDeclaredMethods()
 									.method(ElementMatchers.any(), new AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper() {
@@ -275,10 +283,10 @@ public final class WsIOAuto {
 
 				});
 
-		if (unloadeds.size() >= 1) {
+		if (uploads.size() >= 1) {
 
-			DynamicType.Unloaded<Object> first = unloadeds.get(0);
-			List<DynamicType.Unloaded<Object>> tail = unloadeds.tail();
+			DynamicType.Unloaded<Object> first = uploads.get(0);
+			List<DynamicType.Unloaded<Object>> tail = uploads.tail();
 
 			// load the classes and the includes
 			first.include(tail.toJavaList())

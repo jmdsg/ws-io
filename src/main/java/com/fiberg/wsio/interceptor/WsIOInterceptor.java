@@ -16,14 +16,16 @@ import io.vavr.collection.List;
 import io.vavr.control.Option;
 import org.apache.commons.lang3.StringUtils;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
 /**
- * Class used to intercept the petitions and responses and add the additionals.
+ * Class used to intercept the petitions and responses and add the additional.
  */
 public final class WsIOInterceptor {
 
@@ -34,13 +36,13 @@ public final class WsIOInterceptor {
 	public static final String END = "end";
 
 	/**
-	 * Private empty contructor.
+	 * Private empty constructor.
 	 */
 	private WsIOInterceptor() {  }
 
 	/**
 	 * In interceptor method, used to add the initial info for the out interceptor.
-	 * This method also resets the current values for additionals and add the start date when is enabled.
+	 * This method also resets the current values for additional and add the start date when is enabled.
 	 *
 	 * @param endpoint endpoint class of the method
 	 * @param method method to extract the info
@@ -81,24 +83,24 @@ public final class WsIOInterceptor {
 	/**
 	 * Method used to add the additional info to the output objects.
 	 *
-	 * @param objects list of objects to add the additionals
+	 * @param objects list of objects to add the additional
 	 * @param session map containing the session info
 	 */
 	public static void out(java.util.List<Object> objects, java.util.Map<String, Object> session) {
 
-		/* Get current wsio data */
+		/* Get current ws-io data */
 		@SuppressWarnings({ "unchecked" })
-		java.util.Map<WsIOData, Object> wsio = (java.util.Map<WsIOData, Object>)
+		java.util.Map<WsIOData, Object> wsIO = (java.util.Map<WsIOData, Object>)
 				session.get(WsIOData.class.getCanonicalName());
 
-		/* Check wsio and object list are not null, check the size of objects is 1 */
-		if (Objects.nonNull(wsio) && Objects.nonNull(objects) && objects.size() == 1) {
+		/* Check ws-io and object list are not null, check the size of objects is 1 */
+		if (Objects.nonNull(wsIO) && Objects.nonNull(objects) && objects.size() == 1) {
 
 			/* Get response object */
 			Object response = objects.get(0);
 
-			/* Get time annotation and check if is non null */
-			WsIOUseTime useTime = (WsIOUseTime) wsio.get(WsIOData.TIME);
+			/* Get time annotation and check if is non-null */
+			WsIOUseTime useTime = (WsIOUseTime) wsIO.get(WsIOData.TIME);
 			if (Objects.nonNull(useTime)) {
 
 				/* Check response if instance of ws time */
@@ -109,7 +111,7 @@ public final class WsIOInterceptor {
 						Time.addDateTimeNow(END);
 					}
 
-					/* Get time list, create inmmutable list and clear all dates */
+					/* Get time list, create immutable list and clear all dates */
 					java.util.List<WsIOInstant> timeList = Time.getTimes();
 					List<WsIOInstant> times = Option.of(timeList)
 							.toList()
@@ -151,7 +153,7 @@ public final class WsIOInterceptor {
 			}
 
 			/* Get time annotation and check if is non null */
-			WsIOUseState useState = (WsIOUseState) wsio.get(WsIOData.STATE);
+			WsIOUseState useState = (WsIOUseState) wsIO.get(WsIOData.STATE);
 			if (Objects.nonNull(useState)) {
 
 				/* Check response if instance of ws state */
@@ -235,8 +237,11 @@ public final class WsIOInterceptor {
 	@SuppressWarnings({ "unchecked" })
 	private static <R, G extends R> G[] toJavaArray(List<G> list, Class<R> clazz) {
 
+		Class<G> target = (Class<G>) clazz;
+		IntFunction<G[]> creator = length -> (G[]) Array.newInstance(target, length);
+
 		/* Return the java array */
-		return list.toJavaArray((Class<G>) clazz);
+		return list.toJavaArray(creator);
 
 	}
 

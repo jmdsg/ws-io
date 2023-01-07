@@ -8,15 +8,15 @@ import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.*;
 import io.vavr.control.Option;
+import jakarta.jws.WebMethod;
+import jakarta.jws.WebParam;
+import jakarta.jws.WebResult;
+import jakarta.xml.bind.annotation.XmlElementWrapper;
 import org.apache.commons.lang3.ObjectUtils;
 
-import javax.jws.WebMethod;
-import javax.jws.WebParam;
-import javax.jws.WebResult;
 import javax.lang.model.element.*;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.*;
-import javax.xml.bind.annotation.XmlElementWrapper;
 import java.util.Objects;
 
 /**

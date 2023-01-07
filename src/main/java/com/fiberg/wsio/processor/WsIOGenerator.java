@@ -12,6 +12,7 @@ import com.squareup.javapoet.TypeSpec.Builder;
 import io.vavr.*;
 import io.vavr.collection.*;
 import io.vavr.control.Option;
+import jakarta.xml.bind.annotation.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.WordUtils;
 
@@ -23,7 +24,6 @@ import javax.lang.model.type.NoType;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.JavaFileObject;
-import javax.xml.bind.annotation.*;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Comparator;

@@ -22,13 +22,13 @@ import java.util.Objects;
  */
 class WsIOContext {
 
-	/** Preffix class name */
+	/** Prefix class name */
 	private String prefixClassName;
 
 	/** Suffix class name */
 	private String suffixClassName;
 
-	/** Preffix wrapper name */
+	/** Prefix wrapper name */
 	private String prefixWrapperName;
 
 	/** Suffix wrapper name */
@@ -382,7 +382,7 @@ class WsIOContext {
 			}
 
 			/* Get the generic array */
-			TypeName[] genericsArray = genericTypes.toJavaArray(TypeName.class);
+			TypeName[] genericsArray = genericTypes.toJavaArray(TypeName[]::new);
 
 			/* Check if is internal type or not */
 			ClassName className;

@@ -5,9 +5,9 @@ import com.fiberg.wsio.util.WsIOUtil;
 import io.vavr.*;
 import io.vavr.collection.*;
 import io.vavr.control.Option;
+import jakarta.jws.WebMethod;
 import org.apache.commons.lang3.StringUtils;
 
-import javax.jws.WebMethod;
 import javax.lang.model.element.*;
 import javax.lang.model.util.ElementFilter;
 import java.util.Objects;

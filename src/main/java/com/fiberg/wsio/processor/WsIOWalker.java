@@ -8,11 +8,11 @@ import io.vavr.Tuple2;
 import io.vavr.collection.*;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
+import jakarta.jws.WebMethod;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import org.apache.commons.lang3.StringUtils;
 
-import javax.jws.WebMethod;
 import java.util.Objects;
 import java.util.function.Function;
 

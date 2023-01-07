@@ -1,6 +1,7 @@
 package com.fiberg.wsio.handler.time;
 
-import javax.xml.bind.annotation.*;
+import jakarta.xml.bind.annotation.*;
+
 import java.time.ZonedDateTime;
 
 @XmlRootElement
