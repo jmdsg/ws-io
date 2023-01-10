@@ -3,7 +3,7 @@ package com.fiberg.wsio.annotation;
 import java.lang.annotation.*;
 
 /**
- * Annotation to skip metatada generation {@link WsIOMetadata}.
+ * Annotation to skip metadata generation {@link WsIOMetadata}.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.TYPE, ElementType.FIELD })

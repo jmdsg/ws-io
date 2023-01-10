@@ -12,6 +12,7 @@ import jakarta.jws.WebMethod;
 import jakarta.jws.WebParam;
 import jakarta.jws.WebResult;
 import jakarta.xml.bind.annotation.XmlElementWrapper;
+import jakarta.xml.bind.annotation.adapters.XmlAdapter;
 import org.apache.commons.lang3.ObjectUtils;
 
 import javax.lang.model.element.*;
@@ -129,8 +130,26 @@ final class WsIOUtils {
 				.map(variable -> variable.getAnnotation(WsIOQualifier.class))
 				.map(qualifier -> qualifier != null ? Tuple.of(qualifier.prefix(), qualifier.suffix()) : null);
 
+		/* Get the parameter attributes of the executable */
+		List<Boolean> parameterAttributes = Stream.ofAll(executable.getParameters())
+				.map(variable -> variable.getAnnotation(WsIOAttribute.class))
+				.map(attribute -> attribute != null ? true : null)
+				.toList();
+
+		/* Get the parameter wrappers of the executable */
+		List<String> parameterWrappers = Stream.ofAll(executable.getParameters())
+				.map(variable -> variable.getAnnotation(com.fiberg.wsio.annotation.WsIOWrapper.class))
+				.map(wrapper -> wrapper != null ? wrapper.inner() : null)
+				.toList();
+
+		/* Get the parameter adapters of the executable */
+		List<Class<? extends XmlAdapter<?, ?>>> parameterAdapters = Stream.ofAll(executable.getParameters())
+				.map(variable -> variable.getAnnotation(WsIOAdapter.class))
+				.<Class<? extends XmlAdapter<?, ?>>>map(adapter -> adapter != null ? adapter.value() : null)
+				.toList();
+
 		/* Extract the use annotations that are defined */
-		Set<WsIOWrapper> wrappers = WsIOWrapper.ANNOTATIONS.filterValues(annotation ->
+		Set<WsIOWrapped> wrappers = WsIOWrapped.ANNOTATIONS.filterValues(annotation ->
 				descriptor.getSingle(annotation).isDefined())
 				.keySet();
 
@@ -153,6 +172,7 @@ final class WsIOUtils {
 		/* Return the info */
 		return WsIOInfo.of(methodName, operationName, executable,
 				parameterNames, parameterNameSpaces, parameterTypes, parameterQualifiers,
+				parameterAttributes, parameterWrappers, parameterAdapters,
 				returnName, returnNameSpace, returnType, returnQualifier,
 				wrapperName, wrapperNameSpace, wrappers);
 

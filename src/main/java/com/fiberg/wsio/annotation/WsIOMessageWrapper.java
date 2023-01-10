@@ -10,8 +10,8 @@ import java.lang.annotation.Target;
 /**
  * <p>Annotation to generate classes with prefix 'Request' and suffix 'Wrapper'.</p>
  *
- * <p>Classes are generated for each interface marked with {@link javax.jws.WebService}.</p>
- * <p>A class time is generated for each method containing {@link javax.jws.WebMethod} and only if the method contain parameters.</p>
+ * <p>Classes are generated for each interface marked with {@link jakarta.jws.WebService}.</p>
+ * <p>A class time is generated for each method containing {@link jakarta.jws.WebMethod} and only if the method contain parameters.</p>
  *
  * <p>Can be skipped in a class with {@link WsIOSkipMessageWrapper}.</p>
  */

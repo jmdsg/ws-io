@@ -13,6 +13,8 @@ import io.vavr.*;
 import io.vavr.collection.*;
 import io.vavr.control.Option;
 import jakarta.xml.bind.annotation.*;
+import jakarta.xml.bind.annotation.adapters.XmlAdapter;
+import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.WordUtils;
 
@@ -38,14 +40,14 @@ import static com.fiberg.wsio.processor.WsIOConstant.*;
  */
 class WsIOGenerator {
 
-	/** Handles the report of errors, warnings and anothers */
+	/** Handles the report of errors, warnings and another */
 	private Messager messager;
 
 	/** Receives the generated class files */
 	private Filer filer;
 
 	/**
-	 * @param messager handles the report of errors, warnings and anothers
+	 * @param messager handles the report of errors, warnings and another
 	 * @param filer receives the generated class files
 	 */
 	WsIOGenerator(Messager messager, Filer filer) {
@@ -234,7 +236,7 @@ class WsIOGenerator {
 
 		}).filter(tuple -> Objects.nonNull(tuple._1())).toList();
 
-		/* Iterate for each type spec of clones, requests and reponses */
+		/* Iterate for each type spec of clones, requests and responses */
 		cloneTypes.appendAll(messageTypes).appendAll(cloneMessageTypes).forEach(tuple -> {
 
 			/* Get type spec, package name and class name */
@@ -388,7 +390,7 @@ class WsIOGenerator {
 			/* Generate the inheritance structure */
 			Map<WsIOLevel, Set<DeclaredType>> inheritance = resolveInheritance(element, context);
 
-			/* Generate the method priotity from the inheritance structure */
+			/* Generate the method priority from the inheritance structure */
 			Map<WsIOLevel, Map<WsIOProperty, Map<String, ExecutableElement>>> methodPriorities =
 					resolveMethodPriority(inheritance);
 
@@ -448,7 +450,7 @@ class WsIOGenerator {
 			/* Generate the inheritance structure */
 			Map<WsIOLevel, Set<DeclaredType>> inheritance = resolveInheritance(element, context);
 
-			/* Generate the method priotity from the inheritance structure */
+			/* Generate the method priority from the inheritance structure */
 			Map<WsIOLevel, Map<WsIOProperty, Map<String, ExecutableElement>>> methodPriorities =
 					resolveMethodPriority(inheritance);
 
@@ -895,7 +897,8 @@ class WsIOGenerator {
 		String fullClassName = WsIOUtil.addWrap(WordUtils.capitalize(classSimpleName), prefixTypeName, suffixTypeName);
 
 		/* List of descriptors with types, elements and names */
-		List<Tuple3<TypeMirror, String, Tuple2<String, String>>> descriptors = getWrapperDescriptors(type, info);
+		List<Tuple4<TypeMirror, String, Tuple2<String, String>, Tuple3<Boolean, String, Class<? extends XmlAdapter<?, ?>>>>> descriptors =
+				getWrapperDescriptors(type, info);
 
 		/* Add jaxb annotations to the class */
 		List<AnnotationSpec> annotations = List.empty();
@@ -911,13 +914,13 @@ class WsIOGenerator {
 
 		/* Iterate for each parameter and return type */
 		List<String> fieldNames = List.empty();
-		for (Tuple3<TypeMirror, String, Tuple2<String, String>> descriptor : descriptors) {
+		for (Tuple4<TypeMirror, String, Tuple2<String, String>, Tuple3<Boolean, String, Class<? extends XmlAdapter<?, ?>>>> descriptor : descriptors) {
 
 			/* Get mirror type, type element and name */
 			TypeMirror mirror = descriptor._1();
 			String name = descriptor._2();
 
-			/* Check mirror is not a notype */
+			/* Check mirror is not a no-type */
 			if (!(mirror instanceof NoType)) {
 
 				/* Qualifier, prefixes and suffixes */
@@ -927,6 +930,12 @@ class WsIOGenerator {
 				String prefixWrapperName = WsIOType.RESPONSE.equals(type) ? RESPONSE_PREFIX : REQUEST_PREFIX;
 				String suffixWrapperName = WsIOType.RESPONSE.equals(type) ? RESPONSE_SUFFIX : REQUEST_SUFFIX;
 				WsIOGenerate generate = Objects.nonNull(qualifier) ? WsIOGenerate.CLONE_MESSAGE : WsIOGenerate.MESSAGE;
+
+				/* Attribute, wrapper and adapter */
+				Tuple3<Boolean, String, Class<? extends XmlAdapter<?, ?>>> additional = descriptor._4();
+				Boolean attribute = additional._1();
+				String wrapper = additional._2();
+				Class<? extends XmlAdapter<?, ?>> adapter = additional._3();
 
 				/* Get identifier and get clone classes and clone message classes */
 				Tuple2<String, String> identifier = Tuple.of(prefixClassName, suffixClassName);
@@ -947,6 +956,8 @@ class WsIOGenerator {
 				/* Lower and upper names */
 				String lowerName = WordUtils.uncapitalize(name);
 				String upperName = WordUtils.capitalize(name);
+
+				String lowerWrapper = wrapper == null ? null : WordUtils.uncapitalize(name);
 
 				/* Internal and external chars */
 				String internalChar = Option.when(!nameSwap, separator).getOrElse("");
@@ -1019,7 +1030,7 @@ class WsIOGenerator {
 				};
 
 				/* Check if inner wrapper is defined */
-				if (info.getWrappers().contains(WsIOWrapper.INNER_WRAPPER)
+				if (info.getWrappers().contains(WsIOWrapped.INNER_WRAPPED)
 						&& isValidInnerType.test(mirror)
 						&& WsIOType.RESPONSE.equals(type)) {
 
@@ -1035,7 +1046,7 @@ class WsIOGenerator {
 					/* Generate the inheritance structure */
 					Map<WsIOLevel, Set<DeclaredType>> inheritance = resolveInheritance(element, context);
 
-					/* Generate the method priotity from the inheritance structure */
+					/* Generate the method priority from the inheritance structure */
 					Map<WsIOLevel, Map<WsIOProperty, Map<String, ExecutableElement>>> methodPriorities =
 							resolveMethodPriority(inheritance);
 
@@ -1125,12 +1136,33 @@ class WsIOGenerator {
 				} else {
 
 					/* Flag indicating if empty collections, maps and arrays should be hidden */
-					boolean methodHideEmpties = info.getWrappers().contains(WsIOWrapper.HIDE_EMPTY_WRAPPER);
+					boolean methodHideEmpties = info.getWrappers().contains(WsIOWrapped.HIDE_EMPTY_WRAPPED);
 
 					/* List with the internal get annotations */
 					List<AnnotationSpec> internalGetAnnotations = List.empty();
-					internalGetAnnotations = internalGetAnnotations.append(AnnotationSpec.builder(XmlElement.class)
-							.addMember("name", "$S", lowerName).build());
+
+					if (adapter != null) {
+						internalGetAnnotations = internalGetAnnotations.append(
+								AnnotationSpec.builder(XmlJavaTypeAdapter.class)
+										.addMember("value", "$T.class", adapter)
+										.build());
+					}
+
+					if (lowerWrapper == null) {
+						internalGetAnnotations = internalGetAnnotations.append(
+								AnnotationSpec.builder(Boolean.TRUE.equals(attribute) ? XmlAttribute.class : XmlElement.class)
+										.addMember("name", "$S", lowerName)
+										.build());
+					} else {
+						internalGetAnnotations = internalGetAnnotations.appendAll(
+								List.of(
+										AnnotationSpec.builder(XmlElement.class)
+												.addMember("name", "$S", lowerName)
+												.build(),
+										AnnotationSpec.builder(XmlElementWrapper.class)
+												.addMember("name", "$S", lowerWrapper)
+												.build()));
+					}
 
 					/* Create internal get accessor and code block */
 					String internalGetAccessor = String.format("%s()", externalGetName);
@@ -1242,11 +1274,11 @@ class WsIOGenerator {
 	 * @param fieldNames names of the fields
 	 * @return fields, methods, interfaces and annotations of wrapper additionals
 	 */
-	private Tuple4<List<FieldSpec>, List<MethodSpec>, List<TypeName>, List<AnnotationSpec>> generateAdditionals(Set<WsIOWrapper> wrappers,
+	private Tuple4<List<FieldSpec>, List<MethodSpec>, List<TypeName>, List<AnnotationSpec>> generateAdditionals(Set<WsIOWrapped> wrappers,
 	                                                                                                            List<String> fieldNames) {
 
 		/* Flag indicating if empty collections, maps and arrays should be hidden */
-		boolean hideEmpties = wrappers.contains(WsIOWrapper.HIDE_EMPTY_WRAPPER);
+		boolean hideEmpties = wrappers.contains(WsIOWrapped.HIDE_EMPTY_WRAPPED);
 
 		/* Fields, methods and interfaces */
 		List<FieldSpec> fields = List.empty();
@@ -1428,13 +1460,13 @@ class WsIOGenerator {
 		List<String> orders = List.empty();
 
 		/* Check if the time wrapper is defined and add it to orders */
-		if (wrappers.contains(WsIOWrapper.TIME_WRAPPER)) {
+		if (wrappers.contains(WsIOWrapped.TIME_WRAPPED)) {
 			nextLine++;
 			orders = orders.appendAll(timeNames.map(Tuple3::_1));
 		}
 
 		/* Check if the state wrapper is defined and add the first 6 to orders */
-		if (wrappers.contains(WsIOWrapper.STATE_WRAPPER)) {
+		if (wrappers.contains(WsIOWrapped.STATE_WRAPPED)) {
 			nextLine += 6;
 			orders = orders.appendAll(stateNames.map(Tuple3::_2).take(6));
 		}
@@ -1443,7 +1475,7 @@ class WsIOGenerator {
 		orders = orders.appendAll(fieldNames);
 
 		/* Check if the state wrapper is defined, skip the first 6 and add the next 3 elements to the orders */
-		if (wrappers.contains(WsIOWrapper.STATE_WRAPPER)) {
+		if (wrappers.contains(WsIOWrapped.STATE_WRAPPED)) {
 			orders = orders.appendAll(stateNames.map(Tuple3::_1).drop(6).take(3));
 		}
 
@@ -1453,15 +1485,15 @@ class WsIOGenerator {
 				.intersperse(", ")
 				.prepend("{ ")
 				.append(" }")
-				.insert(2 * nextLine + 1, wrappers.contains(WsIOWrapper.STATE_WRAPPER) ? "\n" :"")
+				.insert(2 * nextLine + 1, wrappers.contains(WsIOWrapped.STATE_WRAPPED) ? "\n" :"")
 				.mkString();
 
 		/* Add the annotation to the list */
 		annotations = annotations.append(AnnotationSpec.builder(XmlType.class)
 				.addMember("propOrder", format, orders.toJavaArray()).build());
 
-		/* Chck if time wrapper is going to be added or not */
-		if (wrappers.contains(WsIOWrapper.TIME_WRAPPER)) {
+		/* Check if time wrapper is going to be added or not */
+		if (wrappers.contains(WsIOWrapped.TIME_WRAPPED)) {
 
 			/* Declare the index and call the function to generate the fields and methods */
 			Option<Tuple2<List<FieldSpec>, List<MethodSpec>>> results = timeNames
@@ -1478,8 +1510,8 @@ class WsIOGenerator {
 
 		}
 
-		/* Chck if state wrapper is going to be added or not */
-		if (wrappers.contains(WsIOWrapper.STATE_WRAPPER)) {
+		/* Check if state wrapper is going to be added or not */
+		if (wrappers.contains(WsIOWrapped.STATE_WRAPPED)) {
 
 			/* Get all results */
 			List<Tuple2<List<FieldSpec>, List<MethodSpec>>> results = List.of(
@@ -1516,17 +1548,17 @@ class WsIOGenerator {
 	}
 
 	/**
-	 * Method that create the descriptors of reponse and request types.
+	 * Method that create the descriptors of response and request types.
 	 *
 	 * @param type indicates if is a response or request wrapper
 	 * @param info all wrapper info
-	 * @return descriptors of reponse and request types.
+	 * @return descriptors of response and request types.
 	 */
-	private List<Tuple3<TypeMirror, String, Tuple2<String, String>>> getWrapperDescriptors(WsIOType type,
-	                                                                                       WsIOInfo info) {
+	private List<Tuple4<TypeMirror, String, Tuple2<String, String>, Tuple3<Boolean, String, Class<? extends XmlAdapter<?, ?>>>>> getWrapperDescriptors(WsIOType type,
+																																					   WsIOInfo info) {
 
 		/* List to fill with types, elements and names */
-		List<Tuple3<TypeMirror, String, Tuple2<String, String>>> descriptors = List.empty();
+		List<Tuple4<TypeMirror, String, Tuple2<String, String>, Tuple3<Boolean, String, Class<? extends XmlAdapter<?, ?>>>>> descriptors = List.empty();
 
 		/* Check if the type is response or request */
 		if (WsIOType.RESPONSE.equals(type)) {
@@ -1542,9 +1574,20 @@ class WsIOGenerator {
 				/* Get qualifier from annotation */
 				Tuple2<String, String> qualifier = info.getReturnQualifier();
 
+				Boolean parameterAttribute = info.getParameterAttributes() != null && info.getParameterAttributes().length() == 1
+					? info.getParameterAttributes().get(0) : null;
+				String parameterWrapper = info.getParameterWrappers() != null && info.getParameterWrappers().length() == 1
+						? info.getParameterWrappers().get(0): null;
+				Class<? extends XmlAdapter<?, ?>> parameterAdapter = info.getParameterAdapters() != null && info.getParameterAdapters().length() == 1
+						? info.getParameterAdapters().get(0): null;
+				Tuple3<Boolean, String, Class<? extends XmlAdapter<?, ?>>> additional = Tuple.of(
+						parameterAttribute, parameterWrapper, parameterAdapter
+				);
+
 				/* Fill the type, element and name */
-				Tuple3<TypeMirror, String, Tuple2<String, String>> descriptor =
-						Tuple.of(typeMirror, result, qualifier);
+				Tuple4<TypeMirror, String, Tuple2<String, String>, Tuple3<Boolean, String, Class<? extends XmlAdapter<?, ?>>>> descriptor =
+						Tuple.of(typeMirror, result, qualifier, additional);
+
 				descriptors = descriptors.append(descriptor);
 
 			}
@@ -1563,12 +1606,20 @@ class WsIOGenerator {
 					String parameterName = info.getParameterNames().get(index);
 					String argument = StringUtils.isNotBlank(parameterName) ? parameterName : defaultName;
 
+					Boolean parameterAttribute = info.getParameterAttributes().get(index);
+					String parameterWrapper = info.getParameterWrappers().get(index);
+					Class<? extends XmlAdapter<?, ?>> parameterAdapter = info.getParameterAdapters().get(index);
+					Tuple3<Boolean, String, Class<? extends XmlAdapter<?, ?>>> additional = Tuple.of(
+							parameterAttribute, parameterWrapper, parameterAdapter
+					);
+
 					/* Get qualifier from annotation */
 					Tuple2<String, String> qualifier = info.getParameterQualifiers().get(index);
 
 					/* Fill the type, element and name */
-					Tuple3<TypeMirror, String, Tuple2<String, String>> descriptor =
-							Tuple.of(typeMirror, argument, qualifier);
+					Tuple4<TypeMirror, String, Tuple2<String, String>, Tuple3<Boolean, String, Class<? extends XmlAdapter<?, ?>>>> descriptor =
+							Tuple.of(typeMirror, argument, qualifier, additional);
+
 					descriptors = descriptors.append(descriptor);
 
 				}
@@ -1583,11 +1634,11 @@ class WsIOGenerator {
 	}
 
 	/**
-	 * Method that return if the delegator should be overriden or not
+	 * Method that return if the delegator should be overridden or not
 	 *
 	 * @param getters map of getters with priority levels
 	 * @param setters map of setters with priority levels
-	 * @return {@code true} if the delegator should be overriden {@code false} otherwise
+	 * @return {@code true} if the delegator should be overridden {@code false} otherwise
 	 */
 	private boolean checkDelegatorOverride(Map<WsIOLevel, Map<String, ExecutableElement>> getters,
 	                                       Map<WsIOLevel, Map<String, ExecutableElement>> setters) {
@@ -1665,7 +1716,7 @@ class WsIOGenerator {
 		TypeMirror superType = element.getSuperclass();
 		List<TypeMirror> interTypes = List.ofAll(element.getInterfaces());
 
-		/* Create the root delegate element if is non null and instance of declared type */
+		/* Create the root delegate element if is non-null and instance of declared type */
 		Option<DeclaredType> rootOpt = Option.of(rootType)
 				.filter(DeclaredType.class::isInstance)
 				.map(DeclaredType.class::cast);
@@ -1741,10 +1792,10 @@ class WsIOGenerator {
 
 		};
 
-		/* Add the element if is non null and instance of declared type */
+		/* Add the element if is non-null and instance of declared type */
 		inheritances = inheritances.merge(superOpt.toMap(extractDeclaredClassInterface.apply(true), HashSet::of));
 
-		/* Return current local and super class merged with non null super interfaces instance of declared type */
+		/* Return current local and super class merged with non-null super interfaces instance of declared type */
 		return inheritances.merge(interTypes
 				.filter(DeclaredType.class::isInstance)
 				.map(DeclaredType.class::cast)

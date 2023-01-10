@@ -37,7 +37,7 @@ public class WsIODescriptor {
 			WsIODescriptor.describeSingle(WsIOMetadata.class, WsIOSkipMetadata.class, WsIOSkipMetadata::skip)
 	);
 
-	/** Descriptor of the repeatables annotations */
+	/** Descriptor of the repeatable annotations */
 	private static final Map<Class<? extends Annotation>, RepeatableDescriptor> REPEATABLES = HashMap.ofEntries(
 			WsIODescriptor.describeRepeatable(WsIOClone.class, WsIOClones.class, WsIOSkipClone.class, WsIOSkipClones.class,
 					WsIOClones::value, WsIOSkipClones::value,

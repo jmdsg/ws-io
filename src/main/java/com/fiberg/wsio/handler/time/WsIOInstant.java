@@ -1,6 +1,8 @@
 package com.fiberg.wsio.handler.time;
 
+import com.fiberg.wsio.adapter.ZonedDateTimeAdapter;
 import jakarta.xml.bind.annotation.*;
+import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import java.time.ZonedDateTime;
 
@@ -47,6 +49,7 @@ public class WsIOInstant {
 	}
 
 	@XmlValue
+	@XmlJavaTypeAdapter(ZonedDateTimeAdapter.class)
 	public ZonedDateTime getDateTime() {
 		return dateTime;
 	}

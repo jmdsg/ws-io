@@ -12,26 +12,26 @@ import java.lang.annotation.Annotation;
 /**
  * Enum containing all possible wrapper use annotations.
  */
-enum WsIOWrapper {
+enum WsIOWrapped {
 
 	/** Time wrapper use annotation */
-	TIME_WRAPPER,
+	TIME_WRAPPED,
 
 	/** State wrapper use annotation */
-	STATE_WRAPPER,
+	STATE_WRAPPED,
 
 	/** Inner wrapper use annotation */
-	INNER_WRAPPER,
+	INNER_WRAPPED,
 
 	/** Hide empty wrapper use annotation */
-	HIDE_EMPTY_WRAPPER;
+	HIDE_EMPTY_WRAPPED;
 
 	/** Map with each annotation enum with its annotation class */
-	static final Map<WsIOWrapper, Class<? extends Annotation>> ANNOTATIONS = HashMap.of(
-			WsIOWrapper.TIME_WRAPPER, WsIOUseTime.class,
-			WsIOWrapper.STATE_WRAPPER, WsIOUseState.class,
-			WsIOWrapper.INNER_WRAPPER, WsIOUseInner.class,
-			WsIOWrapper.HIDE_EMPTY_WRAPPER, WsIOUseHideEmpty.class
+	static final Map<WsIOWrapped, Class<? extends Annotation>> ANNOTATIONS = HashMap.of(
+			WsIOWrapped.TIME_WRAPPED, WsIOUseTime.class,
+			WsIOWrapped.STATE_WRAPPED, WsIOUseState.class,
+			WsIOWrapped.INNER_WRAPPED, WsIOUseInner.class,
+			WsIOWrapped.HIDE_EMPTY_WRAPPED, WsIOUseHideEmpty.class
 	);
 
 }
