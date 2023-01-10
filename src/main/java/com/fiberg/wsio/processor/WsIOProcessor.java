@@ -51,7 +51,7 @@ public class WsIOProcessor extends AbstractProcessor {
 		/* Get all root elements */
 		final Set<Element> rootElements = HashSet.ofAll(roundEnv.getRootElements());
 
-		/* Function used to get type elements from a element iterable */
+		/* Function used to get type elements from an element iterable */
 		final Function1<Iterable<? extends Element>, Set<TypeElement>> obtainTypeElements = elements ->
 				Stream.ofAll(elements)
 						.filter(TypeElement.class::isInstance)
@@ -102,11 +102,11 @@ public class WsIOProcessor extends AbstractProcessor {
 	 */
 	@Override
 	public java.util.Set<String> getSupportedAnnotationTypes() {
-		final java.util.Set<String> annotataions = new java.util.LinkedHashSet<>();
-		annotataions.add(WsIOMessage.class.getCanonicalName());
-		annotataions.add(WsIOMessageWrapper.class.getCanonicalName());
-		annotataions.add(WsIOClone.class.getCanonicalName());
-		return annotataions;
+		final java.util.Set<String> annotations = new java.util.LinkedHashSet<>();
+		annotations.add(WsIOMessage.class.getCanonicalName());
+		annotations.add(WsIOMessageWrapper.class.getCanonicalName());
+		annotations.add(WsIOClone.class.getCanonicalName());
+		return annotations;
 	}
 
 	/**

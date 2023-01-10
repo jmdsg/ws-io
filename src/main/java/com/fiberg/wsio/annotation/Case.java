@@ -12,6 +12,6 @@ public enum Case {
 	SNAKE,
 
 	/** Upper case format */
-	UPPER
+	UPPER,
 
 }

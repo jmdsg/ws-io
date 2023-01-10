@@ -10,7 +10,10 @@ import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.processing.Messager;
 import javax.lang.model.element.*;
-import javax.lang.model.type.*;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.PrimitiveType;
+import javax.lang.model.type.TypeMirror;
 import java.util.Objects;
 
 /**
@@ -49,10 +52,10 @@ class WsIODelegator {
 			java.util.List<? extends TypeMirror> returnGenerics = returnDeclared.getTypeArguments();
 			java.util.List<? extends TypeMirror> parameterGenerics = parameterDeclared.getTypeArguments();
 
-			/* Check if at least one parameter has genercis */
+			/* Check if at least one parameter has generics */
 			if (returnGenerics.size() > 0 || parameterGenerics.size() > 0) {
 
-				/* Check generics cound match */
+				/* Check generics count match */
 				if (returnGenerics.size() == parameterGenerics.size()) {
 
 					/* Iterate for each generic */
@@ -63,7 +66,7 @@ class WsIODelegator {
 						TypeMirror returnGenericType = WsIOUtils.getUnwildType(returnGenerics.get(index));
 						TypeMirror parameterGenericType = WsIOUtils.getUnwildType(parameterGenerics.get(index));
 
-						/* Check recursible if they are compatible or not */
+						/* Check recursively if they are compatible or not */
 						if (!isRecursiveCompatible(returnGenericType, parameterGenericType)) {
 
 							/* Return false when a generic type is not compatible with the other in the same position */
@@ -75,7 +78,7 @@ class WsIODelegator {
 
 				} else {
 
-					/* Return false when generic cound does not match */
+					/* Return false when generic count does not match */
 					return false;
 
 				}
@@ -90,7 +93,7 @@ class WsIODelegator {
 			if (returnElement instanceof TypeElement
 					&& parameterElement instanceof TypeElement) {
 
-				/* Return the comparison between full names of the type elemenets */
+				/* Return the comparison between full names of the type elements */
 				return StringUtils.equals(((TypeElement) returnElement).getQualifiedName().toString(),
 						((TypeElement) parameterElement).getQualifiedName().toString());
 
@@ -128,7 +131,7 @@ class WsIODelegator {
 			TypeElement typeElement = (TypeElement) declaredType.asElement();
 			String elementName = typeElement.getQualifiedName().toString();
 
-			/* Check that the first element is a interface of map or collection */
+			/* Check that the first element is an interface of map or collection */
 			if (WsIOCollection.MAP_INTERFACES.contains(elementName)
 					|| WsIOCollection.COLLECTION_INTERFACES.contains(elementName)) {
 
@@ -139,7 +142,7 @@ class WsIODelegator {
 				/* Check if type name is parameterized */
 				if (implementation instanceof ParameterizedTypeName) {
 
-					/* Get parameterized typa name */
+					/* Get parameterized type name */
 					ParameterizedTypeName parameterized = (ParameterizedTypeName) implementation;
 
 					/* Get the recursive type name without implementations only internals */
@@ -250,7 +253,7 @@ class WsIODelegator {
 				CodeBlock getCodeBlock = generateRecursiveTransformToInternal(returnMirror, returnTypeName,
 						context, String.format("%s().%s()", delegator, delegatorGetterName), hideEmpties);
 
-				/* Check codes are non null */
+				/* Check codes are non-null */
 				if (Objects.nonNull(setCodeBlock) && Objects.nonNull(getCodeBlock)) {
 
 					/* Create getter method and add it to the set */
@@ -311,7 +314,7 @@ class WsIODelegator {
 	 * @param context context of the process
 	 * @param accessor access variable or function name
 	 * @param level current recursive level
-	 * @param toInternal indicates if the destiny is a internal or not
+	 * @param toInternal indicates if the destiny is an internal or not
 	 * @param hideEmpties indicates if the collections and maps should be checked and ignored
 	 * @return recursive internal or external code block to transform.
 	 */
@@ -330,7 +333,7 @@ class WsIODelegator {
 			TypeMirror externalComponentType = ((ArrayType) external).getComponentType();
 			TypeName internalComponentTypeName = ((ArrayTypeName) internal).componentType;
 
-			/* Create next accesor name and get recursive code block */
+			/* Create next accessor name and get recursive code block */
 			String accessorName = "component";
 			String componentAccessor = String.format("%s_%d_", accessorName, level);
 			CodeBlock componentBlock = generateRecursiveTransform(externalComponentType, internalComponentTypeName,
@@ -377,7 +380,7 @@ class WsIODelegator {
 							TypeName destinyClassName;
 							if (typeName instanceof ParameterizedTypeName) {
 
-								/* Extract the raw type of a parameterized type */
+								/* Extract the raw type of the parameterized type */
 								destinyClassName = ((ParameterizedTypeName) typeName).rawType;
 
 							} else {
@@ -393,7 +396,7 @@ class WsIODelegator {
 							/* Code block builder */
 							CodeBlock.Builder builder = CodeBlock.builder();
 
-							/* Check if hide empties if enabled */
+							/* Check if hide empties is enabled */
 							if (hideEmpties) {
 
 								/* Add array check condition */
@@ -468,7 +471,7 @@ class WsIODelegator {
 							TypeName internalElement = internalGenerics.get(0);
 							TypeMirror externalElement = externalGenerics.get(0);
 
-							/* Create next accesor name and get recursive code block */
+							/* Create next accessor name and get recursive code block */
 							String accessorName = "element";
 							String elementAccessor = String.format("%s_%d_", accessorName, level);
 							CodeBlock elementBlock = generateRecursiveTransform(externalElement, internalElement,
@@ -489,7 +492,7 @@ class WsIODelegator {
 								/* Code block builder */
 								CodeBlock.Builder builder = CodeBlock.builder();
 
-								/* Check if hide empties if enabled */
+								/* Check if hide empties is enabled */
 								if (hideEmpties) {
 
 									/* Add array check condition */
@@ -529,12 +532,12 @@ class WsIODelegator {
 							String accessorName = "entry";
 							String generalAccessor = String.format("%s_%d_", accessorName, level);
 
-							/* Create next accesor key name and get recursive code block */
+							/* Create next accessor key name and get recursive code block */
 							String keyAccessor = generalAccessor + ".getKey()";
 							CodeBlock keyBlock = generateRecursiveTransform(externalKey, internalKey,
 									context, keyAccessor, level + 1, toInternal, hideEmpties);
 
-							/* Create next accesor value name and get recursive code block */
+							/* Create next accessor value name and get recursive code block */
 							String valueAccessor = generalAccessor + ".getValue()";
 							CodeBlock valueBlock = generateRecursiveTransform(externalValue, internalValue,
 									context, valueAccessor, level + 1, toInternal, hideEmpties);
@@ -557,7 +560,7 @@ class WsIODelegator {
 								/* Code block builder */
 								CodeBlock.Builder builder = CodeBlock.builder();
 
-								/* Check if hide empties if enabled */
+								/* Check if hide empties is enabled */
 								if (hideEmpties) {
 
 									/* Add array check condition */
@@ -591,7 +594,7 @@ class WsIODelegator {
 
 				} else if (context.isInternalType(externalElementName)) {
 
-					/* Check if is to internal or not */
+					/* Check if it is to-internal or not */
 					if (toInternal) {
 
 						/* Check the kind of the element */
@@ -614,7 +617,7 @@ class WsIODelegator {
 
 						} else if (ElementKind.INTERFACE.equals(externalTypeElement.getKind())) {
 
-							/* Get candidates class names and package separeted joined by dot and them separated with commas */
+							/* Get candidates class names and package separated joined by dot and them separated with commas */
 							Set<String> classes = context.getCandidateForceClasses(externalTypeElement);
 							String classesString = classes
 									.map(str -> String.format("\"%s\"", str))

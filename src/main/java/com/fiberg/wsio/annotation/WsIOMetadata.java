@@ -2,7 +2,10 @@ package com.fiberg.wsio.annotation;
 
 import com.fiberg.wsio.processor.WsIOConstant;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * <p>Annotation used to generate the metadata for a class.</p>

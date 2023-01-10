@@ -6,19 +6,22 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * <p>Annotation used to specify if a parameter should be wrapped.</p>
+ * <p>Annotation used to specify a param data.</p>
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.PARAMETER })
-public @interface WsIOWrapper {
+public @interface WsIOParam {
 
-	/** Inner name fo the wrapped element */
-	String inner();
+	/** Name of the param */
+	String name() default "";
 
-	/** Inner required fo the wrapped element */
+	/** Namespace od the param */
+	String targetNamespace() default "";
+
+	/** Required of the param */
 	boolean required() default false;
 
-	/** Inner nillable fo the wrapped element */
+	/** Nillable of the param */
 	boolean nillable() default false;
 
 }

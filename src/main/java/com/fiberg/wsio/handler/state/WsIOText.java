@@ -17,7 +17,7 @@ public class WsIOText {
 		return stateTextEntry;
 	}
 
-	public static WsIOText nolang(String text) {
+	public static WsIOText noLang(String text) {
 		WsIOText stateTextEntry = new WsIOText();
 		stateTextEntry.setText(text);
 		return stateTextEntry;

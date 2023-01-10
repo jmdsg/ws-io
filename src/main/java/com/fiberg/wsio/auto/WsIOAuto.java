@@ -1,17 +1,17 @@
 package com.fiberg.wsio.auto;
 
 import com.fiberg.wsio.annotation.WsIOAnnotate;
-import com.fiberg.wsio.processor.*;
+import com.fiberg.wsio.processor.WsIOConstant;
+import com.fiberg.wsio.processor.WsIODescriptor;
+import com.fiberg.wsio.processor.WsIOType;
+import com.fiberg.wsio.processor.WsIOWalker;
 import com.fiberg.wsio.util.WsIOUtil;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.ScanResult;
-import io.vavr.*;
-import io.vavr.collection.HashMap;
-import io.vavr.collection.List;
-import io.vavr.collection.Map;
-import io.vavr.collection.Set;
-import io.vavr.collection.Stream;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
+import io.vavr.collection.*;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
 import jakarta.jws.WebParam;

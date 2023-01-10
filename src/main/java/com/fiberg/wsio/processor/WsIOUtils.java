@@ -12,12 +12,13 @@ import jakarta.jws.WebMethod;
 import jakarta.jws.WebParam;
 import jakarta.jws.WebResult;
 import jakarta.xml.bind.annotation.XmlElementWrapper;
-import jakarta.xml.bind.annotation.adapters.XmlAdapter;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.*;
+import java.lang.annotation.Annotation;
 import java.util.Objects;
 
 /**
@@ -113,16 +114,50 @@ final class WsIOUtils {
 				.map(VariableElement::asType)
 				.toList();
 
-		/* Get the parameter names of the executable */
-		List<String> parameterNames = Stream.ofAll(executable.getParameters())
+		/* Get the external parameter names of the executable */
+		List<String> parameterExternalNames = Stream.ofAll(executable.getParameters())
 				.map(variable -> variable.getAnnotation(WebParam.class))
 				.map(webParam -> webParam != null ? webParam.name() : null)
 				.toList();
 
-		/* Get the parameter name spaces of the executable */
-		List<String> parameterNameSpaces = Stream.ofAll(executable.getParameters())
+		/* Get the external parameter name spaces of the executable */
+		List<String> parameterExternalNameSpaces = Stream.ofAll(executable.getParameters())
 				.map(variable -> variable.getAnnotation(WebParam.class))
 				.map(webParam -> webParam != null ? webParam.targetNamespace() : null)
+				.toList();
+
+		/* Get the internal parameter required of the executable */
+		List<Boolean> parameterRequired = Stream.ofAll(executable.getParameters())
+				.map(variable -> variable.getAnnotation(WsIOParam.class))
+				.map(param -> param != null ? param.required() : null)
+				.toList();
+
+		/* Get the internal parameter nillable of the executable */
+		List<Boolean> parameterNillable = Stream.ofAll(executable.getParameters())
+				.map(variable -> variable.getAnnotation(WsIOParam.class))
+				.map(param -> param != null ? param.nillable() : null)
+				.toList();
+
+		/* Get the internal parameter names of the executable */
+		List<String> parameterInternalNames = Stream.ofAll(executable.getParameters())
+				.map(variable -> variable.getAnnotation(WsIOParam.class))
+				.map(param -> param != null ? param.name() : null)
+				.toList();
+
+		/* Get the internal parameter name spaces of the executable */
+		List<String> parameterInternalNameSpaces = Stream.ofAll(executable.getParameters())
+				.map(variable -> variable.getAnnotation(WsIOParam.class))
+				.map(param -> param != null ? param.targetNamespace() : null)
+				.toList();
+
+		/* Get the parameter names of the executable, internal has priority over external */
+		List<String> parameterNames = Stream.range(0, executable.getParameters().size())
+				.map(index -> StringUtils.isNotBlank(parameterInternalNames.get(index)) ? parameterInternalNames.get(index) : parameterExternalNames.get(index))
+				.toList();
+
+		/* Get the parameter names of the executable, internal has priority over external */
+		List<String> parameterNameSpaces = Stream.range(0, executable.getParameters().size())
+				.map(index -> StringUtils.isNotBlank(parameterInternalNameSpaces.get(index)) ? parameterInternalNameSpaces.get(index) : parameterExternalNameSpaces.get(index))
 				.toList();
 
 		/* Get ws qualifier names */
@@ -138,14 +173,25 @@ final class WsIOUtils {
 
 		/* Get the parameter wrappers of the executable */
 		List<String> parameterWrappers = Stream.ofAll(executable.getParameters())
-				.map(variable -> variable.getAnnotation(com.fiberg.wsio.annotation.WsIOWrapper.class))
+				.map(variable -> variable.getAnnotation(WsIOWrapper.class))
 				.map(wrapper -> wrapper != null ? wrapper.inner() : null)
 				.toList();
 
+		/* Get the parameter wrapper required of the executable */
+		List<Boolean> parameterWrapperRequired = Stream.ofAll(executable.getParameters())
+				.map(variable -> variable.getAnnotation(WsIOWrapper.class))
+				.map(wrapper -> wrapper != null ? wrapper.required() : null)
+				.toList();
+
+		/* Get the parameter wrapper nillable of the executable */
+		List<Boolean> parameterWrapperNillable = Stream.ofAll(executable.getParameters())
+				.map(variable -> variable.getAnnotation(WsIOWrapper.class))
+				.map(wrapper -> wrapper != null ? wrapper.nillable() : null)
+				.toList();
+
 		/* Get the parameter adapters of the executable */
-		List<Class<? extends XmlAdapter<?, ?>>> parameterAdapters = Stream.ofAll(executable.getParameters())
-				.map(variable -> variable.getAnnotation(WsIOAdapter.class))
-				.<Class<? extends XmlAdapter<?, ?>>>map(adapter -> adapter != null ? adapter.value() : null)
+		List<String> parameterAdapters = Stream.ofAll(executable.getParameters())
+				.map(variable -> getAnnotationStringValue(variable, WsIOAdapter.class, "value"))
 				.toList();
 
 		/* Extract the use annotations that are defined */
@@ -171,18 +217,19 @@ final class WsIOUtils {
 
 		/* Return the info */
 		return WsIOInfo.of(methodName, operationName, executable,
-				parameterNames, parameterNameSpaces, parameterTypes, parameterQualifiers,
-				parameterAttributes, parameterWrappers, parameterAdapters,
+				parameterNames, parameterNameSpaces, parameterTypes,
+				parameterRequired, parameterNillable, parameterQualifiers, parameterAttributes,
+				parameterWrappers, parameterWrapperRequired, parameterWrapperNillable, parameterAdapters,
 				returnName, returnNameSpace, returnType, returnQualifier,
 				wrapperName, wrapperNameSpace, wrappers);
 
 	}
 
 	/**
-	 * Method that extracts the delegator type of a delegate or clone class.
+	 * Method that extracts the delegator type of the delegate or clone class.
 	 *
 	 * @param element type element ot extract the delegator
-	 * @return delegator type of a delegate or clone class
+	 * @return delegator type of the delegate or clone class
 	 */
 	static TypeElement extractDelegatorType(TypeElement element) {
 
@@ -206,7 +253,7 @@ final class WsIOUtils {
 	}
 
 	/**
-	 * Method that extracts the delegate type of a metadata class.
+	 * Method that extracts the delegate type of the metadata class.
 	 *
 	 * @param element type element ot extract the delegate
 	 * @return delegate type of a metadata class
@@ -242,11 +289,11 @@ final class WsIOUtils {
 	}
 
 	/**
-	 * Method that checks if an element implements a interface or extends a class
+	 * Method that checks if an element implements an interface or extends a class
 	 *
-	 * @param subclass class to check if is sub class of the super class
+	 * @param subclass class to check if is sub-class of the super class
 	 * @param superclass super class
-	 * @return {@code true} if an element implements a interface or extends a class {@code false} otherwise.
+	 * @return {@code true} if an element implements an interface or extends a class {@code false} otherwise.
 	 */
 	static boolean implementsSuperType(TypeElement subclass, TypeElement superclass) {
 
@@ -270,7 +317,7 @@ final class WsIOUtils {
 			/* Iterate for each super class */
 			for (TypeElement type : supers) {
 
-				/* Check if one of the super classes has an inheritate superclass */
+				/* Check if one of the super classes has an inherited superclass */
 				if (implementsSuperType(type, superclass)) {
 					return true;
 				}
@@ -292,7 +339,7 @@ final class WsIOUtils {
 	 */
 	static TypeMirror getUnwildType(TypeMirror typeMirror) {
 
-		/* Retur the unwild type mirror only */
+		/* Return the unwild type mirror only */
 		return getUnwildTypeWithBounds(typeMirror)._1();
 
 	}
@@ -479,7 +526,7 @@ final class WsIOUtils {
 	}
 
 	/**
-	 * Method that checks if a executable is a getter.
+	 * Method that checks if an executable is a getter.
 	 *
 	 * @param method executable method
 	 * @return {@code true} if the method is a getter {@code false} otherwise
@@ -492,7 +539,7 @@ final class WsIOUtils {
 	}
 
 	/**
-	 * Method that checks if a executable is a setter.
+	 * Method that checks if an executable is a setter.
 	 *
 	 * @param method executable method
 	 * @return {@code true} if the method is a setter {@code false} otherwise
@@ -505,11 +552,11 @@ final class WsIOUtils {
 	}
 
 	/**
-	 * Method that searches the maximun priority level of a method name.
+	 * Method that searches the maximum priority level of a method name.
 	 *
 	 * @param executables map with all executables to search
 	 * @param methodName name of the method to search
-	 * @return the maximun priority level of a method name
+	 * @return the maximum priority level of a method name
 	 */
 	static WsIOLevel getPriorityLevelByName(Map<WsIOLevel, Map<String, ExecutableElement>> executables,
 	                                         String methodName) {
@@ -556,6 +603,60 @@ final class WsIOUtils {
 						.filter(ExecutableElement.class::isInstance)
 						.map(ExecutableElement.class::cast));
 
+	}
+
+	/**
+	 * Method that returns the string value of an annotation field.
+	 *
+	 * @param target element to process
+	 * @param type class of the annotation
+	 * @param field field of the annotation
+	 * @return the string value of the annotation field
+	 */
+	static String getAnnotationStringValue(Element target, Class<? extends Annotation> type, String field) {
+		AnnotationMirror annotationMirror = getAnnotationMirror(target, type);
+		if (annotationMirror == null) {
+			return null;
+		}
+		AnnotationValue annotationValue = getAnnotationValue(annotationMirror, field);
+		if (annotationValue == null) {
+			return null;
+		} else {
+			return annotationValue.toString();
+		}
+	}
+
+	/**
+	 * Method that returns the annotation mirror of an element.
+	 *
+	 * @param target element to process
+	 * @param type class of the annotation
+	 * @return the annotation mirror of an element
+	 */
+	private static AnnotationMirror getAnnotationMirror(Element target, Class<? extends Annotation> type) {
+		String typeName = type.getName();
+		for (AnnotationMirror annotationMirror : target.getAnnotationMirrors()) {
+			if (annotationMirror.getAnnotationType().toString().equals(typeName)) {
+				return annotationMirror;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Method that returns the annotation value of an annotation field.
+	 *
+	 * @param annotationMirror annotation mirror to process
+	 * @param field field of the annotation
+	 * @return the annotation value of the annotation field
+	 */
+	private static AnnotationValue getAnnotationValue(AnnotationMirror annotationMirror, String field) {
+		for (java.util.Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : annotationMirror.getElementValues().entrySet() ) {
+			if (entry.getKey().getSimpleName().toString().equals(field)) {
+				return entry.getValue();
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -642,7 +743,7 @@ final class WsIOUtils {
 	}
 
 	/**
-	 * Method that creates a array type name of the specified dimension with mirror.
+	 * Method that creates an array type name of the specified dimension with mirror.
 	 *
 	 * @param typeName type name
 	 * @param dimension dimension of the array
@@ -692,7 +793,7 @@ final class WsIOUtils {
 	}
 
 	/**
-	 * Method that transforms a lower camel case name to a upper case separated by underscores.
+	 * Method that transforms a lower camel case name to an upper case separated by underscores.
 	 *
 	 * @param name name to transform
 	 * @return the name transformed to upper underscore case
@@ -703,7 +804,7 @@ final class WsIOUtils {
 	}
 
 	/**
-	 * Method that transforms a field name to the destination depending if the field is static or not.
+	 * Method that transforms a field name to the destination depending on the field is static or not.
 	 *
 	 * @param field       field name
 	 * @param isStatic    flag indicating if the field is static or not

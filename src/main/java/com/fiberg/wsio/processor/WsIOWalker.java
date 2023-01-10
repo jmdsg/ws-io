@@ -1,6 +1,8 @@
 package com.fiberg.wsio.processor;
 
-import com.fiberg.wsio.annotation.*;
+import com.fiberg.wsio.annotation.WsIOClone;
+import com.fiberg.wsio.annotation.WsIOMessage;
+import com.fiberg.wsio.annotation.WsIOMessageWrapper;
 import com.fiberg.wsio.util.WsIOUtil;
 import io.vavr.Function2;
 import io.vavr.Tuple;
@@ -123,13 +125,13 @@ public final class WsIOWalker {
 	/**
 	 * Method that gets all the related names of a class.
 	 *
-	 * @param clazz class to extract the names
+	 * @param type class to extract the names
 	 * @return the message, clone and clone message names
 	 */
-	public static Map<WsIOGenerate, Set<String>> getGeneratedNames(final Class<?> clazz) {
+	public static Map<WsIOGenerate, Set<String>> getGeneratedNames(final Class<?> type) {
 
 		/* Get the descriptor of the class */
-		final WsIODescriptor descriptor = WsIODescriptor.of(clazz);
+		final WsIODescriptor descriptor = WsIODescriptor.of(type);
 
 		/* Get the message annotation option */
 		final Option<WsIOAnnotation> messageOpt = descriptor.getSingle(WsIOMessage.class)
@@ -140,18 +142,18 @@ public final class WsIOWalker {
 				.map((key, clone) -> Tuple.of(Tuple.of(clone.prefix(), clone.suffix()), WsIOAnnotation.of(clone)));
 
 		/* Class and package names */
-		final String currentClass = clazz.getSimpleName();
-		final String currentPackage = clazz.getPackage().getName();
+		final String currentClass = type.getSimpleName();
+		final String currentPackage = type.getPackage().getName();
 
 		/* Full class name */
-		final String currentFullClass = Stream.<Class<?>>iterate(clazz, Class::getDeclaringClass)
+		final String currentFullClass = Stream.<Class<?>>iterate(type, Class::getDeclaringClass)
 				.takeWhile(Objects::nonNull)
 				.reverse()
 				.map(Class::getSimpleName)
 				.mkString();
 
 		/* Function to obtain the package name */
-		final Function2<String, WsIOAnnotation, String> getPackageName = (packagenName, annotation) ->
+		final Function2<String, WsIOAnnotation, String> getPackageName = (packageName, annotation) ->
 				WsIOEngine.obtainPackage(StringUtils.EMPTY, currentClass, currentPackage,
 				annotation.getPackageName(), annotation.getPackagePath(), annotation.getPackagePrefix(),
 				annotation.getPackageSuffix(), annotation.getPackageStart(), annotation.getPackageMiddle(),

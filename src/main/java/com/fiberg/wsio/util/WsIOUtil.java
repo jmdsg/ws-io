@@ -140,20 +140,20 @@ public final class WsIOUtil {
 
 	public static <IFACE> IFACE forceDelegate(Object o,
 	                                          Class<? extends IFACE> iface,
-	                                          java.util.List<String> cadidates) {
+	                                          java.util.List<String> candidates) {
 
 		try {
 
-			Class<?> clazz = o.getClass();
-			while (clazz != null && clazz != Object.class) {
+			Class<?> type = o.getClass();
+			while (type != null && type != Object.class) {
 
-				for (String fullName : cadidates) {
+				for (String fullName : candidates) {
 
 					try {
 
 						@SuppressWarnings({ "unchecked" })
 						IFACE delegate = (IFACE) Class.forName(fullName)
-								.getConstructor(clazz)
+								.getConstructor(type)
 								.newInstance(o);
 
 						if (iface.isInstance(delegate)) {
@@ -166,7 +166,7 @@ public final class WsIOUtil {
 
 				}
 
-				clazz = clazz.getSuperclass();
+				type = type.getSuperclass();
 
 			}
 

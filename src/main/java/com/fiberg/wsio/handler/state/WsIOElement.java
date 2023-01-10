@@ -75,15 +75,15 @@ public class WsIOElement {
 		return stateElement;
 	}
 
-	public static WsIOElement messageNolang(String message) {
+	public static WsIOElement messageNoLang(String message) {
 		WsIOElement stateElement = new WsIOElement();
-		stateElement.setMessageNolang(message);
+		stateElement.setMessageNoLang(message);
 		return stateElement;
 	}
 
-	public static WsIOElement descriptionNolang(String description) {
+	public static WsIOElement descriptionNoLang(String description) {
 		WsIOElement stateElement = new WsIOElement();
-		stateElement.setDescriptionNolang(description);
+		stateElement.setDescriptionNoLang(description);
 		return stateElement;
 	}
 
@@ -119,9 +119,9 @@ public class WsIOElement {
 		return stateElement;
 	}
 
-	public static WsIOElement notype(String identifier,
-	                                 WsIOText message,
-	                                 WsIOText description) {
+	public static WsIOElement noType(String identifier,
+									 WsIOText message,
+									 WsIOText description) {
 		WsIOElement stateElement = new WsIOElement();
 		stateElement.setIdentifier(identifier);
 		stateElement.setMessage(message);
@@ -129,9 +129,9 @@ public class WsIOElement {
 		return stateElement;
 	}
 
-	public static WsIOElement nodesc(String identifier,
-	                                 WsIOText message,
-	                                 String type) {
+	public static WsIOElement noDesc(String identifier,
+									 WsIOText message,
+									 String type) {
 		WsIOElement stateElement = new WsIOElement();
 		stateElement.setIdentifier(identifier);
 		stateElement.setMessage(message);
@@ -139,9 +139,9 @@ public class WsIOElement {
 		return stateElement;
 	}
 
-	public static WsIOElement noid(WsIOText message,
-	                               WsIOText description,
-	                               String type) {
+	public static WsIOElement noId(WsIOText message,
+								   WsIOText description,
+								   String type) {
 		WsIOElement stateElement = new WsIOElement();
 		stateElement.setMessage(message);
 		stateElement.setDescription(description);
@@ -200,34 +200,34 @@ public class WsIOElement {
 		return stateElement;
 	}
 
-	public static WsIOElement basicNolang(String identifier,
-	                                      String message) {
+	public static WsIOElement basicNoLang(String identifier,
+										  String message) {
 		WsIOElement stateElement = new WsIOElement();
 		stateElement.setIdentifier(identifier);
-		stateElement.setMessageNolang(message);
+		stateElement.setMessageNoLang(message);
 		return stateElement;
 	}
 
-	public static WsIOElement simpleNolang(String message,
-	                                       String type) {
+	public static WsIOElement simpleNoLang(String message,
+										   String type) {
 		WsIOElement stateElement = new WsIOElement();
-		stateElement.setMessageNolang(message);
+		stateElement.setMessageNoLang(message);
 		stateElement.setType(type);
 		return stateElement;
 	}
 
-	public static WsIOElement textNolang(String message,
-	                                     String description) {
+	public static WsIOElement textNoLang(String message,
+										 String description) {
 		WsIOElement stateElement = new WsIOElement();
-		stateElement.setMessageNolang(message);
-		stateElement.setDescriptionNolang(description);
+		stateElement.setMessageNoLang(message);
+		stateElement.setDescriptionNoLang(description);
 		return stateElement;
 	}
 
-	public static WsIOElement notypeOf(String identifier,
-	                                   WsIOLanguage language,
-	                                   String message,
-	                                   String description) {
+	public static WsIOElement noTypeOf(String identifier,
+									   WsIOLanguage language,
+									   String message,
+									   String description) {
 		WsIOElement stateElement = new WsIOElement();
 		stateElement.setIdentifier(identifier);
 		stateElement.setMessageOf(language, message);
@@ -235,10 +235,10 @@ public class WsIOElement {
 		return stateElement;
 	}
 
-	public static WsIOElement nodescOf(String identifier,
-	                                   WsIOLanguage language,
-	                                   String message,
-	                                   String type) {
+	public static WsIOElement noDescOf(String identifier,
+									   WsIOLanguage language,
+									   String message,
+									   String type) {
 		WsIOElement stateElement = new WsIOElement();
 		stateElement.setIdentifier(identifier);
 		stateElement.setMessageOf(language, message);
@@ -246,10 +246,10 @@ public class WsIOElement {
 		return stateElement;
 	}
 
-	public static WsIOElement noidOf(WsIOLanguage language,
-	                                 String message,
-	                                 String description,
-	                                 String type) {
+	public static WsIOElement noIdOf(WsIOLanguage language,
+									 String message,
+									 String description,
+									 String type) {
 		WsIOElement stateElement = new WsIOElement();
 		stateElement.setMessageOf(language, message);
 		stateElement.setDescriptionOf(language, description);
@@ -257,9 +257,9 @@ public class WsIOElement {
 		return stateElement;
 	}
 
-	public static WsIOElement notypeDef(String identifier,
-	                                    String message,
-	                                    String description) {
+	public static WsIOElement noTypeDef(String identifier,
+										String message,
+										String description) {
 		WsIOElement stateElement = new WsIOElement();
 		stateElement.setIdentifier(identifier);
 		stateElement.setMessageDef(message);
@@ -267,9 +267,9 @@ public class WsIOElement {
 		return stateElement;
 	}
 
-	public static WsIOElement nodescDef(String identifier,
-	                                    String message,
-	                                    String type) {
+	public static WsIOElement noDescDef(String identifier,
+										String message,
+										String type) {
 		WsIOElement stateElement = new WsIOElement();
 		stateElement.setIdentifier(identifier);
 		stateElement.setMessageDef(message);
@@ -277,9 +277,9 @@ public class WsIOElement {
 		return stateElement;
 	}
 
-	public static WsIOElement noidDef(String message,
-	                                  String description,
-	                                  String type) {
+	public static WsIOElement noIdDef(String message,
+									  String description,
+									  String type) {
 		WsIOElement stateElement = new WsIOElement();
 		stateElement.setMessageDef(message);
 		stateElement.setDescriptionDef(description);
@@ -287,32 +287,32 @@ public class WsIOElement {
 		return stateElement;
 	}
 
-	public static WsIOElement notypeNolang(String identifier,
-	                                       String message,
-	                                       String description) {
+	public static WsIOElement noTypeNoLang(String identifier,
+										   String message,
+										   String description) {
 		WsIOElement stateElement = new WsIOElement();
 		stateElement.setIdentifier(identifier);
-		stateElement.setMessageNolang(message);
-		stateElement.setDescriptionNolang(description);
+		stateElement.setMessageNoLang(message);
+		stateElement.setDescriptionNoLang(description);
 		return stateElement;
 	}
 
-	public static WsIOElement nodescNolang(String identifier,
-	                                       String message,
-	                                       String type) {
+	public static WsIOElement noDescNoLang(String identifier,
+										   String message,
+										   String type) {
 		WsIOElement stateElement = new WsIOElement();
 		stateElement.setIdentifier(identifier);
-		stateElement.setMessageNolang(message);
+		stateElement.setMessageNoLang(message);
 		stateElement.setType(type);
 		return stateElement;
 	}
 
-	public static WsIOElement noidNolang(String message,
-	                                     String description,
-	                                     String type) {
+	public static WsIOElement noIdNoLang(String message,
+										 String description,
+										 String type) {
 		WsIOElement stateElement = new WsIOElement();
-		stateElement.setMessageNolang(message);
-		stateElement.setDescriptionNolang(description);
+		stateElement.setMessageNoLang(message);
+		stateElement.setDescriptionNoLang(description);
 		stateElement.setType(type);
 		return stateElement;
 	}
@@ -369,12 +369,12 @@ public class WsIOElement {
 		this.description = WsIOText.def(description);
 	}
 
-	public void setMessageNolang(String message) {
-		this.message = WsIOText.nolang(message);
+	public void setMessageNoLang(String message) {
+		this.message = WsIOText.noLang(message);
 	}
 
-	public void setDescriptionNolang(String description) {
-		this.description = WsIOText.nolang(description);
+	public void setDescriptionNoLang(String description) {
+		this.description = WsIOText.noLang(description);
 	}
 
 }

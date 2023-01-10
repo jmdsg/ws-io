@@ -5,13 +5,13 @@ package com.fiberg.wsio.annotation;
  */
 public enum SkipType {
 
-	/** Skip this element and all its childs */
+	/** Skip this element and all its children */
 	ALL,
 
 	/** Skip this elements */
 	CURRENT,
 
-	/** Skip all childs of this element, but not the element itself */
-	CHILDS
+	/** Skip all children of this element, but not the element itself */
+	CHILDREN,
 
 }

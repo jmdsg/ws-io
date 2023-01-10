@@ -23,31 +23,31 @@ import java.util.Objects;
 class WsIOContext {
 
 	/** Prefix class name */
-	private String prefixClassName;
+	private final String prefixClassName;
 
 	/** Suffix class name */
-	private String suffixClassName;
+	private final String suffixClassName;
 
 	/** Prefix wrapper name */
-	private String prefixWrapperName;
+	private final String prefixWrapperName;
 
 	/** Suffix wrapper name */
-	private String suffixWrapperName;
+	private final String suffixWrapperName;
 
 	/** Map of message classes and package name */
-	private Map<String, String> messageClasses;
+	private final Map<String, String> messageClasses;
 
 	/** Map of clone classes and package name */
-	private Map<String, String> cloneClasses;
+	private final Map<String, String> cloneClasses;
 
 	/** Map of clone message classes and package name */
-	private Map<String, String> cloneMessageClasses;
+	private final Map<String, String> cloneMessageClasses;
 
 	/** Map of type elements by name */
-	private Map<String, TypeElement> typeByName;
+	private final Map<String, TypeElement> typeByName;
 
 	/** Flag to indicate if the class is a clone, a message or a clone message */
-	private WsIOGenerate generate;
+	private final WsIOGenerate generate;
 
 	/**
 	 * Class constructor
@@ -160,7 +160,7 @@ class WsIOContext {
 	/**
 	 * Getter method of field generate.
 	 *
-	 * @return a enum that indicates if the class is a clone, a message or a clone message
+	 * @return an enum that indicates if the class is a clone, a message or a clone message
 	 */
 	public WsIOGenerate getGenerate() {
 		return generate;
@@ -169,7 +169,7 @@ class WsIOContext {
 	/**
 	 * With method to create a new context with a specified generate.
 	 *
-	 * @param generate a enum that indicates if the class is a clone, a message or a clone message
+	 * @param generate an enum that indicates if the class is a clone, a message or a clone message
 	 * @return a new context with the new generate
 	 */
 	public WsIOContext withGenerate(WsIOGenerate generate) {
@@ -439,11 +439,11 @@ class WsIOContext {
 
 			}
 
-			/* Declare type name and check if has generics */
+			/* Declare type name and check if it has generics */
 			TypeName typeName;
 			if (genericsArray.length > 0) {
 
-				/* A parametrized type name when generics is present */
+				/* A parametrized type name when generics are present */
 				typeName = ParameterizedTypeName.get(className, genericsArray);
 
 			} else {
@@ -564,7 +564,7 @@ class WsIOContext {
 	}
 
 	/**
-	 * Method that generates the candidates class names and package separeted
+	 * Method that generates the candidates class names and package separated
 	 * joined by dot and them separated with commas.
 	 *
 	 * @param element type element
@@ -587,7 +587,7 @@ class WsIOContext {
 		String prefixName = nameByGenerate._1();
 		String suffixName = nameByGenerate._2();
 
-		/* Return candidates class names and package separeted joined by dot and them separated with commas */
+		/* Return candidates class names and package separated joined by dot and them separated with commas */
 		return API.Match(realType).option(
 				API.Case(API.$(WsIOGenerate.MESSAGE), messageClasses),
 				API.Case(API.$(WsIOGenerate.CLONE), cloneClasses),

@@ -152,7 +152,7 @@ public final class WsIOInterceptor {
 
 			}
 
-			/* Get time annotation and check if is non null */
+			/* Get time annotation and check if is non-null */
 			WsIOUseState useState = (WsIOUseState) wsIO.get(WsIOData.STATE);
 			if (Objects.nonNull(useState)) {
 
@@ -229,15 +229,15 @@ public final class WsIOInterceptor {
 	 * Method to transform vavr list to java array.
 	 *
 	 * @param list vavr list
-	 * @param clazz raw class
+	 * @param type raw class
 	 * @param <R> type argument without generics
 	 * @param <G> type argument with generics
 	 * @return java array of the list
 	 */
 	@SuppressWarnings({ "unchecked" })
-	private static <R, G extends R> G[] toJavaArray(List<G> list, Class<R> clazz) {
+	private static <R, G extends R> G[] toJavaArray(List<G> list, Class<R> type) {
 
-		Class<G> target = (Class<G>) clazz;
+		Class<G> target = (Class<G>) type;
 		IntFunction<G[]> creator = length -> (G[]) Array.newInstance(target, length);
 
 		/* Return the java array */

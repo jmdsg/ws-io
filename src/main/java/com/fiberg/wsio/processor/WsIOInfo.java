@@ -3,7 +3,6 @@ package com.fiberg.wsio.processor;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import io.vavr.collection.Set;
-import jakarta.xml.bind.annotation.adapters.XmlAdapter;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
@@ -24,13 +23,21 @@ class WsIOInfo {
 
 	private List<TypeMirror> parameterTypes;
 
+	private List<Boolean> parameterRequired;
+
+	private List<Boolean> parameterNillable;
+
 	private List<Tuple2<String, String>> parameterQualifiers;
 
 	private List<Boolean> parameterAttributes;
 
 	private List<String> parameterWrappers;
 
-	private List<Class<? extends XmlAdapter<?, ?>>> parameterAdapters;
+	private List<Boolean> parameterWrapperRequired;
+
+	private List<Boolean> parameterWrapperNillable;
+
+	private List<String> parameterAdapters;
 
 	private String returnName;
 
@@ -52,10 +59,14 @@ class WsIOInfo {
 	                          List<String> parameterNames,
 	                          List<String> parameterNameSpaces,
 	                          List<TypeMirror> parameterTypes,
+	                          List<Boolean> parameterRequired,
+	                          List<Boolean> parameterNillable,
 	                          List<Tuple2<String, String>> parameterQualifiers,
 							  List<Boolean> parameterAttributes,
 							  List<String> parameterWrappers,
-							  List<Class<? extends XmlAdapter<?, ?>>> parameterAdapters,
+							  List<Boolean> parameterWrapperRequired,
+							  List<Boolean> parameterWrapperNillable,
+							  List<String> parameterAdapters,
 	                          String returnName,
 	                          String returnNameSpace,
 	                          TypeMirror returnType,
@@ -71,9 +82,13 @@ class WsIOInfo {
 		info.parameterNames = parameterNames;
 		info.parameterNameSpaces = parameterNameSpaces;
 		info.parameterTypes = parameterTypes;
+		info.parameterRequired = parameterRequired;
+		info.parameterNillable = parameterNillable;
 		info.parameterQualifiers = parameterQualifiers;
 		info.parameterAttributes = parameterAttributes;
 		info.parameterWrappers = parameterWrappers;
+		info.parameterWrapperRequired = parameterWrapperRequired;
+		info.parameterWrapperNillable = parameterWrapperNillable;
 		info.parameterAdapters = parameterAdapters;
 		info.returnName = returnName;
 		info.returnNameSpace = returnNameSpace;
@@ -146,6 +161,22 @@ class WsIOInfo {
 		this.parameterTypes = parameterTypes;
 	}
 
+	public List<Boolean> getParameterRequired() {
+		return parameterRequired;
+	}
+
+	public void setParameterRequired(List<Boolean> parameterRequired) {
+		this.parameterRequired = parameterRequired;
+	}
+
+	public List<Boolean> getParameterNillable() {
+		return parameterNillable;
+	}
+
+	public void setParameterNillable(List<Boolean> parameterNillable) {
+		this.parameterNillable = parameterNillable;
+	}
+
 	public List<Tuple2<String, String>> getParameterQualifiers() {
 		return parameterQualifiers;
 	}
@@ -170,11 +201,27 @@ class WsIOInfo {
 		this.parameterWrappers = parameterWrappers;
 	}
 
-	public List<Class<? extends XmlAdapter<?, ?>>> getParameterAdapters() {
+	public List<Boolean> getParameterWrapperRequired() {
+		return parameterWrapperRequired;
+	}
+
+	public void setParameterWrapperRequired(List<Boolean> parameterWrapperRequired) {
+		this.parameterWrapperRequired = parameterWrapperRequired;
+	}
+
+	public List<Boolean> getParameterWrapperNillable() {
+		return parameterWrapperNillable;
+	}
+
+	public void setParameterWrapperNillable(List<Boolean> parameterWrapperNillable) {
+		this.parameterWrapperNillable = parameterWrapperNillable;
+	}
+
+	public List<String> getParameterAdapters() {
 		return parameterAdapters;
 	}
 
-	public void setParameterAdapters(List<Class<? extends XmlAdapter<?, ?>>> parameterAdapters) {
+	public void setParameterAdapters(List<String> parameterAdapters) {
 		this.parameterAdapters = parameterAdapters;
 	}
 
@@ -252,11 +299,19 @@ class WsIOInfo {
 			return false;
 		if (parameterTypes != null ? !parameterTypes.equals(wsIOInfo.parameterTypes) : wsIOInfo.parameterTypes != null)
 			return false;
+		if (parameterRequired != null ? !parameterRequired.equals(wsIOInfo.parameterRequired) : wsIOInfo.parameterRequired != null)
+			return false;
+		if (parameterNillable != null ? !parameterNillable.equals(wsIOInfo.parameterNillable) : wsIOInfo.parameterNillable != null)
+			return false;
 		if (parameterQualifiers != null ? !parameterQualifiers.equals(wsIOInfo.parameterQualifiers) : wsIOInfo.parameterQualifiers != null)
 			return false;
 		if (parameterAttributes != null ? !parameterAttributes.equals(wsIOInfo.parameterAttributes) : wsIOInfo.parameterAttributes != null)
 			return false;
 		if (parameterWrappers != null ? !parameterWrappers.equals(wsIOInfo.parameterWrappers) : wsIOInfo.parameterWrappers != null)
+			return false;
+		if (parameterWrapperRequired != null ? !parameterWrapperRequired.equals(wsIOInfo.parameterWrapperRequired) : wsIOInfo.parameterWrapperRequired != null)
+			return false;
+		if (parameterWrapperNillable != null ? !parameterWrapperNillable.equals(wsIOInfo.parameterWrapperNillable) : wsIOInfo.parameterWrapperNillable != null)
 			return false;
 		if (parameterAdapters != null ? !parameterAdapters.equals(wsIOInfo.parameterAdapters) : wsIOInfo.parameterAdapters != null)
 			return false;
@@ -281,9 +336,13 @@ class WsIOInfo {
 		result = 31 * result + (parameterNames != null ? parameterNames.hashCode() : 0);
 		result = 31 * result + (parameterNameSpaces != null ? parameterNameSpaces.hashCode() : 0);
 		result = 31 * result + (parameterTypes != null ? parameterTypes.hashCode() : 0);
+		result = 31 * result + (parameterRequired != null ? parameterRequired.hashCode() : 0);
+		result = 31 * result + (parameterNillable != null ? parameterNillable.hashCode() : 0);
 		result = 31 * result + (parameterQualifiers != null ? parameterQualifiers.hashCode() : 0);
 		result = 31 * result + (parameterAttributes != null ? parameterAttributes.hashCode() : 0);
 		result = 31 * result + (parameterWrappers != null ? parameterWrappers.hashCode() : 0);
+		result = 31 * result + (parameterWrapperRequired != null ? parameterWrapperRequired.hashCode() : 0);
+		result = 31 * result + (parameterWrapperNillable != null ? parameterWrapperNillable.hashCode() : 0);
 		result = 31 * result + (parameterAdapters != null ? parameterAdapters.hashCode() : 0);
 		result = 31 * result + (returnName != null ? returnName.hashCode() : 0);
 		result = 31 * result + (returnNameSpace != null ? returnNameSpace.hashCode() : 0);
@@ -304,9 +363,13 @@ class WsIOInfo {
 				", parameterNames=" + parameterNames +
 				", parameterNameSpaces=" + parameterNameSpaces +
 				", parameterTypes=" + parameterTypes +
+				", parameterRequired=" + parameterRequired +
+				", parameterNillable=" + parameterNillable +
 				", parameterQualifiers=" + parameterQualifiers +
 				", parameterAttributes=" + parameterAttributes +
 				", parameterWrappers=" + parameterWrappers +
+				", parameterWrapperRequired=" + parameterWrapperRequired +
+				", parameterWrapperNillable=" + parameterWrapperNillable +
 				", parameterAdapters=" + parameterAdapters +
 				", returnName='" + returnName + '\'' +
 				", returnNameSpace='" + returnNameSpace + '\'' +

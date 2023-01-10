@@ -50,19 +50,19 @@ public class WsIODescriptor {
 	 * Method that checks the arguments received and transforms the function.
 	 *
 	 * @param function function to transform
-	 * @param clazz    class of the annotation
+	 * @param type    class of the annotation
 	 * @param <A>      type of the annotation
 	 * @param <R>      type of the return
 	 * @return the function that receives an annotation
 	 */
 	private static <A extends Annotation, R> Function1<Annotation, R> describeCheck(
 			final Function1<A, R> function,
-			final Class<A> clazz) {
+			final Class<A> type) {
 
 		return annotation -> {
 
 			/* Check class is not null, annotation is not null and is instance of the class */
-			if (clazz != null && clazz.isInstance(annotation)) {
+			if (type != null && type.isInstance(annotation)) {
 
 				/* Return the function applied */
 				@SuppressWarnings({ "unchecked" })
@@ -132,9 +132,9 @@ public class WsIODescriptor {
 		return Tuple.of(mainClass,
 				new RepeatableDescriptor(mainClass, mainRepeatableClass, skipClass, skipRepeatableClass,
 						WsIODescriptor.describeCheck(mainRepeatableExtractor, mainRepeatableClass)
-								.andThen(a -> (Annotation[]) a),
+								.andThen(a -> a),
 						WsIODescriptor.describeCheck(skipRepeatableExtractor, skipRepeatableClass)
-								.andThen(a -> (Annotation[]) a),
+								.andThen(a -> a),
 						WsIODescriptor.describeCheck(mainComparator, mainClass),
 						WsIODescriptor.describeCheck(skipComparator, skipClass),
 						WsIODescriptor.describeCheck(skipExtractor, skipClass)
@@ -143,23 +143,23 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Method that returns the annotation wrapper in a option.
+	 * Method that returns the annotation wrapper in an option.
 	 *
 	 * @param annotations map of annotations
-	 * @param clazz       class of the annoation
+	 * @param type       class of the annotation
 	 * @param <T>         type argument of the annotation
 	 * @return option containing the possible annotation
 	 */
 	private static <T extends Annotation> Option<T> getSingle(final Map<Class<? extends Annotation>, ? extends Annotation> annotations,
-	                                                          final Class<T> clazz) {
+	                                                          final Class<T> type) {
 
 		/* Check class is not null */
-		if (Objects.nonNull(clazz)) {
+		if (Objects.nonNull(type)) {
 
 			/* Return the annotation only if is instance of the specified class */
-			return annotations.get(clazz)
-					.filter(clazz::isInstance)
-					.map(clazz::cast);
+			return annotations.get(type)
+					.filter(type::isInstance)
+					.map(type::cast);
 
 		} else {
 
@@ -171,24 +171,24 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Method that returns the annotation wrapper in a option.
+	 * Method that returns the annotation wrapper in an option.
 	 *
 	 * @param annotations map of annotations
-	 * @param clazz       class of the annoation
+	 * @param type       class of the annotation
 	 * @param <T>         type argument of the annotation
 	 * @return option containing the possible annotation
 	 */
 	private static <T extends Annotation> Map<Comparable<?>, T> getMultiple(
 			final Map<Class<? extends Annotation>, Map<Comparable<?>, ? extends Annotation>> annotations,
-			final Class<T> clazz) {
+			final Class<T> type) {
 
 		/* Check class is not null */
-		if (Objects.nonNull(clazz)) {
+		if (Objects.nonNull(type)) {
 
 			/* Return the annotation only if is instance of the specified class */
-			return annotations.get(clazz).getOrElse(HashMap.empty())
-					.filterValues(clazz::isInstance)
-					.mapValues(clazz::cast);
+			return annotations.get(type).getOrElse(HashMap.empty())
+					.filterValues(type::isInstance)
+					.mapValues(type::cast);
 
 		} else {
 
@@ -220,7 +220,7 @@ public class WsIODescriptor {
 
 				/* Check if annotation is null and the if skip is defined */
 				if (SkipType.ALL.equals(skip)
-						|| (SkipType.CHILDS.equals(skip) && index != lastIndex)
+						|| (SkipType.CHILDREN.equals(skip) && index != lastIndex)
 						|| (SkipType.CURRENT.equals(skip) && index == lastIndex)) {
 
 					/* Break to return default value */
@@ -252,9 +252,9 @@ public class WsIODescriptor {
 	extractAnnotationInfos(final Annotated annotated) {
 
 		/* Map with all classes info */
-		return SINGLES.keySet().toMap(annot -> annot,
-				annot -> WsIODescriptor.extractElementHierarchy(annotated).map(elem ->
-						WsIODescriptor.extractElementAnnotationInfo(elem, annot)));
+		return SINGLES.keySet().toMap(annotation -> annotation,
+				annotation -> WsIODescriptor.extractElementHierarchy(annotated).map(elem ->
+						WsIODescriptor.extractElementAnnotationInfo(elem, annotation)));
 
 	}
 
@@ -329,7 +329,7 @@ public class WsIODescriptor {
 					final Map<Comparable<?>, Annotation> skips = Stream.ofAll(annotated.getAnnotationsByType(repeatable.getSkipClass()))
 							.toMap(repeatable.getSkipComparator(), a -> a);
 
-					/* Get all the keys, then then the annotation of mains and the skip from skips */
+					/* Get all the keys, then the annotation of mains and the skip from skips */
 					return Stream.concat(mains.keySet(), skips.keySet())
 							.toMap(c -> c, c -> Tuple.of(mains.get(c).getOrNull(),
 									repeatable.getSkipExtractor().apply(skips.get(c).getOrNull())));
@@ -353,12 +353,12 @@ public class WsIODescriptor {
 	                        final Function2<E, Class<? extends Annotation>, Map<Comparable<?>, Tuple2<Annotation, SkipType>>> extractor) {
 
 		/* Map with all classes info */
-		return REPEATABLES.keySet().toMap(annot -> annot,
-				annot -> {
+		return REPEATABLES.keySet().toMap(annotation -> annotation,
+				annotation -> {
 
 					/* Get all annotations for each element */
 					final List<Map<Comparable<?>, Tuple2<Annotation, SkipType>>> annotations = hierarchy.apply(element)
-							.map(elem -> extractor.apply(elem, annot));
+							.map(elem -> extractor.apply(elem, annotation));
 
 					/* Get all keys */
 					final Set<Comparable<?>> keys = annotations.flatMap(Map::keySet).toSet();
@@ -372,7 +372,7 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Transform to annotated the element.
+	 * Transform the element to an annotated object.
 	 *
 	 * @param element element
 	 * @return the annotated
@@ -390,7 +390,7 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Transform to annotated the annotated element.
+	 * Transform the annotated-element to an annotated object.
 	 *
 	 * @param annotated annotated element
 	 * @return the annotated
@@ -438,7 +438,7 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Transform to annotated the method member.
+	 * Transform the method member to an annotated object.
 	 *
 	 * @param pack package member
 	 * @return the annotated
@@ -458,7 +458,7 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Transform to annotated the method member.
+	 * Transform the method member to an annotated object.
 	 *
 	 * @param method method member
 	 * @return the annotated
@@ -487,7 +487,7 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Transform to annotated the type class.
+	 * Transform the type class to an annotated object.
 	 *
 	 * @param type class
 	 * @return the annotated
@@ -641,30 +641,30 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Method that returns the annotation wrapper in a option.
+	 * Method that returns the annotation wrapper in an option.
 	 *
-	 * @param clazz class of the annotation
+	 * @param type class of the annotation
 	 * @param <T>   type argument of the annotation
 	 * @return option containing the possible annotation
 	 */
-	public <T extends Annotation> Option<T> getSingle(final Class<T> clazz) {
+	public <T extends Annotation> Option<T> getSingle(final Class<T> type) {
 
 		/* Return annotation option */
-		return getSingle(singles, clazz);
+		return getSingle(singles, type);
 
 	}
 
 	/**
-	 * Method that returns the annotation wrapper in a option.
+	 * Method that returns the annotation wrapper in an option.
 	 *
-	 * @param clazz class of the annotation
+	 * @param type class of the annotation
 	 * @param <T>   type argument of the annotation
 	 * @return option containing the possible annotation
 	 */
-	public <T extends Annotation> Map<Comparable<?>, T> getMultiple(final Class<T> clazz) {
+	public <T extends Annotation> Map<Comparable<?>, T> getMultiple(final Class<T> type) {
 
 		/* Return annotation option */
-		return getMultiple(multiples, clazz);
+		return getMultiple(multiples, type);
 
 	}
 

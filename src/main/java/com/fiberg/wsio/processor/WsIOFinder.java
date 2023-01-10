@@ -2,7 +2,10 @@ package com.fiberg.wsio.processor;
 
 import com.fiberg.wsio.annotation.*;
 import com.fiberg.wsio.util.WsIOUtil;
-import io.vavr.*;
+import io.vavr.Function4;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
+import io.vavr.Tuple3;
 import io.vavr.collection.*;
 import io.vavr.control.Option;
 import jakarta.jws.WebMethod;
@@ -391,7 +394,7 @@ class WsIOFinder {
 	 */
 	static boolean isMessageGenerated(TypeElement element) {
 
-		/* Extract the current type delegator type and check if is non null */
+		/* Extract the current type delegator type and check if is non-null */
 		TypeElement type = WsIOUtils.extractDelegatorType(element);
 		if (Objects.nonNull(type)) {
 
@@ -454,7 +457,7 @@ class WsIOFinder {
 	 */
 	static boolean isMetadataGenerated(TypeElement element) {
 
-		/* Extract the current type delegate type and check if is non null */
+		/* Extract the current type delegate type and check if is non-null */
 		TypeElement type = WsIOUtils.extractMetadataType(element);
 		if (Objects.nonNull(type)) {
 
@@ -477,7 +480,7 @@ class WsIOFinder {
 	 */
 	static boolean isCloneGenerated(TypeElement element) {
 
-		/* Extract the current type delegator type and check if is non null */
+		/* Extract the current type delegator type and check if is non-null */
 		TypeElement type = WsIOUtils.extractDelegatorType(element);
 		if (Objects.nonNull(type)) {
 
@@ -554,7 +557,7 @@ class WsIOFinder {
 	 */
 	static boolean isCloneMessageGenerated(TypeElement element) {
 
-		/* Extract the current type delegator type and check if is non null */
+		/* Extract the current type delegator type and check if is non-null */
 		TypeElement type = WsIOUtils.extractDelegatorType(element);
 		if (Objects.nonNull(type)) {
 
@@ -665,7 +668,7 @@ class WsIOFinder {
 	 */
 	private static boolean hasPublicEmptyConstructor(TypeElement typeElement) {
 		return List.ofAll(ElementFilter.constructorsIn(typeElement.getEnclosedElements()))
-				.filter(contructor -> contructor.getParameters().isEmpty())
+				.filter(constructor -> constructor.getParameters().isEmpty())
 				.exists(constructor -> constructor.getModifiers().contains(Modifier.PUBLIC));
 	}
 

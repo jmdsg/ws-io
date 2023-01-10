@@ -59,7 +59,7 @@ final class WsIOScript {
 	/**
 	 * Method that creates the groovy shell with the specified variables.
 	 *
-	 * @return shell ready to execute the groovy function with an evaluate
+	 * @return the shell ready to execute the groovy function with an evaluate function
 	 */
 	private static GroovyShell createShell() {
 
