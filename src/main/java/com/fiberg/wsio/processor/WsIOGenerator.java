@@ -633,8 +633,10 @@ class WsIOGenerator {
 			TypeMirror parameterType = parameter.asType();
 
 			/* Current annotations */
-			List<AnnotationSpec> getterAnnotations = annotations.getOrElse(getterName, List.empty());
 			List<AnnotationSpec> setterAnnotations = annotations.getOrElse(setterName, List.empty());
+			List<AnnotationSpec> getterAnnotations = annotations.getOrElse(getterName, generateGetterAnnotations(
+					getter, null, null, null
+			));
 
 			/* Return the methods generated recursively */
 			return WsIODelegator.generatePropertyDelegates(returnType, parameterType,
@@ -1098,167 +1100,7 @@ class WsIOGenerator {
 										.map(Tuple4::_3)
 										.getOrNull();
 
-								AnnotationSpec.Builder elementBuilder = AnnotationSpec.builder(XmlElement.class);
-
-								AnnotationMirror xmlElementMirror = WsIOUtils.getAnnotationMirror(execElement, XmlElement.class);
-								AnnotationMirror xmlElementWrapperMirror = WsIOUtils.getAnnotationMirror(execElement, XmlElementWrapper.class);
-								AnnotationMirror xmlRootElementMirror = WsIOUtils.getAnnotationMirror(execElement, XmlRootElement.class);
-								AnnotationMirror xmlAttributeMirror = WsIOUtils.getAnnotationMirror(execElement, XmlAttribute.class);
-								AnnotationMirror xmlValueMirror = WsIOUtils.getAnnotationMirror(execElement, XmlValue.class);
-								AnnotationMirror xmlTransientMirror = WsIOUtils.getAnnotationMirror(execElement, XmlTransient.class);
-								AnnotationMirror xmlTypeMirror = WsIOUtils.getAnnotationMirror(execElement, XmlType.class);
-								AnnotationMirror xmlJavaTypeAdapterMirror = WsIOUtils.getAnnotationMirror(execElement, XmlJavaTypeAdapter.class);
-
-								List<AnnotationSpec.Builder> builders = List.of();
-
-								if (xmlElementMirror != null) {
-									String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "name", String.class);
-									if (xmlName != null) {
-										elementBuilder = elementBuilder.addMember("name", "$S", xmlName);
-									} else {
-										elementBuilder = elementBuilder.addMember("name", "$S", propertyName);
-									}
-								} else {
-									elementBuilder = elementBuilder.addMember("name", "$S", propertyName);
-								}
-
-								if (required != null) {
-									elementBuilder = elementBuilder.addMember("required", "$L", required);
-								} else if (xmlElementMirror != null) {
-									Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "required", Boolean.class);
-									if (xmlRequired != null) {
-										elementBuilder = elementBuilder.addMember("required", "$L", xmlRequired);
-									}
-								}
-
-								if (nillable != null) {
-									elementBuilder = elementBuilder.addMember("nillable", "$L", nillable);
-								} else if (xmlElementMirror != null) {
-									Boolean xmlNillable = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "nillable", Boolean.class);
-									if (xmlNillable != null) {
-										elementBuilder = elementBuilder.addMember("nillable", "$L", xmlNillable);
-									}
-								}
-
-								if (xmlElementMirror != null) {
-									String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "namespace", String.class);
-									String xmlDefaultValue = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "defaultValue", String.class);
-									String xmlType = WsIOUtils.getAnnotationStringValue(xmlElementMirror, "type");
-									if (xmlNamespace != null) {
-										elementBuilder = elementBuilder.addMember("namespace", "$S", xmlNamespace);
-									}
-									if (xmlDefaultValue != null) {
-										elementBuilder = elementBuilder.addMember("defaultValue", "$S", xmlDefaultValue);
-									}
-									if (xmlType != null) {
-										elementBuilder = elementBuilder.addMember("type", "$L", xmlType);
-									}
-								}
-
-								if (xmlElementWrapperMirror != null) {
-									String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlElementWrapperMirror, "name", String.class);
-									String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlElementWrapperMirror, "namespace", String.class);
-									Boolean xmlNillable = WsIOUtils.getAnnotationPrimitiveValue(xmlElementWrapperMirror, "nillable", Boolean.class);
-									Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlElementWrapperMirror, "required", Boolean.class);
-									AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlElementWrapper.class);
-									if (xmlName != null) {
-										xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
-									}
-									if (xmlNamespace != null) {
-										xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
-									}
-									if (xmlNillable != null) {
-										xmlBuilder = xmlBuilder.addMember("nillable", "$L", xmlNillable);
-									}
-									if (xmlRequired != null) {
-										xmlBuilder = xmlBuilder.addMember("required", "$L", xmlRequired);
-									}
-									builders = builders.append(xmlBuilder);
-								}
-
-								if (xmlRootElementMirror != null) {
-									String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlRootElementMirror, "name", String.class);
-									String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlRootElementMirror, "namespace", String.class);
-									Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlRootElementMirror, "required", Boolean.class);
-									AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlRootElement.class);
-									if (xmlName != null) {
-										xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
-									}
-									if (xmlNamespace != null) {
-										xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
-									}
-									if (xmlRequired != null) {
-										xmlBuilder = xmlBuilder.addMember("required", "$L", xmlRequired);
-									}
-									builders = builders.append(xmlBuilder);
-								}
-
-								if (xmlAttributeMirror != null) {
-									String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlAttributeMirror, "name", String.class);
-									String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlAttributeMirror, "namespace", String.class);
-									Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlAttributeMirror, "required", Boolean.class);
-									AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlAttribute.class);
-									if (xmlName != null) {
-										xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
-									}
-									if (xmlNamespace != null) {
-										xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
-									}
-									if (xmlRequired != null) {
-										xmlBuilder = xmlBuilder.addMember("required", "$L", xmlRequired);
-									}
-									builders = builders.append(xmlBuilder);
-								}
-
-								if (xmlValueMirror != null) {
-									builders = builders.append(AnnotationSpec.builder(XmlValue.class));
-								}
-
-								if (xmlTransientMirror != null) {
-									builders = builders.append(AnnotationSpec.builder(XmlTransient.class));
-								}
-
-								if (xmlTypeMirror != null) {
-									String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlTypeMirror, "name", String.class);
-									String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlTypeMirror, "namespace", String.class);
-									String xmlFactoryMethod = WsIOUtils.getAnnotationPrimitiveValue(xmlTypeMirror, "factoryMethod", String.class);
-									String xmlFactoryClass = WsIOUtils.getAnnotationStringValue(xmlTypeMirror, "factoryClass");
-									java.util.List<String> xmlPropOrder = WsIOUtils
-											.getAnnotationPrimitiveListValue(xmlTypeMirror, "propOrder", String.class);
-									AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlType.class);
-									if (xmlName != null) {
-										xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
-									}
-									if (xmlNamespace != null) {
-										xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
-									}
-									if (xmlFactoryMethod != null) {
-										xmlBuilder = xmlBuilder.addMember("factoryMethod", "$L", xmlFactoryMethod);
-									}
-									if (xmlPropOrder != null) {
-										xmlBuilder = xmlBuilder.addMember("propOrder", "$L", String.format("{ %s }", String.join(", ", xmlPropOrder)));
-									}
-									if (xmlFactoryClass != null) {
-										xmlBuilder = xmlBuilder.addMember("factoryClass", "$L", xmlFactoryClass);
-									}
-									builders = builders.append(xmlBuilder);
-								}
-
-								if (xmlJavaTypeAdapterMirror != null) {
-									AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlJavaTypeAdapter.class);
-									String xmlValue = WsIOUtils.getAnnotationStringValue(xmlJavaTypeAdapterMirror, "value");
-									String xmlType = WsIOUtils.getAnnotationStringValue(xmlJavaTypeAdapterMirror, "type");
-									if (xmlValue != null) {
-										xmlBuilder = xmlBuilder.addMember("value", "$L", xmlValue);
-									}
-									if (xmlType != null) {
-										xmlBuilder = xmlBuilder.addMember("type", "$L", xmlType);
-									}
-									builders = builders.append(xmlBuilder);
-								}
-
-								return builders.append(elementBuilder)
-										.map(AnnotationSpec.Builder::build);
+								return generateGetterAnnotations(execElement, propertyName, required, nillable);
 
 							});
 
@@ -1473,6 +1315,186 @@ class WsIOGenerator {
 
 		/* Return null */
 		return null;
+
+	}
+
+	/**
+	 * Method that generates the xml annotations of the getter method.
+	 *
+	 * @param element element to process
+	 * @param property property name
+	 * @param required required flag
+	 * @param nillable nillable flag
+	 * @return the xml annotations of the getter method
+	 */
+	private List<AnnotationSpec> generateGetterAnnotations(ExecutableElement element, String property, Boolean required, Boolean nillable) {
+
+		AnnotationMirror xmlElementMirror = WsIOUtils.getAnnotationMirror(element, XmlElement.class);
+		AnnotationMirror xmlElementWrapperMirror = WsIOUtils.getAnnotationMirror(element, XmlElementWrapper.class);
+		AnnotationMirror xmlRootElementMirror = WsIOUtils.getAnnotationMirror(element, XmlRootElement.class);
+		AnnotationMirror xmlAttributeMirror = WsIOUtils.getAnnotationMirror(element, XmlAttribute.class);
+		AnnotationMirror xmlValueMirror = WsIOUtils.getAnnotationMirror(element, XmlValue.class);
+		AnnotationMirror xmlTransientMirror = WsIOUtils.getAnnotationMirror(element, XmlTransient.class);
+		AnnotationMirror xmlTypeMirror = WsIOUtils.getAnnotationMirror(element, XmlType.class);
+		AnnotationMirror xmlJavaTypeAdapterMirror = WsIOUtils.getAnnotationMirror(element, XmlJavaTypeAdapter.class);
+
+		List<AnnotationSpec.Builder> builders = List.of();
+
+		if (xmlElementMirror != null || property != null || required != null || nillable != null) {
+
+			AnnotationSpec.Builder elementBuilder = AnnotationSpec.builder(XmlElement.class);
+
+			if (xmlElementMirror != null) {
+				String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "name", String.class);
+				if (xmlName != null) {
+					elementBuilder = elementBuilder.addMember("name", "$S", xmlName);
+				} else {
+					elementBuilder = elementBuilder.addMember("name", "$S", property);
+				}
+			} else {
+				elementBuilder = elementBuilder.addMember("name", "$S", property);
+			}
+
+			if (required != null) {
+				elementBuilder = elementBuilder.addMember("required", "$L", required);
+			} else if (xmlElementMirror != null) {
+				Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "required", Boolean.class);
+				if (xmlRequired != null) {
+					elementBuilder = elementBuilder.addMember("required", "$L", xmlRequired);
+				}
+			}
+
+			if (nillable != null) {
+				elementBuilder = elementBuilder.addMember("nillable", "$L", nillable);
+			} else if (xmlElementMirror != null) {
+				Boolean xmlNillable = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "nillable", Boolean.class);
+				if (xmlNillable != null) {
+					elementBuilder = elementBuilder.addMember("nillable", "$L", xmlNillable);
+				}
+			}
+
+			if (xmlElementMirror != null) {
+				String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "namespace", String.class);
+				String xmlDefaultValue = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "defaultValue", String.class);
+				String xmlType = WsIOUtils.getAnnotationStringValue(xmlElementMirror, "type");
+				if (xmlNamespace != null) {
+					elementBuilder = elementBuilder.addMember("namespace", "$S", xmlNamespace);
+				}
+				if (xmlDefaultValue != null) {
+					elementBuilder = elementBuilder.addMember("defaultValue", "$S", xmlDefaultValue);
+				}
+				if (xmlType != null) {
+					elementBuilder = elementBuilder.addMember("type", "$L", xmlType);
+				}
+			}
+
+			builders = builders.append(elementBuilder);
+
+		}
+
+		if (xmlElementWrapperMirror != null) {
+			String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlElementWrapperMirror, "name", String.class);
+			String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlElementWrapperMirror, "namespace", String.class);
+			Boolean xmlNillable = WsIOUtils.getAnnotationPrimitiveValue(xmlElementWrapperMirror, "nillable", Boolean.class);
+			Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlElementWrapperMirror, "required", Boolean.class);
+			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlElementWrapper.class);
+			if (xmlName != null) {
+				xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
+			}
+			if (xmlNamespace != null) {
+				xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
+			}
+			if (xmlNillable != null) {
+				xmlBuilder = xmlBuilder.addMember("nillable", "$L", xmlNillable);
+			}
+			if (xmlRequired != null) {
+				xmlBuilder = xmlBuilder.addMember("required", "$L", xmlRequired);
+			}
+			builders = builders.append(xmlBuilder);
+		}
+
+		if (xmlRootElementMirror != null) {
+			String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlRootElementMirror, "name", String.class);
+			String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlRootElementMirror, "namespace", String.class);
+			Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlRootElementMirror, "required", Boolean.class);
+			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlRootElement.class);
+			if (xmlName != null) {
+				xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
+			}
+			if (xmlNamespace != null) {
+				xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
+			}
+			if (xmlRequired != null) {
+				xmlBuilder = xmlBuilder.addMember("required", "$L", xmlRequired);
+			}
+			builders = builders.append(xmlBuilder);
+		}
+
+		if (xmlAttributeMirror != null) {
+			String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlAttributeMirror, "name", String.class);
+			String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlAttributeMirror, "namespace", String.class);
+			Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlAttributeMirror, "required", Boolean.class);
+			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlAttribute.class);
+			if (xmlName != null) {
+				xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
+			}
+			if (xmlNamespace != null) {
+				xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
+			}
+			if (xmlRequired != null) {
+				xmlBuilder = xmlBuilder.addMember("required", "$L", xmlRequired);
+			}
+			builders = builders.append(xmlBuilder);
+		}
+
+		if (xmlValueMirror != null) {
+			builders = builders.append(AnnotationSpec.builder(XmlValue.class));
+		}
+
+		if (xmlTransientMirror != null) {
+			builders = builders.append(AnnotationSpec.builder(XmlTransient.class));
+		}
+
+		if (xmlTypeMirror != null) {
+			String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlTypeMirror, "name", String.class);
+			String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlTypeMirror, "namespace", String.class);
+			String xmlFactoryMethod = WsIOUtils.getAnnotationPrimitiveValue(xmlTypeMirror, "factoryMethod", String.class);
+			String xmlFactoryClass = WsIOUtils.getAnnotationStringValue(xmlTypeMirror, "factoryClass");
+			java.util.List<String> xmlPropOrder = WsIOUtils
+					.getAnnotationPrimitiveListValue(xmlTypeMirror, "propOrder", String.class);
+			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlType.class);
+			if (xmlName != null) {
+				xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
+			}
+			if (xmlNamespace != null) {
+				xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
+			}
+			if (xmlFactoryMethod != null) {
+				xmlBuilder = xmlBuilder.addMember("factoryMethod", "$L", xmlFactoryMethod);
+			}
+			if (xmlPropOrder != null) {
+				xmlBuilder = xmlBuilder.addMember("propOrder", "$L", String.format("{ %s }", String.join(", ", xmlPropOrder)));
+			}
+			if (xmlFactoryClass != null) {
+				xmlBuilder = xmlBuilder.addMember("factoryClass", "$L", xmlFactoryClass);
+			}
+			builders = builders.append(xmlBuilder);
+		}
+
+		if (xmlJavaTypeAdapterMirror != null) {
+			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlJavaTypeAdapter.class);
+			String xmlValue = WsIOUtils.getAnnotationStringValue(xmlJavaTypeAdapterMirror, "value");
+			String xmlType = WsIOUtils.getAnnotationStringValue(xmlJavaTypeAdapterMirror, "type");
+			if (xmlValue != null) {
+				xmlBuilder = xmlBuilder.addMember("value", "$L", xmlValue);
+			}
+			if (xmlType != null) {
+				xmlBuilder = xmlBuilder.addMember("type", "$L", xmlType);
+			}
+			builders = builders.append(xmlBuilder);
+		}
+
+		return builders.map(AnnotationSpec.Builder::build);
 
 	}
 
