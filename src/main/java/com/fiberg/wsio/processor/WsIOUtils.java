@@ -618,11 +618,105 @@ final class WsIOUtils {
 		if (annotationMirror == null) {
 			return null;
 		}
-		AnnotationValue annotationValue = getAnnotationValue(annotationMirror, field);
+		return getAnnotationStringValue(annotationMirror, field);
+	}
+
+	/**
+	 * Method that returns the string value of an annotation field.
+	 *
+	 * @param mirror annotated mirror
+	 * @param field field of the annotation
+	 * @return the string value of the annotation field
+	 */
+	static String getAnnotationStringValue(AnnotationMirror mirror, String field) {
+		AnnotationValue annotationValue = getAnnotationValue(mirror, field);
 		if (annotationValue == null) {
 			return null;
 		} else {
 			return annotationValue.toString();
+		}
+	}
+
+	/**
+	 * Method that returns the primitive value of an annotation field.
+	 *
+	 * @param target element to process
+	 * @param type class of the annotation
+	 * @param field field of the annotation
+	 * @return the primitive value of the annotation field
+	 */
+	static <T> T getAnnotationPrimitiveValue(Element target, Class<? extends Annotation> type, String field, Class<T> primitive) {
+		AnnotationMirror annotationMirror = getAnnotationMirror(target, type);
+		if (annotationMirror == null) {
+			return null;
+		}
+		return getAnnotationPrimitiveValue(annotationMirror, field, primitive);
+	}
+
+	/**
+	 * Method that returns the primitive value of an annotation field.
+	 *
+	 * @param mirror annotated mirror
+	 * @param field field of the annotation
+	 * @return the primitive value of the annotation field
+	 */
+	static <T> T getAnnotationPrimitiveValue(AnnotationMirror mirror, String field, Class<T> primitive) {
+		AnnotationValue annotationValue = getAnnotationValue(mirror, field);
+		if (annotationValue == null) {
+			return null;
+		} else {
+			Object value = annotationValue.getValue();
+			if (primitive.isInstance(value)) {
+				return primitive.cast(value);
+			}
+			return null;
+		}
+	}
+
+	/**
+	 * Method that returns the primitive value of an annotation field.
+	 *
+	 * @param target element to process
+	 * @param type class of the annotation
+	 * @param field field of the annotation
+	 * @return the primitive value of the annotation field
+	 */
+	static <T> java.util.List<T> getAnnotationPrimitiveListValue(Element target, Class<? extends Annotation> type, String field, Class<T> primitive) {
+		AnnotationMirror annotationMirror = getAnnotationMirror(target, type);
+		if (annotationMirror == null) {
+			return null;
+		}
+		return getAnnotationPrimitiveListValue(annotationMirror, field, primitive);
+	}
+
+	/**
+	 * Method that returns the primitive value of an annotation field.
+	 *
+	 * @param mirror annotated mirror
+	 * @param field field of the annotation
+	 * @return the primitive value of the annotation field
+	 */
+	static <T> java.util.List<T> getAnnotationPrimitiveListValue(AnnotationMirror mirror, String field, Class<T> primitive) {
+		AnnotationValue annotationValue = getAnnotationValue(mirror, field);
+		if (annotationValue == null) {
+			return null;
+		} else {
+			Object value = annotationValue.getValue();
+			if (value instanceof java.util.List list) {
+
+				@SuppressWarnings("unchecked")
+				java.util.List<T> casted = (java.util.List<T>) list;
+
+				return casted.stream()
+						.map(val -> {
+							if (primitive.isInstance(val)) {
+								return primitive.cast(val);
+							}
+							return null;
+						}).collect(java.util.stream.Collectors.toList());
+
+			}
+			return null;
 		}
 	}
 
@@ -633,7 +727,7 @@ final class WsIOUtils {
 	 * @param type class of the annotation
 	 * @return the annotation mirror of an element
 	 */
-	private static AnnotationMirror getAnnotationMirror(Element target, Class<? extends Annotation> type) {
+	static AnnotationMirror getAnnotationMirror(Element target, Class<? extends Annotation> type) {
 		String typeName = type.getName();
 		for (AnnotationMirror annotationMirror : target.getAnnotationMirrors()) {
 			if (annotationMirror.getAnnotationType().toString().equals(typeName)) {
@@ -650,7 +744,7 @@ final class WsIOUtils {
 	 * @param field field of the annotation
 	 * @return the annotation value of the annotation field
 	 */
-	private static AnnotationValue getAnnotationValue(AnnotationMirror annotationMirror, String field) {
+	static AnnotationValue getAnnotationValue(AnnotationMirror annotationMirror, String field) {
 		for (java.util.Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : annotationMirror.getElementValues().entrySet() ) {
 			if (entry.getKey().getSimpleName().toString().equals(field)) {
 				return entry.getValue();
