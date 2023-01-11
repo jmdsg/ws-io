@@ -30,6 +30,7 @@ import java.io.Writer;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static com.fiberg.wsio.processor.WsIOConstant.*;
@@ -1161,16 +1162,16 @@ class WsIOGenerator {
 									Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlElementWrapperMirror, "required", Boolean.class);
 									AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlElementWrapper.class);
 									if (xmlName != null) {
-										xmlBuilder.addMember("name", "$S", xmlName);
+										xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
 									}
 									if (xmlNamespace != null) {
-										xmlBuilder.addMember("namespace", "$S", xmlNamespace);
+										xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
 									}
 									if (xmlNillable != null) {
-										xmlBuilder.addMember("nillable", "$L", xmlNillable);
+										xmlBuilder = xmlBuilder.addMember("nillable", "$L", xmlNillable);
 									}
 									if (xmlRequired != null) {
-										xmlBuilder.addMember("required", "$L", xmlRequired);
+										xmlBuilder = xmlBuilder.addMember("required", "$L", xmlRequired);
 									}
 									builders = builders.append(xmlBuilder);
 								}
@@ -1181,13 +1182,13 @@ class WsIOGenerator {
 									Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlRootElementMirror, "required", Boolean.class);
 									AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlRootElement.class);
 									if (xmlName != null) {
-										xmlBuilder.addMember("name", "$S", xmlName);
+										xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
 									}
 									if (xmlNamespace != null) {
-										xmlBuilder.addMember("namespace", "$S", xmlNamespace);
+										xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
 									}
 									if (xmlRequired != null) {
-										xmlBuilder.addMember("required", "$L", xmlRequired);
+										xmlBuilder = xmlBuilder.addMember("required", "$L", xmlRequired);
 									}
 									builders = builders.append(xmlBuilder);
 								}
@@ -1198,13 +1199,13 @@ class WsIOGenerator {
 									Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlAttributeMirror, "required", Boolean.class);
 									AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlAttribute.class);
 									if (xmlName != null) {
-										xmlBuilder.addMember("name", "$S", xmlName);
+										xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
 									}
 									if (xmlNamespace != null) {
-										xmlBuilder.addMember("namespace", "$S", xmlNamespace);
+										xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
 									}
 									if (xmlRequired != null) {
-										xmlBuilder.addMember("required", "$L", xmlRequired);
+										xmlBuilder = xmlBuilder.addMember("required", "$L", xmlRequired);
 									}
 									builders = builders.append(xmlBuilder);
 								}
@@ -1226,13 +1227,13 @@ class WsIOGenerator {
 											.getAnnotationPrimitiveListValue(xmlTypeMirror, "propOrder", String.class);
 									AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlType.class);
 									if (xmlName != null) {
-										xmlBuilder.addMember("name", "$S", xmlName);
+										xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
 									}
 									if (xmlNamespace != null) {
-										xmlBuilder.addMember("namespace", "$S", xmlNamespace);
+										xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
 									}
 									if (xmlFactoryMethod != null) {
-										xmlBuilder.addMember("factoryMethod", "$L", xmlFactoryMethod);
+										xmlBuilder = xmlBuilder.addMember("factoryMethod", "$L", xmlFactoryMethod);
 									}
 									if (xmlPropOrder != null) {
 										xmlBuilder = xmlBuilder.addMember("propOrder", "$L", String.format("{ %s }", String.join(", ", xmlPropOrder)));
