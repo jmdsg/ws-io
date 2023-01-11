@@ -1097,8 +1097,7 @@ class WsIOGenerator {
 										.map(Tuple4::_3)
 										.getOrNull();
 
-								AnnotationSpec.Builder elementBuilder = AnnotationSpec.builder(XmlElement.class)
-										.addMember("name", "$S", propertyName);
+								AnnotationSpec.Builder elementBuilder = AnnotationSpec.builder(XmlElement.class);
 
 								AnnotationMirror xmlElementMirror = WsIOUtils.getAnnotationMirror(execElement, XmlElement.class);
 								AnnotationMirror xmlElementWrapperMirror = WsIOUtils.getAnnotationMirror(execElement, XmlElementWrapper.class);
@@ -1110,6 +1109,17 @@ class WsIOGenerator {
 								AnnotationMirror xmlJavaTypeAdapterMirror = WsIOUtils.getAnnotationMirror(execElement, XmlJavaTypeAdapter.class);
 
 								List<AnnotationSpec.Builder> builders = List.of();
+
+								if (xmlElementMirror != null) {
+									String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "name", String.class);
+									if (xmlName != null) {
+										elementBuilder = elementBuilder.addMember("name", "$S", xmlName);
+									} else {
+										elementBuilder = elementBuilder.addMember("name", "$S", propertyName);
+									}
+								} else {
+									elementBuilder = elementBuilder.addMember("name", "$S", propertyName);
+								}
 
 								if (required != null) {
 									elementBuilder = elementBuilder.addMember("required", "$L", required);
