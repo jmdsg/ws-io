@@ -1,9 +1,8 @@
 package com.fiberg.wsio.annotation;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import jakarta.jws.WebParam;
+
+import java.lang.annotation.*;
 
 /**
  * <p>Annotation used to specify a param data.</p>
@@ -15,13 +14,16 @@ public @interface WsIOParam {
 	/** Name of the param */
 	String name() default "";
 
-	/** Namespace od the param */
+	/** Part name of the param */
+	String partName() default "";
+
+	/** Namespace of the param */
 	String targetNamespace() default "";
 
-	/** Required of the param */
-	boolean required() default false;
+	/** Header of the param */
+	WebParam.Mode mode() default WebParam.Mode.IN;
 
-	/** Nillable of the param */
-	boolean nillable() default false;
+	/** Mode of the param */
+	boolean header() default false;
 
 }

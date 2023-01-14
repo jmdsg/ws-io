@@ -131,7 +131,7 @@ class WsIOFinder {
 	 * @param elements set of type elements
 	 * @return map identified by the element type containing wrapper annotations info of all elements
 	 */
-	static Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> findWrapperRecursively(Set<TypeElement> elements) {
+	static Map<TypeElement, Map<String, Tuple2<WsIOExecutableInfo, String>>> findWrapperRecursively(Set<TypeElement> elements) {
 
 		/* Return the map for each element and finally fold the results with an empty map */
 		return elements.map(WsIOFinder::findWrapperRecursively)
@@ -145,7 +145,7 @@ class WsIOFinder {
 	 * @param element type element
 	 * @return map identified by the element type containing wrapper annotations info of a single element
 	 */
-	private static Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> findWrapperRecursively(TypeElement element) {
+	private static Map<TypeElement, Map<String, Tuple2<WsIOExecutableInfo, String>>> findWrapperRecursively(TypeElement element) {
 
 		/* Check if the current element is not or not */
 		if (Objects.nonNull(element)) {
@@ -155,10 +155,11 @@ class WsIOFinder {
 					.filter(ExecutableElement.class::isInstance)
 					.map(ExecutableElement.class::cast)
 					.filter(executable -> !"<init>".equals(executable.getSimpleName().toString()))
-					.filter(executable -> Objects.nonNull(executable.getAnnotation(WebMethod.class)));
+					.filter(executable -> Objects.nonNull(
+							WsIOUtils.getAnnotationMirror(executable, WebMethod.class)));
 
 			/* Get current element info for every method */
-			Map<String, Tuple2<WsIOInfo, String>> currentInfo = executables.flatMap(executable -> {
+			Map<String, Tuple2<WsIOExecutableInfo, String>> currentInfo = executables.flatMap(executable -> {
 
 				/* Get simple name, current descriptor and annotation option */
 				String executableName = executable.getSimpleName().toString();
@@ -180,7 +181,7 @@ class WsIOFinder {
 							wrapper.getPackageEnd(), wrapper.getPackageFunc());
 
 					/* Get current info of the executable with descriptor annotations descriptor */
-					WsIOInfo info = WsIOUtils.extractInfo(executable, descriptor);
+					WsIOExecutableInfo info = WsIOUtils.extractExecutableInfo(executable, descriptor);
 
 					/* Return the tuple with executable name and
 					 * other tuple with executable info and package name */
@@ -192,7 +193,7 @@ class WsIOFinder {
 
 			/* Create zero map with current element, call recursively this function with each declared class
 			 * and finally fold the results with zero map */
-			Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> zeroMap = HashMap.of(element, currentInfo);
+			Map<TypeElement, Map<String, Tuple2<WsIOExecutableInfo, String>>> zeroMap = HashMap.of(element, currentInfo);
 			return Stream.ofAll(element.getEnclosedElements())
 					.filter(TypeElement.class::isInstance)
 					.map(TypeElement.class::cast)

@@ -9,16 +9,19 @@ import java.lang.annotation.Target;
  * <p>Annotation used to specify if a parameter should be wrapped.</p>
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.PARAMETER })
-public @interface WsIOWrapper {
+@Target({ ElementType.METHOD, ElementType.PARAMETER })
+public @interface WsIOElementWrapper {
 
-	/** Inner name fo the wrapped element */
-	String inner();
+	/** Name of the element wrapper */
+	String name() default "##default";
 
-	/** Inner required fo the wrapped element */
+	/** Namespace of the element wrapper */
+	String namespace() default "##default";
+
+	/** Inner required of the element wrapper */
 	boolean required() default false;
 
-	/** Inner nillable fo the wrapped element */
+	/** Inner nillable of the element wrapper */
 	boolean nillable() default false;
 
 }

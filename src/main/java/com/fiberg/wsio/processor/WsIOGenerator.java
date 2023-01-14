@@ -67,7 +67,7 @@ class WsIOGenerator {
 	boolean generateClasses(Map<TypeElement, String> messageByType,
 	                        Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneByGroup,
 	                        Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneMessageByGroup,
-	                        Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> wrapperByType,
+	                        Map<TypeElement, Map<String, Tuple2<WsIOExecutableInfo, String>>> wrapperByType,
 	                        Map<TypeElement, Tuple3<String, Set<Case>, Map<String, Boolean>>> metadataByType) {
 
 		/* Get all class names that are message annotated */
@@ -271,7 +271,7 @@ class WsIOGenerator {
 			wrapper.forEach((name, infos) -> {
 
 				/* Info and package name */
-				WsIOInfo info = infos._1();
+				WsIOExecutableInfo info = infos._1();
 				String packageName = infos._2();
 
 				/* Generate request and response type spec */
@@ -440,7 +440,7 @@ class WsIOGenerator {
 					AnnotationMirror xmlEnumValueAdapterMirror = WsIOUtils.getAnnotationMirror(enclosed, XmlEnumValue.class);
 					if (xmlEnumValueAdapterMirror != null) {
 						AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlEnumValue.class);
-						String xmlValue = WsIOUtils.getAnnotationStringValue(xmlEnumValueAdapterMirror, "value");
+						String xmlValue = WsIOUtils.getAnnotationLiteralValue(xmlEnumValueAdapterMirror, "value");
 						if (xmlValue != null) {
 							xmlBuilder = xmlBuilder.addMember("value", "$L", xmlValue);
 						}
@@ -889,7 +889,7 @@ class WsIOGenerator {
 	 * @return generated wrapper type
 	 */
 	private TypeSpec generateWrapperType(WsIOType type,
-	                                     WsIOInfo info,
+	                                     WsIOExecutableInfo info,
 	                                     Map<String, String> messageClasses,
 	                                     Map<String, Map<Tuple2<String, String>, String>> cloneClassesByName,
 	                                     Map<String, Map<Tuple2<String, String>, String>> cloneMessageClassesByName,
@@ -904,6 +904,7 @@ class WsIOGenerator {
 				.flatMap(desc -> desc.getSingle(WsIOAnnotate.class))
 				.filter(WsIOAnnotate::nameSwap)
 				.isDefined();
+
 		String separator = nameSwap ? WsIOConstant.SWAP_SEPARATOR : WsIOConstant.NO_SWAP_SEPARATOR;
 
 		/* Method and operation names */
@@ -916,10 +917,45 @@ class WsIOGenerator {
 		String suffixTypeName = WsIOType.RESPONSE.equals(type) ? RESPONSE_WRAPPER_SUFFIX : REQUEST_WRAPPER_SUFFIX;
 		String fullClassName = WsIOUtil.addWrap(WordUtils.capitalize(classSimpleName), prefixTypeName, suffixTypeName);
 
-		/* List of descriptors with types, elements and names */
-		List<Tuple4<TypeMirror, Tuple3<String, Boolean, Boolean>, Tuple2<String, String>,
-				Tuple3<Boolean, Tuple3<String, Boolean, Boolean>, String>>> descriptors =
-				getWrapperDescriptors(type, info);
+		List<Tuple4<TypeMirror, String, WsIOQualifierInfo, WsIOParameterInfo>> descriptors = type == null ? List.of() : switch (type) {
+			case RESPONSE -> info.getParameterInfos()
+					.zipWithIndex()
+					.map(tuple -> {
+
+						/* Get the index and the parameter */
+						Integer parameterIndex = tuple._2();
+						WsIOParameterInfo parameterInfo = tuple._1();
+
+						/* Check if the type mirror is a mirror type and the qualifier info */
+						TypeMirror typeMirror = parameterInfo.getTypeMirror();
+						WsIOQualifierInfo qualifierInfo = parameterInfo.getQualifierInfo();
+
+						/* Parameter name if present otherwise default value */
+						String defaultName = DEFAULT_PARAMETER + parameterIndex;
+						String parameterName = info.getParameterNames().get(index);
+
+						String argumentName = StringUtils.isNotBlank(parameterName) ? parameterName : defaultName;
+
+						return Tuple.of(typeMirror, argumentName, qualifierInfo, parameterInfo);
+
+					});
+			case REQUEST -> {
+
+				/* Set the parameter info to null */
+				WsIOParameterInfo parameterInfo = null;
+				TypeMirror typeMirror = info.getReturnType();
+				WsIOQualifierInfo qualifierInfo = info.getReturnQualifierInfo();
+
+				/* Return name if present otherwise default value*/
+				String returnName = info.getReturnName();
+				String resultName = StringUtils.isNotBlank(returnName) ? returnName : DEFAULT_RESULT;
+
+				yield List.of(
+						Tuple.of(typeMirror, resultName, qualifierInfo, parameterInfo)
+				);
+
+			}
+		};
 
 		/* Add jaxb annotations to the class */
 		List<AnnotationSpec> annotations = List.empty();
@@ -935,8 +971,7 @@ class WsIOGenerator {
 
 		/* Iterate for each parameter and return type */
 		List<String> fieldNames = List.empty();
-		for (Tuple4<TypeMirror, Tuple3<String, Boolean, Boolean>, Tuple2<String, String>,
-				Tuple3<Boolean, Tuple3<String, Boolean, Boolean>, String>> descriptor : descriptors) {
+		for (WsIOParameterInfo descriptor : descriptors) {
 
 			/* Get mirror type, type element and name/required */
 			TypeMirror mirror = descriptor._1();
@@ -1118,7 +1153,7 @@ class WsIOGenerator {
 										.map(Tuple4::_3)
 										.getOrNull();
 
-								return generateGetterAnnotations(execElement, propertyName, required, nillable);
+								return generateGetterAnnotations(execElement, propertyName, required, nillable, qualifier);
 
 							});
 
@@ -1346,6 +1381,20 @@ class WsIOGenerator {
 	 * @return the xml annotations of the getter method
 	 */
 	private List<AnnotationSpec> generateGetterAnnotations(ExecutableElement element, String property, Boolean required, Boolean nillable) {
+		return generateGetterAnnotations(element, property, required, nillable, null);
+	}
+
+	/**
+	 * Method that generates the xml annotations of the getter method.
+	 *
+	 * @param element element to process
+	 * @param property property name
+	 * @param required required flag
+	 * @param nillable nillable flag
+	 * @param qualifier qualifier info
+	 * @return the xml annotations of the getter method
+	 */
+	private List<AnnotationSpec> generateGetterAnnotations(ExecutableElement element, String property, Boolean required, Boolean nillable, Tuple2<String, String> qualifier) {
 
 		AnnotationMirror xmlElementMirror = WsIOUtils.getAnnotationMirror(element, XmlElement.class);
 		AnnotationMirror xmlElementWrapperMirror = WsIOUtils.getAnnotationMirror(element, XmlElementWrapper.class);
@@ -1363,7 +1412,7 @@ class WsIOGenerator {
 			AnnotationSpec.Builder elementBuilder = AnnotationSpec.builder(XmlElement.class);
 
 			if (xmlElementMirror != null) {
-				String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "name", String.class);
+				String xmlName = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "name", String.class);
 				if (xmlName != null) {
 					elementBuilder = elementBuilder.addMember("name", "$S", xmlName);
 				} else {
@@ -1376,7 +1425,7 @@ class WsIOGenerator {
 			if (required != null) {
 				elementBuilder = elementBuilder.addMember("required", "$L", required);
 			} else if (xmlElementMirror != null) {
-				Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "required", Boolean.class);
+				Boolean xmlRequired = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "required", Boolean.class);
 				if (xmlRequired != null) {
 					elementBuilder = elementBuilder.addMember("required", "$L", xmlRequired);
 				}
@@ -1385,16 +1434,16 @@ class WsIOGenerator {
 			if (nillable != null) {
 				elementBuilder = elementBuilder.addMember("nillable", "$L", nillable);
 			} else if (xmlElementMirror != null) {
-				Boolean xmlNillable = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "nillable", Boolean.class);
+				Boolean xmlNillable = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "nillable", Boolean.class);
 				if (xmlNillable != null) {
 					elementBuilder = elementBuilder.addMember("nillable", "$L", xmlNillable);
 				}
 			}
 
 			if (xmlElementMirror != null) {
-				String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "namespace", String.class);
-				String xmlDefaultValue = WsIOUtils.getAnnotationPrimitiveValue(xmlElementMirror, "defaultValue", String.class);
-				String xmlType = WsIOUtils.getAnnotationStringValue(xmlElementMirror, "type");
+				String xmlNamespace = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "namespace", String.class);
+				String xmlDefaultValue = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "defaultValue", String.class);
+				String xmlType = WsIOUtils.getAnnotationLiteralValue(xmlElementMirror, "type");
 				if (xmlNamespace != null) {
 					elementBuilder = elementBuilder.addMember("namespace", "$S", xmlNamespace);
 				}
@@ -1411,10 +1460,10 @@ class WsIOGenerator {
 		}
 
 		if (xmlElementWrapperMirror != null) {
-			String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlElementWrapperMirror, "name", String.class);
-			String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlElementWrapperMirror, "namespace", String.class);
-			Boolean xmlNillable = WsIOUtils.getAnnotationPrimitiveValue(xmlElementWrapperMirror, "nillable", Boolean.class);
-			Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlElementWrapperMirror, "required", Boolean.class);
+			String xmlName = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "name", String.class);
+			String xmlNamespace = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "namespace", String.class);
+			Boolean xmlNillable = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "nillable", Boolean.class);
+			Boolean xmlRequired = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "required", Boolean.class);
 			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlElementWrapper.class);
 			if (xmlName != null) {
 				xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
@@ -1432,9 +1481,9 @@ class WsIOGenerator {
 		}
 
 		if (xmlRootElementMirror != null) {
-			String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlRootElementMirror, "name", String.class);
-			String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlRootElementMirror, "namespace", String.class);
-			Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlRootElementMirror, "required", Boolean.class);
+			String xmlName = WsIOUtils.getAnnotationTypeValue(xmlRootElementMirror, "name", String.class);
+			String xmlNamespace = WsIOUtils.getAnnotationTypeValue(xmlRootElementMirror, "namespace", String.class);
+			Boolean xmlRequired = WsIOUtils.getAnnotationTypeValue(xmlRootElementMirror, "required", Boolean.class);
 			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlRootElement.class);
 			if (xmlName != null) {
 				xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
@@ -1449,9 +1498,9 @@ class WsIOGenerator {
 		}
 
 		if (xmlAttributeMirror != null) {
-			String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlAttributeMirror, "name", String.class);
-			String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlAttributeMirror, "namespace", String.class);
-			Boolean xmlRequired = WsIOUtils.getAnnotationPrimitiveValue(xmlAttributeMirror, "required", Boolean.class);
+			String xmlName = WsIOUtils.getAnnotationTypeValue(xmlAttributeMirror, "name", String.class);
+			String xmlNamespace = WsIOUtils.getAnnotationTypeValue(xmlAttributeMirror, "namespace", String.class);
+			Boolean xmlRequired = WsIOUtils.getAnnotationTypeValue(xmlAttributeMirror, "required", Boolean.class);
 			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlAttribute.class);
 			if (xmlName != null) {
 				xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
@@ -1474,12 +1523,12 @@ class WsIOGenerator {
 		}
 
 		if (xmlTypeMirror != null) {
-			String xmlName = WsIOUtils.getAnnotationPrimitiveValue(xmlTypeMirror, "name", String.class);
-			String xmlNamespace = WsIOUtils.getAnnotationPrimitiveValue(xmlTypeMirror, "namespace", String.class);
-			String xmlFactoryMethod = WsIOUtils.getAnnotationPrimitiveValue(xmlTypeMirror, "factoryMethod", String.class);
-			String xmlFactoryClass = WsIOUtils.getAnnotationStringValue(xmlTypeMirror, "factoryClass");
+			String xmlName = WsIOUtils.getAnnotationTypeValue(xmlTypeMirror, "name", String.class);
+			String xmlNamespace = WsIOUtils.getAnnotationTypeValue(xmlTypeMirror, "namespace", String.class);
+			String xmlFactoryMethod = WsIOUtils.getAnnotationTypeValue(xmlTypeMirror, "factoryMethod", String.class);
+			String xmlFactoryClass = WsIOUtils.getAnnotationLiteralValue(xmlTypeMirror, "factoryClass");
 			java.util.List<String> xmlPropOrder = WsIOUtils
-					.getAnnotationPrimitiveListValue(xmlTypeMirror, "propOrder", String.class);
+					.getAnnotationTypeListValue(xmlTypeMirror, "propOrder", String.class);
 			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlType.class);
 			if (xmlName != null) {
 				xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
@@ -1501,8 +1550,8 @@ class WsIOGenerator {
 
 		if (xmlJavaTypeAdapterMirror != null) {
 			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlJavaTypeAdapter.class);
-			String xmlValue = WsIOUtils.getAnnotationStringValue(xmlJavaTypeAdapterMirror, "value");
-			String xmlType = WsIOUtils.getAnnotationStringValue(xmlJavaTypeAdapterMirror, "type");
+			String xmlValue = WsIOUtils.getAnnotationLiteralValue(xmlJavaTypeAdapterMirror, "value");
+			String xmlType = WsIOUtils.getAnnotationLiteralValue(xmlJavaTypeAdapterMirror, "type");
 			if (xmlValue != null) {
 				xmlBuilder = xmlBuilder.addMember("value", "$L", xmlValue);
 			}
@@ -1797,119 +1846,6 @@ class WsIOGenerator {
 	}
 
 	/**
-	 * Method that create the descriptors of response and request types.
-	 *
-	 * @param type indicates if is a response or request wrapper
-	 * @param info all wrapper info
-	 * @return descriptors of response and request types.
-	 */
-	private List<Tuple4<TypeMirror, Tuple3<String, Boolean, Boolean>, Tuple2<String, String>,
-			Tuple3<Boolean, Tuple3<String, Boolean, Boolean>, String>>> getWrapperDescriptors(WsIOType type,
-																							  WsIOInfo info) {
-
-		/* List to fill with types, elements and names */
-		List<Tuple4<TypeMirror, Tuple3<String, Boolean, Boolean>, Tuple2<String, String>,
-				Tuple3<Boolean, Tuple3<String, Boolean, Boolean>, String>>> descriptors = List.empty();
-
-		/* Check if the type is response or request */
-		if (WsIOType.RESPONSE.equals(type)) {
-
-			/* Check if the type mirror is a mirror type */
-			TypeMirror typeMirror = info.getReturnType();
-			if (Objects.nonNull(typeMirror)) {
-
-				/* Return name if present otherwise default value*/
-				String returnName = info.getReturnName();
-				String resultName = StringUtils.isNotBlank(returnName) ? returnName : DEFAULT_RESULT;
-
-				Boolean parameterRequired = info.getParameterRequired() != null && info.getParameterRequired().length() == 1
-						? info.getParameterRequired().get(0) : null;
-				Boolean parameterNillable = info.getParameterNillable() != null && info.getParameterNillable().length() == 1
-						? info.getParameterNillable().get(0) : null;
-
-				Tuple3<String, Boolean, Boolean> result = Tuple.of(resultName, parameterRequired, parameterNillable);
-
-				/* Get qualifier from annotation */
-				Tuple2<String, String> qualifier = info.getReturnQualifier();
-
-				Boolean parameterAttribute = info.getParameterAttributes() != null && info.getParameterAttributes().length() == 1
-					? info.getParameterAttributes().get(0) : null;
-				String parameterWrapper = info.getParameterWrappers() != null && info.getParameterWrappers().length() == 1
-						? info.getParameterWrappers().get(0): null;
-				Boolean parameterWrapperRequired = info.getParameterWrapperRequired() != null && info.getParameterWrapperRequired().length() == 1
-						? info.getParameterWrapperRequired().get(0): null;
-				Boolean parameterWrapperNillable = info.getParameterWrapperNillable() != null && info.getParameterWrapperNillable().length() == 1
-						? info.getParameterWrapperNillable().get(0): null;
-				String parameterAdapter = info.getParameterAdapters() != null && info.getParameterAdapters().length() == 1
-						? info.getParameterAdapters().get(0): null;
-
-				Tuple3<String, Boolean, Boolean> parameterWrapped = Tuple.of(parameterWrapper, parameterWrapperRequired, parameterWrapperNillable);
-
-				Tuple3<Boolean, Tuple3<String, Boolean, Boolean>, String> additional = Tuple.of(
-						parameterAttribute, parameterWrapped, parameterAdapter
-				);
-
-				/* Fill the type, element and name */
-				Tuple4<TypeMirror, Tuple3<String, Boolean, Boolean>, Tuple2<String, String>, Tuple3<Boolean, Tuple3<String, Boolean, Boolean>, String>> descriptor =
-						Tuple.of(typeMirror, result, qualifier, additional);
-
-				descriptors = descriptors.append(descriptor);
-
-			}
-
-		} else if (WsIOType.REQUEST.equals(type)) {
-
-			/* Iterate for each parameter */
-			for (int index = 0; index < info.getParameterTypes().size(); index++) {
-
-				/* Check if the type mirror is a mirror type */
-				TypeMirror typeMirror = info.getParameterTypes().get(index);
-				if (Objects.nonNull(typeMirror)) {
-
-					/* Parameter name if present otherwise default value */
-					String defaultName = DEFAULT_PARAMETER + index;
-					String parameterName = info.getParameterNames().get(index);
-					String argumentName = StringUtils.isNotBlank(parameterName) ? parameterName : defaultName;
-
-					Boolean parameterRequired = info.getParameterRequired().get(index);
-					Boolean parameterNillable = info.getParameterNillable().get(index);
-
-					Tuple3<String, Boolean, Boolean> argument = Tuple.of(argumentName, parameterRequired, parameterNillable);
-
-					Boolean parameterAttribute = info.getParameterAttributes().get(index);
-					String parameterWrapper = info.getParameterWrappers().get(index);
-					Boolean parameterWrapperRequired = info.getParameterWrapperRequired().get(index);
-					Boolean parameterWrapperNillable = info.getParameterWrapperNillable().get(index);
-					String parameterAdapter = info.getParameterAdapters().get(index);
-
-					Tuple3<String, Boolean, Boolean> parameterWrapped = Tuple.of(parameterWrapper, parameterWrapperRequired, parameterWrapperNillable);
-
-					Tuple3<Boolean, Tuple3<String, Boolean, Boolean>, String> additional = Tuple.of(
-							parameterAttribute, parameterWrapped, parameterAdapter
-					);
-
-					/* Get qualifier from annotation */
-					Tuple2<String, String> qualifier = info.getParameterQualifiers().get(index);
-
-					/* Fill the type, element and name */
-					Tuple4<TypeMirror, Tuple3<String, Boolean, Boolean>, Tuple2<String, String>,
-							Tuple3<Boolean, Tuple3<String, Boolean, Boolean>, String>> descriptor =
-							Tuple.of(typeMirror, argument, qualifier, additional);
-
-					descriptors = descriptors.append(descriptor);
-
-				}
-
-			}
-
-		}
-
-		/* Return descriptors */
-		return descriptors;
-
-	}
-
-	/**
 	 * Method that return if the delegator should be overridden or not
 	 *
 	 * @param getters map of getters with priority levels
@@ -2165,6 +2101,12 @@ class WsIOGenerator {
 
 		}
 
+	}
+
+	private enum ParameterType {
+		WRAPPER,
+		ELEMENT,
+		ATTRIBUTE;
 	}
 
 }

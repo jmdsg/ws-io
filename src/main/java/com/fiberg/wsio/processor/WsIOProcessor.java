@@ -75,7 +75,7 @@ public class WsIOProcessor extends AbstractProcessor {
 						.filterValues(Set::nonEmpty);
 
 		/* Find wrapper classes recursively */
-		final Map<TypeElement, Map<String, Tuple2<WsIOInfo, String>>> wrapperByType =
+		final Map<TypeElement, Map<String, Tuple2<WsIOExecutableInfo, String>>> wrapperByType =
 				WsIOFinder.findWrapperRecursively(rootTypeElements)
 						.filterValues(Map::nonEmpty);
 

@@ -1,6 +1,7 @@
 package com.fiberg.wsio.annotation;
 
 import jakarta.xml.bind.annotation.adapters.XmlAdapter;
+import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -12,9 +13,12 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.PARAMETER })
-public @interface WsIOAdapter {
+public @interface WsIOJavaTypeAdapter {
 
-	/** Adapter class to be used by the parameter */
+	/** Class to be used by the adapter */
 	Class<? extends XmlAdapter<?, ?>> value();
+
+	/** Type to be used by the adapter */
+	Class<?> type() default XmlJavaTypeAdapter.DEFAULT.class;
 
 }

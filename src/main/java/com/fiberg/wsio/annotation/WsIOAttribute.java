@@ -9,7 +9,16 @@ import java.lang.annotation.Target;
  * <p>Annotation used to specify if a parameter is an attribute.</p>
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.PARAMETER })
+@Target({ ElementType.METHOD, ElementType.PARAMETER })
 public @interface WsIOAttribute {
+
+    /** Name of the attribute */
+    String name() default "##default";
+
+    /** Required of the attribute */
+    boolean required() default false;
+
+    /** Namespace of the attribute */
+    String namespace() default "##default";
 
 }
