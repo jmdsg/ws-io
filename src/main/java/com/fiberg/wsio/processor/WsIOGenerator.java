@@ -30,7 +30,6 @@ import java.io.Writer;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.function.Predicate;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static com.fiberg.wsio.processor.WsIOConstant.*;
@@ -436,8 +435,27 @@ class WsIOGenerator {
 			int constants = 0;
 			for (Element enclosed : element.getEnclosedElements()) {
 				if (ElementKind.ENUM_CONSTANT.equals(enclosed.getKind())) {
-					builder = builder.addEnumConstant(enclosed.getSimpleName().toString());
+
+					List<AnnotationSpec.Builder> builders = List.of();
+					AnnotationMirror xmlEnumValueAdapterMirror = WsIOUtils.getAnnotationMirror(enclosed, XmlEnumValue.class);
+					if (xmlEnumValueAdapterMirror != null) {
+						AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlEnumValue.class);
+						String xmlValue = WsIOUtils.getAnnotationStringValue(xmlEnumValueAdapterMirror, "value");
+						if (xmlValue != null) {
+							xmlBuilder = xmlBuilder.addMember("value", "$L", xmlValue);
+						}
+						builders = builders.append(xmlBuilder);
+					}
+
+					List<AnnotationSpec> annotations = builders.map(AnnotationSpec.Builder::build);
+
+					builder = builder.addEnumConstant(enclosed.getSimpleName().toString(),
+							TypeSpec.anonymousClassBuilder("")
+									.addAnnotations(annotations)
+									.build());
+
 					constants++;
+
 				}
 			}
 
@@ -1501,7 +1519,7 @@ class WsIOGenerator {
 	/**
 	 * Method that generates the fields, methods, interfaces and annotations of wrapper additionals.
 	 *
-	 * @param wrappers list of wrapper enums
+	 * @param wrappers list of wrappers
 	 * @param fieldNames names of the fields
 	 * @return fields, methods, interfaces and annotations of wrapper additionals
 	 */
