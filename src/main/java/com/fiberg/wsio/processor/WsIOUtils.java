@@ -14,6 +14,7 @@ import jakarta.jws.WebResult;
 import jakarta.xml.bind.annotation.XmlAttribute;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElementWrapper;
+import jakarta.xml.bind.annotation.XmlTransient;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapters;
 import org.apache.commons.lang3.ObjectUtils;
@@ -473,6 +474,18 @@ final class WsIOUtils {
 				externalAttributeMirror, "required", Boolean.class
 		);
 
+		AnnotationMirror externalTransientMirror = WsIOUtils.getAnnotationMirror(element, XmlTransient.class);
+		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleTransientMirrors = WsIOUtils.getQualifiedAnnotationMirror(
+				element, WsIOTransient.class, WsIOTransients.class, qualifier
+		);
+
+		AnnotationMirror internalQualifiedTransientMirror = Option.of(internalTupleTransientMirrors).map(Tuple2::_1).getOrNull();
+		AnnotationMirror internalDefaultTransientMirror = Option.of(internalTupleTransientMirrors).map(Tuple2::_2).getOrNull();
+
+		AnnotationMirror transientMirror = ObjectUtils.firstNonNull(
+				internalQualifiedTransientMirror, internalDefaultTransientMirror, externalTransientMirror
+		);
+
 		List<AnnotationMirror> externalAdapterMirrors = WsIOUtils.getAnnotationMirrors(element, XmlJavaTypeAdapter.class, XmlJavaTypeAdapters.class);
 		Tuple2<List<AnnotationMirror>, List<AnnotationMirror>> internalTupleAdapterMirrors = WsIOUtils.getQualifiedAnnotationMirrors(
 				element, WsIOJavaTypeAdapter.class, WsIOJavaTypeAdapters.class, qualifier
@@ -550,6 +563,7 @@ final class WsIOUtils {
 		boolean elementPresent = elementMirror != null;
 		boolean elementWrapperPresent = elementWrapperMirror != null;
 		boolean attributePresent = attributeMirror != null;
+		boolean transientPresent = transientMirror != null;
 		boolean adapterPresent = adapterMirrors != null;
 
 		/* Get the ws io qualifier prefix */
@@ -591,8 +605,9 @@ final class WsIOUtils {
 				attributeNamespace,
 				attributeRequired,
 				adapterPresent,
-				qualifierInfo,
-				adapterInfos
+				adapterInfos,
+				transientPresent,
+				qualifierInfo
 		);
 
 	}

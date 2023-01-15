@@ -663,9 +663,9 @@ class WsIOGenerator {
 			WsIOQualifierInfo qualifierInfo = WsIOQualifierInfo.of(prefixClassName, suffixClassName);
 
 			List<Class<?>> forwardedGetterExcludeClasses = List.of(
-					XmlJavaTypeAdapter.class, XmlAttribute.class, XmlElementWrapper.class, XmlElement.class,
-					WsIOJavaTypeAdapter.class, WsIOAttribute.class, WsIOElementWrapper.class, WsIOElement.class,
-					WsIOJavaTypeAdapters.class, WsIOAttributes.class, WsIOElementWrappers.class, WsIOElements.class
+					XmlJavaTypeAdapter.class, XmlAttribute.class, XmlElementWrapper.class, XmlElement.class, XmlTransient.class,
+					WsIOJavaTypeAdapter.class, WsIOAttribute.class, WsIOElementWrapper.class, WsIOElement.class, WsIOTransient.class,
+					WsIOJavaTypeAdapters.class, WsIOAttributes.class, WsIOElementWrappers.class, WsIOElements.class, WsIOTransients.class
 			);
 
 			WsIOMemberInfo getterMemberInfo = WsIOUtils.extractMemberInfo(getter, qualifierInfo);
@@ -1239,9 +1239,9 @@ class WsIOGenerator {
 
 								/* Get the forwarded and the xml annotations */
 								List<Class<?>> forwardedGetterExcludeClasses = List.of(
-										XmlJavaTypeAdapter.class, XmlAttribute.class, XmlElementWrapper.class, XmlElement.class,
-										WsIOJavaTypeAdapter.class, WsIOAttribute.class, WsIOElementWrapper.class, WsIOElement.class,
-										WsIOJavaTypeAdapters.class, WsIOAttributes.class, WsIOElementWrappers.class, WsIOElements.class
+										XmlJavaTypeAdapter.class, XmlAttribute.class, XmlElementWrapper.class, XmlElement.class, XmlTransient.class,
+										WsIOJavaTypeAdapter.class, WsIOAttribute.class, WsIOElementWrapper.class, WsIOElement.class, WsIOTransient.class,
+										WsIOJavaTypeAdapters.class, WsIOAttributes.class, WsIOElementWrappers.class, WsIOElements.class, WsIOTransients.class
 								);
 								List<AnnotationSpec> forwardedGetterAnnotations = generateForwardAnnotations(getterExecutable, forwardedGetterExcludeClasses, null);
 								List<AnnotationSpec> xmlGetterAnnotations = generateXmlAnnotations(memberWrappedInfo, null);
@@ -1372,9 +1372,9 @@ class WsIOGenerator {
 						/* Get the forwarded annotations of the getter method */
 						if (getterExecutable != null) {
 							List<Class<?>> forwardedGetterExcludeClasses = List.of(
-									XmlJavaTypeAdapter.class, XmlAttribute.class, XmlElementWrapper.class, XmlElement.class,
-									WsIOJavaTypeAdapter.class, WsIOAttribute.class, WsIOElementWrapper.class, WsIOElement.class,
-									WsIOJavaTypeAdapters.class, WsIOAttributes.class, WsIOElementWrappers.class, WsIOElements.class
+									XmlJavaTypeAdapter.class, XmlAttribute.class, XmlElementWrapper.class, XmlElement.class, XmlTransient.class,
+									WsIOJavaTypeAdapter.class, WsIOAttribute.class, WsIOElementWrapper.class, WsIOElement.class, WsIOTransient.class,
+									WsIOJavaTypeAdapters.class, WsIOAttributes.class, WsIOElementWrappers.class, WsIOElements.class, WsIOTransients.class
 							);
 							List<AnnotationSpec> forwardedGetterAnnotations = generateForwardAnnotations(getterExecutable, forwardedGetterExcludeClasses, null);
 							internalGetAnnotations = internalGetAnnotations.appendAll(
@@ -1579,6 +1579,14 @@ class WsIOGenerator {
 					builders = builders.append(builder);
 
 				}
+
+			}
+
+			if (memberInfo.getTransientPresent()) {
+
+				AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlTransient.class);
+
+				builders = builders.append(builder);
 
 			}
 

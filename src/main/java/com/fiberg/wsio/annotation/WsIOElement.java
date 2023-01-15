@@ -5,7 +5,7 @@ import jakarta.xml.bind.annotation.XmlElement;
 import java.lang.annotation.*;
 
 /**
- * <p>Annotation used to specify if a parameter should be wrapped.</p>
+ * <p>Annotation used to specify the element info.</p>
  */
 @Repeatable(WsIOElements.class)
 @Retention(RetentionPolicy.RUNTIME)

@@ -57,9 +57,11 @@ class WsIOMemberInfo {
 
 	private Boolean adapterPresent;
 
-	private WsIOQualifierInfo qualifierInfo;
-
 	private List<WsIOAdapterInfo> adapterInfos;
+
+	private Boolean transientPresent;
+
+	private WsIOQualifierInfo qualifierInfo;
 
 	public static WsIOMemberInfo of(Element typeElement,
 									TypeMirror typeMirror,
@@ -86,8 +88,9 @@ class WsIOMemberInfo {
 									String attributeNamespace,
 									Boolean attributeRequired,
 									Boolean adapterPresent,
-									WsIOQualifierInfo qualifierInfo,
-									List<WsIOAdapterInfo> adapterInfos) {
+									List<WsIOAdapterInfo> adapterInfos,
+									Boolean transientPresent,
+									WsIOQualifierInfo qualifierInfo) {
 
 		WsIOMemberInfo info = new WsIOMemberInfo();
 		info.typeElement = typeElement;
@@ -115,8 +118,9 @@ class WsIOMemberInfo {
 		info.attributeNamespace = attributeNamespace;
 		info.attributeRequired = attributeRequired;
 		info.adapterPresent = adapterPresent;
-		info.qualifierInfo = qualifierInfo;
 		info.adapterInfos = adapterInfos;
+		info.transientPresent = transientPresent;
+		info.qualifierInfo = qualifierInfo;
 		return info;
 
 	}
@@ -321,20 +325,28 @@ class WsIOMemberInfo {
 		this.adapterPresent = adapterPresent;
 	}
 
-	public WsIOQualifierInfo getQualifierInfo() {
-		return qualifierInfo;
-	}
-
-	public void setQualifierInfo(WsIOQualifierInfo qualifierInfo) {
-		this.qualifierInfo = qualifierInfo;
-	}
-
 	public List<WsIOAdapterInfo> getAdapterInfos() {
 		return adapterInfos;
 	}
 
 	public void setAdapterInfos(List<WsIOAdapterInfo> adapterInfos) {
 		this.adapterInfos = adapterInfos;
+	}
+
+	public Boolean getTransientPresent() {
+		return transientPresent;
+	}
+
+	public void setTransientPresent(Boolean transientPresent) {
+		this.transientPresent = transientPresent;
+	}
+
+	public WsIOQualifierInfo getQualifierInfo() {
+		return qualifierInfo;
+	}
+
+	public void setQualifierInfo(WsIOQualifierInfo qualifierInfo) {
+		this.qualifierInfo = qualifierInfo;
 	}
 
 	@Override
@@ -393,9 +405,11 @@ class WsIOMemberInfo {
 			return false;
 		if (adapterPresent != null ? !adapterPresent.equals(wsIOMemberInfo.adapterPresent) : wsIOMemberInfo.adapterPresent != null)
 			return false;
-		if (qualifierInfo != null ? !qualifierInfo.equals(wsIOMemberInfo.qualifierInfo) : wsIOMemberInfo.qualifierInfo != null)
+		if (adapterInfos != null ? !adapterInfos.equals(wsIOMemberInfo.adapterInfos) : wsIOMemberInfo.adapterInfos != null)
 			return false;
-		return adapterInfos != null ? adapterInfos.equals(wsIOMemberInfo.adapterInfos) : wsIOMemberInfo.adapterInfos == null;
+		if (transientPresent != null ? !transientPresent.equals(wsIOMemberInfo.transientPresent) : wsIOMemberInfo.transientPresent != null)
+			return false;
+		return qualifierInfo != null ? qualifierInfo.equals(wsIOMemberInfo.qualifierInfo) : wsIOMemberInfo.qualifierInfo == null;
 	}
 
 	@Override
@@ -425,8 +439,9 @@ class WsIOMemberInfo {
 		result = 31 * result + (attributeNamespace != null ? attributeNamespace.hashCode() : 0);
 		result = 31 * result + (attributeRequired != null ? attributeRequired.hashCode() : 0);
 		result = 31 * result + (adapterPresent != null ? adapterPresent.hashCode() : 0);
-		result = 31 * result + (qualifierInfo != null ? qualifierInfo.hashCode() : 0);
 		result = 31 * result + (adapterInfos != null ? adapterInfos.hashCode() : 0);
+		result = 31 * result + (transientPresent != null ? transientPresent.hashCode() : 0);
+		result = 31 * result + (qualifierInfo != null ? qualifierInfo.hashCode() : 0);
 		return result;
 	}
 
@@ -458,8 +473,9 @@ class WsIOMemberInfo {
 				", attributeNamespace='" + attributeNamespace + '\'' +
 				", attributeRequired='" + attributeRequired + '\'' +
 				", adapterPresent='" + adapterPresent + '\'' +
-				", qualifierInfo='" + qualifierInfo + '\'' +
 				", adapterInfos='" + adapterInfos + '\'' +
+				", transientPresent='" + transientPresent + '\'' +
+				", qualifierInfo='" + qualifierInfo + '\'' +
 				'}';
 	}
 
