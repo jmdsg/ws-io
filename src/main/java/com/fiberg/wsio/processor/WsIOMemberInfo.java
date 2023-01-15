@@ -57,7 +57,9 @@ class WsIOMemberInfo {
 
 	private Boolean adapterPresent;
 
-	private List<WsIOAdapterInfo> adapterInfos;
+	private String adapterValue;
+
+	private String adapterType;
 
 	private Boolean transientPresent;
 
@@ -88,7 +90,8 @@ class WsIOMemberInfo {
 									String attributeNamespace,
 									Boolean attributeRequired,
 									Boolean adapterPresent,
-									List<WsIOAdapterInfo> adapterInfos,
+									String adapterValue,
+									String adapterType,
 									Boolean transientPresent,
 									WsIOQualifierInfo qualifierInfo) {
 
@@ -118,7 +121,8 @@ class WsIOMemberInfo {
 		info.attributeNamespace = attributeNamespace;
 		info.attributeRequired = attributeRequired;
 		info.adapterPresent = adapterPresent;
-		info.adapterInfos = adapterInfos;
+		info.adapterValue = adapterValue;
+		info.adapterType = adapterType;
 		info.transientPresent = transientPresent;
 		info.qualifierInfo = qualifierInfo;
 		return info;
@@ -325,12 +329,20 @@ class WsIOMemberInfo {
 		this.adapterPresent = adapterPresent;
 	}
 
-	public List<WsIOAdapterInfo> getAdapterInfos() {
-		return adapterInfos;
+	public String getAdapterValue() {
+		return adapterValue;
 	}
 
-	public void setAdapterInfos(List<WsIOAdapterInfo> adapterInfos) {
-		this.adapterInfos = adapterInfos;
+	public void setAdapterValue(String adapterValue) {
+		this.adapterValue = adapterValue;
+	}
+
+	public String getAdapterType() {
+		return adapterType;
+	}
+
+	public void setAdapterType(String adapterType) {
+		this.adapterType = adapterType;
 	}
 
 	public Boolean getTransientPresent() {
@@ -405,7 +417,9 @@ class WsIOMemberInfo {
 			return false;
 		if (adapterPresent != null ? !adapterPresent.equals(wsIOMemberInfo.adapterPresent) : wsIOMemberInfo.adapterPresent != null)
 			return false;
-		if (adapterInfos != null ? !adapterInfos.equals(wsIOMemberInfo.adapterInfos) : wsIOMemberInfo.adapterInfos != null)
+		if (adapterValue != null ? !adapterValue.equals(wsIOMemberInfo.adapterValue) : wsIOMemberInfo.adapterValue != null)
+			return false;
+		if (adapterType != null ? !adapterType.equals(wsIOMemberInfo.adapterType) : wsIOMemberInfo.adapterType != null)
 			return false;
 		if (transientPresent != null ? !transientPresent.equals(wsIOMemberInfo.transientPresent) : wsIOMemberInfo.transientPresent != null)
 			return false;
@@ -439,7 +453,8 @@ class WsIOMemberInfo {
 		result = 31 * result + (attributeNamespace != null ? attributeNamespace.hashCode() : 0);
 		result = 31 * result + (attributeRequired != null ? attributeRequired.hashCode() : 0);
 		result = 31 * result + (adapterPresent != null ? adapterPresent.hashCode() : 0);
-		result = 31 * result + (adapterInfos != null ? adapterInfos.hashCode() : 0);
+		result = 31 * result + (adapterValue != null ? adapterValue.hashCode() : 0);
+		result = 31 * result + (adapterType != null ? adapterType.hashCode() : 0);
 		result = 31 * result + (transientPresent != null ? transientPresent.hashCode() : 0);
 		result = 31 * result + (qualifierInfo != null ? qualifierInfo.hashCode() : 0);
 		return result;
@@ -473,7 +488,8 @@ class WsIOMemberInfo {
 				", attributeNamespace='" + attributeNamespace + '\'' +
 				", attributeRequired='" + attributeRequired + '\'' +
 				", adapterPresent='" + adapterPresent + '\'' +
-				", adapterInfos='" + adapterInfos + '\'' +
+				", adapterValue='" + adapterValue + '\'' +
+				", adapterType='" + adapterType + '\'' +
 				", transientPresent='" + transientPresent + '\'' +
 				", qualifierInfo='" + qualifierInfo + '\'' +
 				'}';

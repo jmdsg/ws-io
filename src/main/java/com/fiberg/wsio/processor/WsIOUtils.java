@@ -486,39 +486,35 @@ final class WsIOUtils {
 				internalQualifiedTransientMirror, internalDefaultTransientMirror, externalTransientMirror
 		);
 
-		List<AnnotationMirror> externalAdapterMirrors = WsIOUtils.getAnnotationMirrors(element, XmlJavaTypeAdapter.class, XmlJavaTypeAdapters.class);
-		Tuple2<List<AnnotationMirror>, List<AnnotationMirror>> internalTupleAdapterMirrors = WsIOUtils.getQualifiedAnnotationMirrors(
+		AnnotationMirror externalAdapterMirror = WsIOUtils.getAnnotationMirror(element, XmlJavaTypeAdapter.class);
+		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleAdapterMirror = WsIOUtils.getQualifiedAnnotationMirror(
 				element, WsIOJavaTypeAdapter.class, WsIOJavaTypeAdapters.class, qualifier
 		);
 
-		List<AnnotationMirror> internalQualifiedAdapterMirrors = Option.of(internalTupleAdapterMirrors).map(Tuple2::_1).getOrNull();
-		List<AnnotationMirror> internalDefaultAdapterMirrors = Option.of(internalTupleAdapterMirrors).map(Tuple2::_2).getOrNull();
+		AnnotationMirror internalQualifiedAdapterMirror = Option.of(internalTupleAdapterMirror).map(Tuple2::_1).getOrNull();
+		AnnotationMirror internalDefaultAdapterMirror = Option.of(internalTupleAdapterMirror).map(Tuple2::_2).getOrNull();
 
-		List<AnnotationMirror> internalAdapterMirrors = List.of(internalQualifiedAdapterMirrors, internalDefaultAdapterMirrors)
-				.filter(Objects::nonNull)
-				.flatMap(Function.identity());
+		AnnotationMirror adapterMirror = ObjectUtils.firstNonNull(
+				internalQualifiedAdapterMirror, internalDefaultAdapterMirror, externalAdapterMirror
+		);
 
-		List<AnnotationMirror> adapterMirrors = Option.of(
-				List.of(internalAdapterMirrors, externalAdapterMirrors)
-						.filter(Objects::nonNull)
-						.flatMap(Function.identity())
-						.filter(Objects::nonNull))
-				.filter(Objects::nonNull)
-				.filter(List::nonEmpty)
-				.getOrNull();
+		/* Get the internal qualified adapter value of the adapter */
+		String internalQualifiedAdapterValue = WsIOUtils.getAnnotationLiteralValue(internalQualifiedAdapterMirror, "value");
 
-		List<WsIOAdapterInfo> adapterInfos = Option.of(adapterMirrors)
-				.map(infos -> infos.map(adapterMirror -> {
+		/* Get the internal qualified adapter type of the adapter */
+		String internalQualifiedAdapterType = WsIOUtils.getAnnotationLiteralValue(internalQualifiedAdapterMirror, "type");
 
-					/* Get the adapter value of the adapter */
-					String adapterValue = WsIOUtils.getAnnotationLiteralValue(adapterMirror, "value");
+		/* Get the internal default adapter value of the adapter */
+		String internalDefaultAdapterValue = WsIOUtils.getAnnotationLiteralValue(internalDefaultAdapterMirror, "value");
 
-					/* Get the adapter type of the adapter */
-					String adapterType = WsIOUtils.getAnnotationLiteralValue(adapterMirror, "type");
+		/* Get the internal default adapter type of the adapter */
+		String internalDefaultAdapterType = WsIOUtils.getAnnotationLiteralValue(internalDefaultAdapterMirror, "type");
 
-					return WsIOAdapterInfo.of(adapterValue, adapterType);
+		/* Get the external adapter value of the adapter */
+		String externalAdapterValue = WsIOUtils.getAnnotationLiteralValue(externalAdapterMirror, "value");
 
-				})).getOrNull();
+		/* Get the external adapter type of the adapter */
+		String externalAdapterType = WsIOUtils.getAnnotationLiteralValue(externalAdapterMirror, "type");
 
 		/* Get the priority param values */
 		String paramName = StringUtils.firstNonBlank(internalParamName, externalParamName);
@@ -559,12 +555,18 @@ final class WsIOUtils {
 		String attributeNamespace = StringUtils.firstNonBlank(internalAttributeNamespace, externalAttributeNamespace);
 		Boolean attributeRequired = ObjectUtils.firstNonNull(internalAttributeRequired, externalAttributeRequired);
 
+		/* Get the priority adapter values */
+		String internalAdapterValue = StringUtils.firstNonBlank(internalQualifiedAdapterValue, internalDefaultAdapterValue);
+		String internalAdapterType = StringUtils.firstNonBlank(internalQualifiedAdapterType, internalDefaultAdapterType);
+		String adapterValue = StringUtils.firstNonBlank(internalAdapterValue, externalAdapterValue);
+		String adapterType = StringUtils.firstNonBlank(internalAdapterType, externalAdapterType);
+
 		boolean paramPresent = paramMirror != null;
 		boolean elementPresent = elementMirror != null;
 		boolean elementWrapperPresent = elementWrapperMirror != null;
 		boolean attributePresent = attributeMirror != null;
 		boolean transientPresent = transientMirror != null;
-		boolean adapterPresent = adapterMirrors != null;
+		boolean adapterPresent = adapterMirror != null;
 
 		/* Get the ws io qualifier prefix */
 		String qualifierPrefix = WsIOUtils.getAnnotationTypeValue(
@@ -605,7 +607,8 @@ final class WsIOUtils {
 				attributeNamespace,
 				attributeRequired,
 				adapterPresent,
-				adapterInfos,
+				adapterValue,
+				adapterType,
 				transientPresent,
 				qualifierInfo
 		);

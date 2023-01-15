@@ -1564,21 +1564,17 @@ class WsIOGenerator {
 
 			if (memberInfo.getAdapterPresent()) {
 
-				for (WsIOAdapterInfo adapterInfo : memberInfo.getAdapterInfos()) {
+				AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlJavaTypeAdapter.class);
 
-					AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlJavaTypeAdapter.class);
-
-					if (adapterInfo.getAdapterValue() != null) {
-						builder = builder.addMember("value", "$L", adapterInfo.getAdapterValue());
-					}
-
-					if (adapterInfo.getAdapterType() != null) {
-						builder = builder.addMember("value", "$L", adapterInfo.getAdapterType());
-					}
-
-					builders = builders.append(builder);
-
+				if (memberInfo.getAdapterValue() != null) {
+					builder = builder.addMember("value", "$L", memberInfo.getAdapterValue());
 				}
+
+				if (memberInfo.getAdapterType() != null) {
+					builder = builder.addMember("type", "$L", memberInfo.getAdapterType());
+				}
+
+				builders = builders.append(builder);
 
 			}
 
