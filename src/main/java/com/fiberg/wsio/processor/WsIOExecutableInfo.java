@@ -14,7 +14,7 @@ class WsIOExecutableInfo {
 
 	private String operationName;
 
-	private List<WsIOParameterInfo> parameterInfos;
+	private List<WsIOMemberInfo> memberInfos;
 
 	private String returnName;
 
@@ -33,7 +33,7 @@ class WsIOExecutableInfo {
 	public static WsIOExecutableInfo of(ExecutableElement executableElement,
 										String methodName,
 										String operationName,
-										List<WsIOParameterInfo> parameterInfos,
+										List<WsIOMemberInfo> memberInfos,
 										String returnName,
 										String returnNameSpace,
 										TypeMirror returnType,
@@ -46,7 +46,7 @@ class WsIOExecutableInfo {
 		info.executableElement = executableElement;
 		info.methodName = methodName;
 		info.operationName = operationName;
-		info.parameterInfos = parameterInfos;
+		info.memberInfos = memberInfos;
 		info.returnName = returnName;
 		info.returnNameSpace = returnNameSpace;
 		info.returnType = returnType;
@@ -82,12 +82,12 @@ class WsIOExecutableInfo {
 		this.executableElement = executableElement;
 	}
 
-	public List<WsIOParameterInfo> getParameterInfos() {
-		return parameterInfos;
+	public List<WsIOMemberInfo> getMemberInfos() {
+		return memberInfos;
 	}
 
-	public void setParameterInfos(List<WsIOParameterInfo> parameterInfos) {
-		this.parameterInfos = parameterInfos;
+	public void setMemberInfos(List<WsIOMemberInfo> memberInfos) {
+		this.memberInfos = memberInfos;
 	}
 
 	public String getReturnName() {
@@ -158,7 +158,7 @@ class WsIOExecutableInfo {
 			return false;
 		if (executableElement != null ? !executableElement.equals(wsIOExecutableInfo.executableElement) : wsIOExecutableInfo.executableElement != null)
 			return false;
-		if (parameterInfos != null ? !parameterInfos.equals(wsIOExecutableInfo.parameterInfos) : wsIOExecutableInfo.parameterInfos != null)
+		if (memberInfos != null ? !memberInfos.equals(wsIOExecutableInfo.memberInfos) : wsIOExecutableInfo.memberInfos != null)
 			return false;
 		if (returnName != null ? !returnName.equals(wsIOExecutableInfo.returnName) : wsIOExecutableInfo.returnName != null) return false;
 		if (returnNameSpace != null ? !returnNameSpace.equals(wsIOExecutableInfo.returnNameSpace) : wsIOExecutableInfo.returnNameSpace != null)
@@ -178,7 +178,7 @@ class WsIOExecutableInfo {
 		int result = methodName != null ? methodName.hashCode() : 0;
 		result = 31 * result + (operationName != null ? operationName.hashCode() : 0);
 		result = 31 * result + (executableElement != null ? executableElement.hashCode() : 0);
-		result = 31 * result + (parameterInfos != null ? parameterInfos.hashCode() : 0);
+		result = 31 * result + (memberInfos != null ? memberInfos.hashCode() : 0);
 		result = 31 * result + (returnName != null ? returnName.hashCode() : 0);
 		result = 31 * result + (returnNameSpace != null ? returnNameSpace.hashCode() : 0);
 		result = 31 * result + (returnType != null ? returnType.hashCode() : 0);
@@ -195,7 +195,7 @@ class WsIOExecutableInfo {
 				"methodName='" + methodName + '\'' +
 				", operationName='" + operationName + '\'' +
 				", executableElement=" + executableElement +
-				", parameterInfos=" + parameterInfos +
+				", MemberInfos=" + memberInfos +
 				", returnName='" + returnName + '\'' +
 				", returnNameSpace='" + returnNameSpace + '\'' +
 				", returnType=" + returnType +

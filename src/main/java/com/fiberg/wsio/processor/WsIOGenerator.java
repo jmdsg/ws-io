@@ -1,9 +1,8 @@
 package com.fiberg.wsio.processor;
 
-import com.fiberg.wsio.annotation.Case;
-import com.fiberg.wsio.annotation.WsIOAnnotate;
-import com.fiberg.wsio.annotation.WsIOUseHideEmpty;
+import com.fiberg.wsio.annotation.*;
 import com.fiberg.wsio.handler.state.*;
+import com.fiberg.wsio.handler.state.WsIOItem;
 import com.fiberg.wsio.handler.time.WsIOInstant;
 import com.fiberg.wsio.handler.time.WsIOTime;
 import com.fiberg.wsio.util.WsIOUtil;
@@ -14,6 +13,7 @@ import io.vavr.collection.*;
 import io.vavr.control.Option;
 import jakarta.xml.bind.annotation.*;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.WordUtils;
 
@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Comparator;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -100,9 +101,11 @@ class WsIOGenerator {
 					.toMap(tuple -> tuple.map1(type -> type.getQualifiedName().toString()));
 
 			/* Context of the generation */
-			WsIOContext context = new WsIOContext(prefixName, suffixName,
+			WsIOContext context = new WsIOContext(
+					prefixName, suffixName,
 					StringUtils.EMPTY, StringUtils.EMPTY, messageClasses, cloneClasses,
-					HashMap.empty(), typeByName, WsIOGenerate.CLONE);
+					HashMap.empty(), typeByName, WsIOGenerate.CLONE
+			);
 
 			/* Create a delegate for each group and type element */
 			return elements.map((tuple) -> {
@@ -151,8 +154,10 @@ class WsIOGenerator {
 						.toMap(tuple -> tuple.map1(type -> type.getQualifiedName().toString()));
 
 				/* Context of the generation */
-				WsIOContext context = new WsIOContext(StringUtils.EMPTY, StringUtils.EMPTY, prefixName, suffixName,
-						messageClasses, cloneClasses, HashMap.empty(), typeByName, WsIOGenerate.MESSAGE);
+				WsIOContext context = new WsIOContext(
+						StringUtils.EMPTY, StringUtils.EMPTY, prefixName, suffixName,
+						messageClasses, cloneClasses, HashMap.empty(), typeByName, WsIOGenerate.MESSAGE
+				);
 
 				/* Create each delegate */
 				TypeSpec typeSpec = generateDelegateType(element, context);
@@ -207,9 +212,11 @@ class WsIOGenerator {
 					String suffixWrapperName = wrapper._2();
 
 					/* Context of the generation */
-					WsIOContext context = new WsIOContext(prefixClassName, suffixClassName, prefixWrapperName,
+					WsIOContext context = new WsIOContext(
+							prefixClassName, suffixClassName, prefixWrapperName,
 							suffixWrapperName, messageClasses, cloneClasses,
-							cloneMessageClasses, typeByName, WsIOGenerate.CLONE_MESSAGE);
+							cloneMessageClasses, typeByName, WsIOGenerate.CLONE_MESSAGE
+					);
 
 					/* Create each delegate */
 					TypeSpec typeSpec = generateDelegateType(element, context);
@@ -650,16 +657,42 @@ class WsIOGenerator {
 			VariableElement parameter = setter.getParameters().get(0);
 			TypeMirror parameterType = parameter.asType();
 
+			String prefixClassName = context.getPrefixClassName();
+			String suffixClassName = context.getSuffixClassName();
+
+			WsIOQualifierInfo qualifierInfo = WsIOQualifierInfo.of(prefixClassName, suffixClassName);
+
+			List<Class<?>> forwardedGetterExcludeClasses = List.of(
+					XmlJavaTypeAdapter.class, XmlAttribute.class, XmlElementWrapper.class, XmlElement.class,
+					WsIOJavaTypeAdapter.class, WsIOAttribute.class, WsIOElementWrapper.class, WsIOElement.class,
+					WsIOJavaTypeAdapters.class, WsIOAttributes.class, WsIOElementWrappers.class, WsIOElements.class
+			);
+
+			WsIOMemberInfo getterMemberInfo = WsIOUtils.extractMemberInfo(getter, qualifierInfo);
+
+			List<AnnotationSpec> setterXmlAnnotations = List.of();
+			List<AnnotationSpec> setterForwardedAnnotations = generateForwardAnnotations(setter, null, null);
+
+			List<AnnotationSpec> getterXmlAnnotations = generateXmlAnnotations(getterMemberInfo, null);
+			List<AnnotationSpec> getterForwardedAnnotations = generateForwardAnnotations(getter, forwardedGetterExcludeClasses, null);
+
+			List<AnnotationSpec> setterCombinedAnnotations = List.of(setterXmlAnnotations, setterForwardedAnnotations)
+					.filter(Objects::nonNull)
+					.flatMap(Function.identity());
+
+			List<AnnotationSpec> getterCombinedAnnotations = List.of(getterXmlAnnotations, getterForwardedAnnotations)
+					.filter(Objects::nonNull)
+					.flatMap(Function.identity());
+
 			/* Current annotations */
-			List<AnnotationSpec> setterAnnotations = annotations.getOrElse(setterName, List.empty());
-			List<AnnotationSpec> getterAnnotations = annotations.getOrElse(getterName, generateGetterAnnotations(
-					getter, null, null, null
-			));
+			List<AnnotationSpec> setterAnnotations = annotations.getOrElse(setterName, setterCombinedAnnotations);
+			List<AnnotationSpec> getterAnnotations = annotations.getOrElse(getterName, getterCombinedAnnotations);
 
 			/* Return the methods generated recursively */
 			return WsIODelegator.generatePropertyDelegates(returnType, parameterType,
 					getter, setter, getterName, setterName, propertyName, delegator, getterName, setterName,
-					getterAnnotations, setterAnnotations, level, hideEmpties, context, messager);
+					getterAnnotations, setterAnnotations, level, hideEmpties, context, messager
+			);
 
 		};
 
@@ -917,32 +950,72 @@ class WsIOGenerator {
 		String suffixTypeName = WsIOType.RESPONSE.equals(type) ? RESPONSE_WRAPPER_SUFFIX : REQUEST_WRAPPER_SUFFIX;
 		String fullClassName = WsIOUtil.addWrap(WordUtils.capitalize(classSimpleName), prefixTypeName, suffixTypeName);
 
-		List<Tuple4<TypeMirror, String, WsIOQualifierInfo, WsIOParameterInfo>> descriptors = type == null ? List.of() : switch (type) {
-			case RESPONSE -> info.getParameterInfos()
+		List<Tuple4<TypeMirror, OperationIdentifier, WsIOQualifierInfo, WsIOMemberInfo>> descriptors = type == null ? List.of() : switch (type) {
+			case REQUEST -> info.getMemberInfos()
 					.zipWithIndex()
 					.map(tuple -> {
 
 						/* Get the index and the parameter */
 						Integer parameterIndex = tuple._2();
-						WsIOParameterInfo parameterInfo = tuple._1();
+						WsIOMemberInfo memberInfo = tuple._1();
 
 						/* Check if the type mirror is a mirror type and the qualifier info */
-						TypeMirror typeMirror = parameterInfo.getTypeMirror();
-						WsIOQualifierInfo qualifierInfo = parameterInfo.getQualifierInfo();
+						TypeMirror typeMirror = memberInfo.getTypeMirror();
+						WsIOQualifierInfo qualifierInfo = memberInfo.getQualifierInfo();
+
+						Boolean attributePresent = memberInfo.getAttributePresent();
+						Boolean elementPresent = memberInfo.getElementPresent();
+						Boolean elementWrapperPresent = memberInfo.getElementWrapperPresent();
+
+						String paramName = memberInfo.getParamName();
+						String attributeName = memberInfo.getAttributeName();
+						String elementName = memberInfo.getElementName();
+						String elementWrapperName = memberInfo.getElementWrapperName();
+
+						String calculatedElementName = !elementPresent
+								? paramName
+								: StringUtils.firstNonBlank(elementName, paramName);
+
+						String calculatedElementWrapperName = !elementWrapperPresent
+								? paramName
+								: StringUtils.firstNonBlank(elementWrapperName, paramName);
+
+						String calculatedAttributeName = !attributePresent
+								? paramName
+								: StringUtils.firstNonBlank(attributeName, paramName);
+
+						String calculatedMainElementName = !elementWrapperPresent
+								? calculatedElementName
+								: calculatedElementWrapperName;
+
+						String calculatedMainName = !attributePresent
+								? calculatedMainElementName
+								: calculatedAttributeName;
+
+						OperationType calculatedMainElementType = !elementWrapperPresent
+								? OperationType.ELEMENT
+								: OperationType.WRAPPER;
+
+						OperationType calculatedMainType = !attributePresent
+								? calculatedMainElementType
+								: OperationType.ATTRIBUTE;
 
 						/* Parameter name if present otherwise default value */
 						String defaultName = DEFAULT_PARAMETER + parameterIndex;
-						String parameterName = info.getParameterNames().get(index);
+						String parameterName = StringUtils.firstNonBlank(calculatedMainName, defaultName);
 
-						String argumentName = StringUtils.isNotBlank(parameterName) ? parameterName : defaultName;
+						OperationIdentifier operationIdentifier = OperationIdentifier.of(
+								calculatedMainType, parameterName,
+								calculatedAttributeName, calculatedElementName, calculatedElementWrapperName
+						);
 
-						return Tuple.of(typeMirror, argumentName, qualifierInfo, parameterInfo);
+						return Tuple.of(typeMirror, operationIdentifier, qualifierInfo, memberInfo);
 
 					});
-			case REQUEST -> {
+			case RESPONSE -> {
 
 				/* Set the parameter info to null */
-				WsIOParameterInfo parameterInfo = null;
+				WsIOMemberInfo memberInfo = null;
 				TypeMirror typeMirror = info.getReturnType();
 				WsIOQualifierInfo qualifierInfo = info.getReturnQualifierInfo();
 
@@ -950,8 +1023,12 @@ class WsIOGenerator {
 				String returnName = info.getReturnName();
 				String resultName = StringUtils.isNotBlank(returnName) ? returnName : DEFAULT_RESULT;
 
+				OperationIdentifier operationIdentifier = OperationIdentifier.of(
+						OperationType.DEFAULT, resultName, null, null, null
+				);
+
 				yield List.of(
-						Tuple.of(typeMirror, resultName, qualifierInfo, parameterInfo)
+						Tuple.of(typeMirror, operationIdentifier, qualifierInfo, memberInfo)
 				);
 
 			}
@@ -971,36 +1048,34 @@ class WsIOGenerator {
 
 		/* Iterate for each parameter and return type */
 		List<String> fieldNames = List.empty();
-		for (WsIOParameterInfo descriptor : descriptors) {
+		for (Tuple4<TypeMirror, OperationIdentifier, WsIOQualifierInfo, WsIOMemberInfo> descriptor : descriptors) {
 
 			/* Get mirror type, type element and name/required */
 			TypeMirror mirror = descriptor._1();
-			Tuple3<String, Boolean, Boolean> data = descriptor._2();
-
-			String name = data._1();
-			Boolean required = data._2();
-			Boolean nillable = data._3();
+			OperationIdentifier operationIdentifier = descriptor._2();
+			WsIOQualifierInfo qualifierInfo = descriptor._3();
+			WsIOMemberInfo memberInfo = descriptor._4();
 
 			/* Check mirror is not a no-type */
 			if (!(mirror instanceof NoType)) {
 
+				WsIOQualifierInfo qualifierDefaultInfo = WsIOQualifierInfo.of("", "");
+
+				String qualifierPrefix = Option.of(qualifierInfo)
+						.map(WsIOQualifierInfo::getQualifierPrefix)
+						.getOrNull();
+				String qualifierSuffix = Option.of(qualifierInfo)
+						.map(WsIOQualifierInfo::getQualifierSuffix)
+						.getOrNull();
+
 				/* Qualifier, prefixes and suffixes */
-				Tuple2<String, String> qualifier = descriptor._3();
-				String prefixClassName = Objects.nonNull(qualifier) ? qualifier._1() : StringUtils.EMPTY;
-				String suffixClassName = Objects.nonNull(qualifier) ? qualifier._2() : StringUtils.EMPTY;
+				String prefixClassName = ObjectUtils.firstNonNull(qualifierPrefix, StringUtils.EMPTY);
+				String suffixClassName = ObjectUtils.firstNonNull(qualifierSuffix, StringUtils.EMPTY);
 				String prefixWrapperName = WsIOType.RESPONSE.equals(type) ? RESPONSE_PREFIX : REQUEST_PREFIX;
 				String suffixWrapperName = WsIOType.RESPONSE.equals(type) ? RESPONSE_SUFFIX : REQUEST_SUFFIX;
-				WsIOGenerate generate = Objects.nonNull(qualifier) ? WsIOGenerate.CLONE_MESSAGE : WsIOGenerate.MESSAGE;
-
-				/* Attribute, wrapper and adapter */
-				Tuple3<Boolean, Tuple3<String, Boolean, Boolean>, String> additional = descriptor._4();
-				Boolean attribute = additional._1();
-				Tuple3<String, Boolean, Boolean> wrapper = additional._2();
-				String adapter = additional._3();
-
-				String wrapperName = wrapper == null ? null : wrapper._1();
-				Boolean wrapperRequired = wrapper == null ? null : wrapper._2();
-				Boolean wrapperNillable = wrapper == null ? null : wrapper._3();
+				WsIOGenerate generate = Objects.nonNull(qualifierInfo) && !qualifierDefaultInfo.equals(qualifierInfo)
+						? WsIOGenerate.CLONE_MESSAGE
+						: WsIOGenerate.MESSAGE;
 
 				/* Get identifier and get clone classes and clone message classes */
 				Tuple2<String, String> identifier = Tuple.of(prefixClassName, suffixClassName);
@@ -1010,39 +1085,47 @@ class WsIOGenerator {
 						map.get(identifier).map(packageName -> Tuple.of(key, packageName)));
 
 				/* Context of the generation */
-				WsIOContext context = new WsIOContext(prefixClassName, suffixClassName,
-						prefixWrapperName, suffixWrapperName, messageClasses, cloneClasses,
-						cloneMessageClasses, typeByName, generate);
+				WsIOContext context = new WsIOContext(
+						prefixClassName, suffixClassName,
+						prefixWrapperName, suffixWrapperName,
+						messageClasses, cloneClasses, cloneMessageClasses,
+						typeByName, generate
+				);
 
 				/* Recursive full type name */
 				TypeName internalType = context.getRecursiveFullTypeName(mirror,
 						true, false, true);
 
 				/* Lower and upper names */
-				String lowerName = WordUtils.uncapitalize(name);
-				String upperName = WordUtils.capitalize(name);
-
-				String lowerInner = wrapperName == null ? null : WordUtils.uncapitalize(wrapperName);
+				String mainName = operationIdentifier.getMainName();
+				String lowerMainName = WordUtils.uncapitalize(mainName);
+				String upperMainName = WordUtils.capitalize(mainName);
 
 				/* Internal and external chars */
 				String internalChar = Option.when(!nameSwap, separator).getOrElse("");
 				String externalChar  = Option.when(nameSwap, separator).getOrElse("");
 
 				/* Internal and external getter and setter names */
-				String internalGetName = String.format("get%s%s", upperName, internalChar);
-				String internalSetName = String.format("set%s%s", upperName, internalChar);
-				String externalGetName = String.format("get%s%s", upperName, externalChar);
-				String externalSetName = String.format("set%s%s", upperName, externalChar);
+				String internalGetName = String.format("get%s%s", upperMainName, internalChar);
+				String internalSetName = String.format("set%s%s", upperMainName, internalChar);
+				String externalGetName = String.format("get%s%s", upperMainName, externalChar);
+				String externalSetName = String.format("set%s%s", upperMainName, externalChar);
 
-				/* Internal and external parameter names */
-				String internalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
-						String.format("%s%s", lowerName, separator) : lowerName;
-				String externalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
-						String.format("%s%s", lowerName, separator) : lowerName;
+				/* Internal parameter names */
+				String internalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerMainName)
+						? String.join(lowerMainName, separator)
+						: lowerMainName;
+
+				/* External parameter names */
+				String externalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerMainName)
+						? String.join(lowerMainName, separator)
+						: lowerMainName;
 
 				/* Assign field name and add it to the fields */
-				String fieldName = WsIOConstant.DEFAULT_RESULT.equals(lowerName) ?
-						String.format("%s%s", lowerName, separator) : lowerName;
+				String fieldName = WsIOConstant.DEFAULT_RESULT.equals(lowerMainName)
+						? String.join(lowerMainName, separator)
+						: lowerMainName;
+
 				fieldNames = fieldNames.append(fieldName);
 
 				/* List with the external get annotations */
@@ -1095,7 +1178,7 @@ class WsIOGenerator {
 				};
 
 				/* Check if inner wrapper is defined */
-				if (info.getWrappers().contains(WsIOWrapped.INNER_WRAPPED)
+				if (info.getExecutableWrappers().contains(WsIOWrapped.INNER_WRAPPED)
 						&& isValidInnerType.test(mirror)
 						&& WsIOType.RESPONSE.equals(type)) {
 
@@ -1126,8 +1209,7 @@ class WsIOGenerator {
 							getMatchingProperties(getterPriorities, setterPriorities);
 
 					/* Map from property to getter and setter properties */
-					Function1<ExecutableElement, String> getExecutableName = executable ->
-							executable.getSimpleName().toString();
+					Function1<ExecutableElement, String> getExecutableName = executable -> executable.getSimpleName().toString();
 					Map<String, Tuple4<String, String, ExecutableElement, ExecutableElement>> propertyToProperties = properties
 							.map(tuple -> Tuple.of(getExecutableName.apply(tuple._1()),
 									getExecutableName.apply(tuple._2()),
@@ -1138,9 +1220,9 @@ class WsIOGenerator {
 					Map<String, Tuple3<String, String, String>> propertyToFinals = propertyToProperties
 							.map((propertyName, propertyNames) ->
 									Tuple.of(propertyName,  Tuple.of(
-											String.format("%s%s", propertyName, separator),
-											String.format("%s%s", propertyNames._1(), separator),
-											String.format("%s%s", propertyNames._2(), separator))))
+											String.join(propertyName, separator),
+											String.join(propertyNames._1(), separator),
+											String.join(propertyNames._2(), separator))))
 							.filter(tuple -> !nameSwap);
 
 					/* Getter annotations */
@@ -1148,12 +1230,40 @@ class WsIOGenerator {
 							.toMap(tuple -> tuple._2()._1(), Tuple2::_1)
 							.mapValues(propertyName -> {
 
-								/* the getter is the first element */
-								ExecutableElement execElement = propertyToProperties.get(propertyName)
+								/* Getter is the first element */
+								ExecutableElement getterExecutable = propertyToProperties.get(propertyName)
 										.map(Tuple4::_3)
 										.getOrNull();
 
-								return generateGetterAnnotations(execElement, propertyName, required, nillable, qualifier);
+								WsIOMemberInfo memberWrappedInfo = WsIOUtils.extractMemberInfo(getterExecutable, qualifierInfo);
+
+								/* Get the forwarded and the xml annotations */
+								List<Class<?>> forwardedGetterExcludeClasses = List.of(
+										XmlJavaTypeAdapter.class, XmlAttribute.class, XmlElementWrapper.class, XmlElement.class,
+										WsIOJavaTypeAdapter.class, WsIOAttribute.class, WsIOElementWrapper.class, WsIOElement.class,
+										WsIOJavaTypeAdapters.class, WsIOAttributes.class, WsIOElementWrappers.class, WsIOElements.class
+								);
+								List<AnnotationSpec> forwardedGetterAnnotations = generateForwardAnnotations(getterExecutable, forwardedGetterExcludeClasses, null);
+								List<AnnotationSpec> xmlGetterAnnotations = generateXmlAnnotations(memberWrappedInfo, null);
+
+								/* Return the combined annotations */
+								return List.of(forwardedGetterAnnotations, xmlGetterAnnotations)
+										.flatMap(Function.identity());
+
+							});
+
+					/* Setter annotations */
+					Map<String, List<AnnotationSpec>> setterAnnotations = propertyToProperties
+							.toMap(tuple -> tuple._2()._2(), Tuple2::_1)
+							.mapValues(propertyName -> {
+
+								/* Getter is the first element */
+								ExecutableElement getterExecutable = propertyToProperties.get(propertyName)
+										.map(Tuple4::_3)
+										.getOrNull();
+
+								/* Get the forwarded and return */
+								return generateForwardAnnotations(getterExecutable, null, null);
 
 							});
 
@@ -1195,7 +1305,8 @@ class WsIOGenerator {
 						/* Current annotations */
 						List<AnnotationSpec> getterListAnnotations = getterAnnotations
 								.getOrElse(getterName, List.empty());
-						List<AnnotationSpec> setterListAnnotations = List.empty();
+						List<AnnotationSpec> setterListAnnotations = setterAnnotations
+								.getOrElse(setterName, List.empty());
 
 						/* Return the methods generated recursively */
 						return WsIODelegator.generatePropertyDelegates(returnType, parameterType, getter, setter,
@@ -1210,61 +1321,74 @@ class WsIOGenerator {
 				} else {
 
 					/* Flag indicating if empty collections, maps and arrays should be hidden */
-					boolean methodHideEmpties = info.getWrappers().contains(WsIOWrapped.HIDE_EMPTY_WRAPPED);
+					boolean methodHideEmpties = info.getExecutableWrappers()
+							.contains(WsIOWrapped.HIDE_EMPTY_WRAPPED);
 
-					/* List with the internal get annotations */
+					/* List with the internal get and set annotations */
 					List<AnnotationSpec> internalGetAnnotations = List.empty();
+					List<AnnotationSpec> internalSetAnnotations = List.empty();
 
-					if (adapter != null) {
-						internalGetAnnotations = internalGetAnnotations.append(
-								AnnotationSpec.builder(XmlJavaTypeAdapter.class)
-										.addMember("value", "$L", adapter)
-										.build());
-					}
+					/* Generate and append the getter annotations */
+					internalGetAnnotations.appendAll(
+							generateXmlAnnotations(memberInfo, operationIdentifier)
+					);
 
-					if (lowerInner == null) {
+					if (mirror instanceof DeclaredType declaredType) {
 
-						boolean isAttribute = Boolean.TRUE.equals(attribute);
-						AnnotationSpec.Builder builder = AnnotationSpec.builder(isAttribute ? XmlAttribute.class : XmlElement.class)
-								.addMember("name", "$S", lowerName);
+						/* Declared type and element type */
+						TypeElement element = (TypeElement) declaredType.asElement();
 
-						if (required != null) {
-							builder = builder.addMember("required", "$L", required);
+						/* Generate the inheritance structure */
+						Map<WsIOLevel, Set<DeclaredType>> inheritance = resolveInheritance(element, context);
+
+						/* Generate the method priority from the inheritance structure */
+						Map<WsIOLevel, Map<WsIOProperty, Map<String, ExecutableElement>>> methodPriorities =
+								resolveMethodPriority(inheritance);
+
+						/* Extract getters and setters from all methods with priority */
+						Map<WsIOLevel, Map<String, ExecutableElement>> getterPriorities = methodPriorities
+								.mapValues(map -> map.getOrElse(WsIOProperty.GETTER, HashMap.empty()));
+						Map<WsIOLevel, Map<String, ExecutableElement>> setterPriorities = methodPriorities
+								.mapValues(map -> map.getOrElse(WsIOProperty.SETTER, HashMap.empty()));
+
+						/* Property names matching names and level */
+						List<Tuple3<ExecutableElement, ExecutableElement, WsIOLevel>> properties =
+								getMatchingProperties(getterPriorities, setterPriorities);
+
+						/* Map from property to getter and setter properties */
+						Function1<ExecutableElement, String> getExecutableName = executable ->
+								executable.getSimpleName().toString();
+
+						/* Get the executable of the getter only when properties match */
+						ExecutableElement getterExecutable = properties.map(Tuple3::_1)
+								.filter(executable -> internalGetName.equals(getExecutableName.apply(executable)))
+								.getOrNull();
+
+						/* Get the executable of the setter only when properties match */
+						ExecutableElement setterExecutable = properties.map(Tuple3::_1)
+								.filter(executable -> internalSetName.equals(getExecutableName.apply(executable)))
+								.getOrNull();
+
+						/* Get the forwarded annotations of the getter method */
+						if (getterExecutable != null) {
+							List<Class<?>> forwardedGetterExcludeClasses = List.of(
+									XmlJavaTypeAdapter.class, XmlAttribute.class, XmlElementWrapper.class, XmlElement.class,
+									WsIOJavaTypeAdapter.class, WsIOAttribute.class, WsIOElementWrapper.class, WsIOElement.class,
+									WsIOJavaTypeAdapters.class, WsIOAttributes.class, WsIOElementWrappers.class, WsIOElements.class
+							);
+							List<AnnotationSpec> forwardedGetterAnnotations = generateForwardAnnotations(getterExecutable, forwardedGetterExcludeClasses, null);
+							internalGetAnnotations = internalGetAnnotations.appendAll(
+									forwardedGetterAnnotations
+							);
 						}
 
-						if (!isAttribute && nillable != null) {
-							builder = builder.addMember("nillable", "$L", nillable);
+						/* Get the forwarded annotations of the setter method */
+						if (setterExecutable != null) {
+							List<AnnotationSpec> forwardedSetterAnnotations = generateForwardAnnotations(setterExecutable, null, null);
+							internalSetAnnotations = internalSetAnnotations.appendAll(
+									forwardedSetterAnnotations
+							);
 						}
-
-						internalGetAnnotations = internalGetAnnotations.append(builder.build());
-
-					} else {
-
-						AnnotationSpec.Builder elementBuilder = AnnotationSpec.builder(XmlElement.class)
-								.addMember("name", "$S", lowerInner);
-
-						AnnotationSpec.Builder elementWrapperBuilder = AnnotationSpec.builder(XmlElementWrapper.class)
-								.addMember("name", "$S", lowerName);
-
-						if (required != null) {
-							elementBuilder = elementBuilder.addMember("required", "$L", required);
-						}
-
-						if (nillable != null) {
-							elementBuilder = elementBuilder.addMember("nillable", "$L", nillable);
-						}
-
-						if (wrapperRequired != null) {
-							elementWrapperBuilder = elementWrapperBuilder.addMember("required", "$L", wrapperRequired);
-						}
-
-						if (wrapperNillable != null) {
-							elementWrapperBuilder = elementWrapperBuilder.addMember("nillable", "$L", wrapperNillable);
-						}
-
-						internalGetAnnotations = internalGetAnnotations.appendAll(
-								List.of(elementBuilder.build(), elementWrapperBuilder.build())
-						);
 
 					}
 
@@ -1307,6 +1431,7 @@ class WsIOGenerator {
 					ParameterSpec internalParameter = ParameterSpec.builder(internalType, internalParameterName).build();
 					MethodSpec.Builder internalSetBuilder = MethodSpec.methodBuilder(internalSetName)
 							.addParameter(internalParameter)
+							.addAnnotations(internalSetAnnotations)
 							.addModifiers(Modifier.PUBLIC);
 
 					/* Check mirror is a primitive type or not */
@@ -1338,11 +1463,11 @@ class WsIOGenerator {
 		}
 
 		/* Check if the type is response and the wrapper size is greater than 0 */
-		if (WsIOType.RESPONSE.equals(type) && info.getWrappers().size() > 0) {
+		if (WsIOType.RESPONSE.equals(type) && info.getExecutableWrappers().size() > 0) {
 
 			/* Get additionals */
 			Tuple4<List<FieldSpec>, List<MethodSpec>, List<TypeName>, List<AnnotationSpec>> additionals =
-					generateAdditionals(info.getWrappers(), fieldNames);
+					generateAdditionals(info.getExecutableWrappers(), fieldNames);
 
 			/* Add all fields, methods, interfaces and annotations */
 			fields = fields.appendAll(additionals._1());
@@ -1374,191 +1499,185 @@ class WsIOGenerator {
 	/**
 	 * Method that generates the xml annotations of the getter method.
 	 *
-	 * @param element element to process
-	 * @param property property name
-	 * @param required required flag
-	 * @param nillable nillable flag
+	 * @param executableElement element to process
+	 * @param excludeClasses list of classes to exclude
+	 * @param excludeNames list of names to exclude
 	 * @return the xml annotations of the getter method
 	 */
-	private List<AnnotationSpec> generateGetterAnnotations(ExecutableElement element, String property, Boolean required, Boolean nillable) {
-		return generateGetterAnnotations(element, property, required, nillable, null);
+	private List<AnnotationSpec> generateForwardAnnotations(ExecutableElement executableElement,
+															List<Class<?>> excludeClasses,
+															List<String> excludeNames) {
+
+		List<String> excludeListNames = Option.of(excludeNames).getOrElse(List::of);
+		List<String> excludeListClasses = Option.of(excludeClasses)
+				.getOrElse(List::of)
+				.map(Class::getName);
+
+		List<String> excludeList = List.of(excludeListNames, excludeListClasses)
+				.flatMap(Function.identity());
+
+		Map<DeclaredType, Map<String, String>> annotationDescriptions = WsIOUtils.getAnnotationDescriptions(executableElement);
+		Map<DeclaredType, Map<String, String>> annotationFilteredDescriptions = Option.of(annotationDescriptions)
+				.getOrElse(HashMap::empty)
+				.filterKeys(annotationType -> !excludeList.contains(annotationType.toString()));
+
+		return annotationFilteredDescriptions.toStream()
+				.map(tuple -> {
+
+					DeclaredType annotationType = tuple._1();
+					Map<String, String> annotationFields = tuple._2();
+
+					Element element = annotationType.asElement();
+					if (element instanceof TypeElement typeElement) {
+
+						ClassName className = ClassName.get(typeElement);
+
+						AnnotationSpec.Builder builder = AnnotationSpec.builder(className);
+						for (Tuple2<String, String> annotationField : annotationFields) {
+							String field = annotationField._1();
+							String literal = annotationField._2();
+							builder = builder.addMember(field, "$L", literal);
+						}
+
+						return builder.build();
+
+					}
+					return null;
+
+				}).filter(Objects::nonNull).toList();
+
 	}
 
 	/**
 	 * Method that generates the xml annotations of the getter method.
 	 *
-	 * @param element element to process
-	 * @param property property name
-	 * @param required required flag
-	 * @param nillable nillable flag
-	 * @param qualifier qualifier info
+	 * @param memberInfo parameter info
+	 * @param operationIdentifier operation identifier info
 	 * @return the xml annotations of the getter method
 	 */
-	private List<AnnotationSpec> generateGetterAnnotations(ExecutableElement element, String property, Boolean required, Boolean nillable, Tuple2<String, String> qualifier) {
-
-		AnnotationMirror xmlElementMirror = WsIOUtils.getAnnotationMirror(element, XmlElement.class);
-		AnnotationMirror xmlElementWrapperMirror = WsIOUtils.getAnnotationMirror(element, XmlElementWrapper.class);
-		AnnotationMirror xmlRootElementMirror = WsIOUtils.getAnnotationMirror(element, XmlRootElement.class);
-		AnnotationMirror xmlAttributeMirror = WsIOUtils.getAnnotationMirror(element, XmlAttribute.class);
-		AnnotationMirror xmlValueMirror = WsIOUtils.getAnnotationMirror(element, XmlValue.class);
-		AnnotationMirror xmlTransientMirror = WsIOUtils.getAnnotationMirror(element, XmlTransient.class);
-		AnnotationMirror xmlTypeMirror = WsIOUtils.getAnnotationMirror(element, XmlType.class);
-		AnnotationMirror xmlJavaTypeAdapterMirror = WsIOUtils.getAnnotationMirror(element, XmlJavaTypeAdapter.class);
+	private List<AnnotationSpec> generateXmlAnnotations(WsIOMemberInfo memberInfo,
+														OperationIdentifier operationIdentifier) {
 
 		List<AnnotationSpec.Builder> builders = List.of();
 
-		if (xmlElementMirror != null || property != null || required != null || nillable != null) {
+		if (memberInfo != null) {
 
-			AnnotationSpec.Builder elementBuilder = AnnotationSpec.builder(XmlElement.class);
+			if (memberInfo.getAdapterPresent()) {
 
-			if (xmlElementMirror != null) {
-				String xmlName = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "name", String.class);
-				if (xmlName != null) {
-					elementBuilder = elementBuilder.addMember("name", "$S", xmlName);
+				for (WsIOAdapterInfo adapterInfo : memberInfo.getAdapterInfos()) {
+
+					AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlJavaTypeAdapter.class);
+
+					if (adapterInfo.getAdapterValue() != null) {
+						builder = builder.addMember("value", "$L", adapterInfo.getAdapterValue());
+					}
+
+					if (adapterInfo.getAdapterType() != null) {
+						builder = builder.addMember("value", "$L", adapterInfo.getAdapterType());
+					}
+
+					builders = builders.append(builder);
+
+				}
+
+			}
+
+			if (memberInfo.getAttributePresent()) {
+
+				AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlAttribute.class);
+
+				if (operationIdentifier != null) {
+					if (operationIdentifier.getAttributeName() != null) {
+						builder = builder.addMember("name", "$S", operationIdentifier.getAttributeName());
+					}
 				} else {
-					elementBuilder = elementBuilder.addMember("name", "$S", property);
+					if (memberInfo.getAttributeName() != null) {
+						builder = builder.addMember("name", "$S", memberInfo.getAttributeName());
+					}
 				}
-			} else {
-				elementBuilder = elementBuilder.addMember("name", "$S", property);
-			}
 
-			if (required != null) {
-				elementBuilder = elementBuilder.addMember("required", "$L", required);
-			} else if (xmlElementMirror != null) {
-				Boolean xmlRequired = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "required", Boolean.class);
-				if (xmlRequired != null) {
-					elementBuilder = elementBuilder.addMember("required", "$L", xmlRequired);
+				if (memberInfo.getAttributeNamespace() != null) {
+					builder = builder.addMember("namespace", "$S", memberInfo.getAttributeNamespace());
 				}
-			}
 
-			if (nillable != null) {
-				elementBuilder = elementBuilder.addMember("nillable", "$L", nillable);
-			} else if (xmlElementMirror != null) {
-				Boolean xmlNillable = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "nillable", Boolean.class);
-				if (xmlNillable != null) {
-					elementBuilder = elementBuilder.addMember("nillable", "$L", xmlNillable);
+				if (memberInfo.getAttributeRequired() != null) {
+					builder = builder.addMember("required", "$L", memberInfo.getAttributeRequired());
 				}
-			}
 
-			if (xmlElementMirror != null) {
-				String xmlNamespace = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "namespace", String.class);
-				String xmlDefaultValue = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "defaultValue", String.class);
-				String xmlType = WsIOUtils.getAnnotationLiteralValue(xmlElementMirror, "type");
-				if (xmlNamespace != null) {
-					elementBuilder = elementBuilder.addMember("namespace", "$S", xmlNamespace);
+				builders = builders.append(builder);
+
+			} else if (memberInfo.getElementWrapperPresent() || memberInfo.getElementPresent()) {
+
+				if (memberInfo.getElementPresent()) {
+
+					AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlElement.class);
+
+					if (operationIdentifier != null) {
+						if (operationIdentifier.getElementName() != null) {
+							builder = builder.addMember("name", "$S", operationIdentifier.getElementName());
+						}
+					} else {
+						if (memberInfo.getElementName() != null) {
+							builder = builder.addMember("name", "$S", memberInfo.getElementName());
+						}
+					}
+
+					if (memberInfo.getElementNamespace() != null) {
+						builder = builder.addMember("namespace", "$S", memberInfo.getElementNamespace());
+					}
+
+					if (memberInfo.getElementDefaultValue() != null) {
+						builder = builder.addMember("defaultValue", "$S", memberInfo.getElementDefaultValue());
+					}
+
+					if (memberInfo.getElementRequired() != null) {
+						builder = builder.addMember("required", "$L", memberInfo.getElementRequired());
+					}
+
+					if (memberInfo.getElementNillable() != null) {
+						builder = builder.addMember("nillable", "$L", memberInfo.getElementNillable());
+					}
+
+					if (memberInfo.getElementType() != null) {
+						builder = builder.addMember("type", "$L", memberInfo.getElementType());
+					}
+
+					builders = builders.append(builder);
+
 				}
-				if (xmlDefaultValue != null) {
-					elementBuilder = elementBuilder.addMember("defaultValue", "$S", xmlDefaultValue);
+
+				if (memberInfo.getElementWrapperPresent()) {
+
+					AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlElementWrapper.class);
+
+					if (operationIdentifier != null) {
+						if (operationIdentifier.getElementWrapperName() != null) {
+							builder = builder.addMember("name", "$S", operationIdentifier.getElementWrapperName());
+						}
+					} else {
+						if (memberInfo.getElementWrapperName() != null) {
+							builder = builder.addMember("name", "$S", memberInfo.getElementWrapperName());
+						}
+					}
+
+					if (memberInfo.getElementNamespace() != null) {
+						builder = builder.addMember("namespace", "$S", memberInfo.getElementNamespace());
+					}
+
+					if (memberInfo.getElementRequired() != null) {
+						builder = builder.addMember("required", "$L", memberInfo.getElementRequired());
+					}
+
+					if (memberInfo.getElementNillable() != null) {
+						builder = builder.addMember("nillable", "$L", memberInfo.getElementNillable());
+					}
+
+					builders = builders.append(builder);
+
 				}
-				if (xmlType != null) {
-					elementBuilder = elementBuilder.addMember("type", "$L", xmlType);
-				}
+
 			}
 
-			builders = builders.append(elementBuilder);
-
-		}
-
-		if (xmlElementWrapperMirror != null) {
-			String xmlName = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "name", String.class);
-			String xmlNamespace = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "namespace", String.class);
-			Boolean xmlNillable = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "nillable", Boolean.class);
-			Boolean xmlRequired = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "required", Boolean.class);
-			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlElementWrapper.class);
-			if (xmlName != null) {
-				xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
-			}
-			if (xmlNamespace != null) {
-				xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
-			}
-			if (xmlNillable != null) {
-				xmlBuilder = xmlBuilder.addMember("nillable", "$L", xmlNillable);
-			}
-			if (xmlRequired != null) {
-				xmlBuilder = xmlBuilder.addMember("required", "$L", xmlRequired);
-			}
-			builders = builders.append(xmlBuilder);
-		}
-
-		if (xmlRootElementMirror != null) {
-			String xmlName = WsIOUtils.getAnnotationTypeValue(xmlRootElementMirror, "name", String.class);
-			String xmlNamespace = WsIOUtils.getAnnotationTypeValue(xmlRootElementMirror, "namespace", String.class);
-			Boolean xmlRequired = WsIOUtils.getAnnotationTypeValue(xmlRootElementMirror, "required", Boolean.class);
-			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlRootElement.class);
-			if (xmlName != null) {
-				xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
-			}
-			if (xmlNamespace != null) {
-				xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
-			}
-			if (xmlRequired != null) {
-				xmlBuilder = xmlBuilder.addMember("required", "$L", xmlRequired);
-			}
-			builders = builders.append(xmlBuilder);
-		}
-
-		if (xmlAttributeMirror != null) {
-			String xmlName = WsIOUtils.getAnnotationTypeValue(xmlAttributeMirror, "name", String.class);
-			String xmlNamespace = WsIOUtils.getAnnotationTypeValue(xmlAttributeMirror, "namespace", String.class);
-			Boolean xmlRequired = WsIOUtils.getAnnotationTypeValue(xmlAttributeMirror, "required", Boolean.class);
-			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlAttribute.class);
-			if (xmlName != null) {
-				xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
-			}
-			if (xmlNamespace != null) {
-				xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
-			}
-			if (xmlRequired != null) {
-				xmlBuilder = xmlBuilder.addMember("required", "$L", xmlRequired);
-			}
-			builders = builders.append(xmlBuilder);
-		}
-
-		if (xmlValueMirror != null) {
-			builders = builders.append(AnnotationSpec.builder(XmlValue.class));
-		}
-
-		if (xmlTransientMirror != null) {
-			builders = builders.append(AnnotationSpec.builder(XmlTransient.class));
-		}
-
-		if (xmlTypeMirror != null) {
-			String xmlName = WsIOUtils.getAnnotationTypeValue(xmlTypeMirror, "name", String.class);
-			String xmlNamespace = WsIOUtils.getAnnotationTypeValue(xmlTypeMirror, "namespace", String.class);
-			String xmlFactoryMethod = WsIOUtils.getAnnotationTypeValue(xmlTypeMirror, "factoryMethod", String.class);
-			String xmlFactoryClass = WsIOUtils.getAnnotationLiteralValue(xmlTypeMirror, "factoryClass");
-			java.util.List<String> xmlPropOrder = WsIOUtils
-					.getAnnotationTypeListValue(xmlTypeMirror, "propOrder", String.class);
-			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlType.class);
-			if (xmlName != null) {
-				xmlBuilder = xmlBuilder.addMember("name", "$S", xmlName);
-			}
-			if (xmlNamespace != null) {
-				xmlBuilder = xmlBuilder.addMember("namespace", "$S", xmlNamespace);
-			}
-			if (xmlFactoryMethod != null) {
-				xmlBuilder = xmlBuilder.addMember("factoryMethod", "$L", xmlFactoryMethod);
-			}
-			if (xmlPropOrder != null) {
-				xmlBuilder = xmlBuilder.addMember("propOrder", "$L", String.format("{ %s }", String.join(", ", xmlPropOrder)));
-			}
-			if (xmlFactoryClass != null) {
-				xmlBuilder = xmlBuilder.addMember("factoryClass", "$L", xmlFactoryClass);
-			}
-			builders = builders.append(xmlBuilder);
-		}
-
-		if (xmlJavaTypeAdapterMirror != null) {
-			AnnotationSpec.Builder xmlBuilder = AnnotationSpec.builder(XmlJavaTypeAdapter.class);
-			String xmlValue = WsIOUtils.getAnnotationLiteralValue(xmlJavaTypeAdapterMirror, "value");
-			String xmlType = WsIOUtils.getAnnotationLiteralValue(xmlJavaTypeAdapterMirror, "type");
-			if (xmlValue != null) {
-				xmlBuilder = xmlBuilder.addMember("value", "$L", xmlValue);
-			}
-			if (xmlType != null) {
-				xmlBuilder = xmlBuilder.addMember("type", "$L", xmlType);
-			}
-			builders = builders.append(xmlBuilder);
 		}
 
 		return builders.map(AnnotationSpec.Builder::build);
@@ -1820,11 +1939,11 @@ class WsIOGenerator {
 					createAttribute.apply(ClassName.get(WsIOStatus.class)),
 					createAttribute.apply(ClassName.get(WsIODetail.class)),
 					createWrapper.apply(ParameterizedTypeName.get(ClassName.get(java.util.List.class),
-							ClassName.get(WsIOElement.class))),
+							ClassName.get(WsIOItem.class))),
 					createWrapper.apply(ParameterizedTypeName.get(ClassName.get(java.util.List.class),
-							ClassName.get(WsIOElement.class))),
+							ClassName.get(WsIOItem.class))),
 					createWrapper.apply(ParameterizedTypeName.get(ClassName.get(java.util.List.class),
-							ClassName.get(WsIOElement.class))),
+							ClassName.get(WsIOItem.class))),
 					createTransient.apply(ClassName.get(Boolean.class)),
 					createTransient.apply(ClassName.get(Boolean.class)),
 					createTransient.apply(ClassName.get(Boolean.class)))
@@ -2103,10 +2222,67 @@ class WsIOGenerator {
 
 	}
 
-	private enum ParameterType {
+	private enum OperationType {
+		DEFAULT,
 		WRAPPER,
 		ELEMENT,
 		ATTRIBUTE;
+	}
+
+	private static class OperationIdentifier {
+		private OperationType operationType;
+		private String mainName;
+		private String attributeName;
+		private String elementName;
+		private String elementWrapperName;
+		static OperationIdentifier of(OperationType operationType,
+									  String mainName,
+									  String attributeName,
+									  String elementName,
+									  String elementWrapperName) {
+			return new OperationIdentifier(operationType, mainName, attributeName, elementName, elementWrapperName);
+		}
+		OperationIdentifier(OperationType operationType,
+							String mainName,
+							String attributeName,
+							String elementName,
+							String elementWrapperName) {
+			this.operationType = operationType;
+			this.mainName = mainName;
+			this.attributeName = attributeName;
+			this.elementName = elementName;
+			this.elementWrapperName = elementWrapperName;
+		}
+		public OperationType getOperationType() {
+			return operationType;
+		}
+		public void setOperationType(OperationType operationType) {
+			this.operationType = operationType;
+		}
+		public String getAttributeName() {
+			return attributeName;
+		}
+		public void setAttributeName(String attributeName) {
+			this.attributeName = attributeName;
+		}
+		public String getMainName() {
+			return mainName;
+		}
+		public void setMainName(String mainName) {
+			this.mainName = mainName;
+		}
+		public String getElementName() {
+			return elementName;
+		}
+		public void setElementName(String elementName) {
+			this.elementName = elementName;
+		}
+		public String getElementWrapperName() {
+			return elementWrapperName;
+		}
+		public void setElementWrapperName(String elementWrapperName) {
+			this.elementWrapperName = elementWrapperName;
+		}
 	}
 
 }

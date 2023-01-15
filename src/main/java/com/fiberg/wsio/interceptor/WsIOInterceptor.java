@@ -4,7 +4,7 @@ import com.fiberg.wsio.annotation.WsIOUseState;
 import com.fiberg.wsio.annotation.WsIOUseTime;
 import com.fiberg.wsio.handler.WsIOHandler.State;
 import com.fiberg.wsio.handler.WsIOHandler.Time;
-import com.fiberg.wsio.handler.state.WsIOElement;
+import com.fiberg.wsio.handler.state.WsIOItem;
 import com.fiberg.wsio.handler.state.WsIOLanguage;
 import com.fiberg.wsio.handler.state.WsIOState;
 import com.fiberg.wsio.handler.state.WsIOText;
@@ -169,7 +169,7 @@ public final class WsIOInterceptor {
 							Predicates.noneOf(WsIOLanguage.DEFAULT::equals)).getOrNull();
 
 					/* Bi consumer to assign the language to the elements with default */
-					BiConsumer<WsIOElement, Function<WsIOElement, WsIOText>> setDefaultLanguage = (element, function) -> {
+					BiConsumer<WsIOItem, Function<WsIOItem, WsIOText>> setDefaultLanguage = (element, function) -> {
 
 						/* Check element is not null and language is set to default */
 						if (Objects.nonNull(function.apply(element))
@@ -182,20 +182,20 @@ public final class WsIOInterceptor {
 					/* Set default languages to successfuls, failures and warnings */
 					if (Objects.nonNull(State.getSuccessfuls())) {
 						State.getSuccessfuls().forEach(successful -> {
-							setDefaultLanguage.accept(successful, WsIOElement::getMessage);
-							setDefaultLanguage.accept(successful, WsIOElement::getDescription);
+							setDefaultLanguage.accept(successful, WsIOItem::getMessage);
+							setDefaultLanguage.accept(successful, WsIOItem::getDescription);
 						});
 					}
 					if (Objects.nonNull(State.getFailures())) {
 						State.getFailures().forEach(failure -> {
-							setDefaultLanguage.accept(failure, WsIOElement::getMessage);
-							setDefaultLanguage.accept(failure, WsIOElement::getDescription);
+							setDefaultLanguage.accept(failure, WsIOItem::getMessage);
+							setDefaultLanguage.accept(failure, WsIOItem::getDescription);
 						});
 					}
 					if (Objects.nonNull(State.getWarnings())) {
 						State.getWarnings().forEach(warning -> {
-							setDefaultLanguage.accept(warning, WsIOElement::getMessage);
-							setDefaultLanguage.accept(warning, WsIOElement::getDescription);
+							setDefaultLanguage.accept(warning, WsIOItem::getMessage);
+							setDefaultLanguage.accept(warning, WsIOItem::getDescription);
 						});
 					}
 

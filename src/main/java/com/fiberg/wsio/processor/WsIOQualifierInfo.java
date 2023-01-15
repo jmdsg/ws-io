@@ -37,10 +37,10 @@ class WsIOQualifierInfo {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		WsIOQualifierInfo wsIOParameterInfo = (WsIOQualifierInfo) o;
+		WsIOQualifierInfo wsIOMemberInfo = (WsIOQualifierInfo) o;
 
-		if (qualifierPrefix != null ? !qualifierPrefix.equals(wsIOParameterInfo.qualifierPrefix) : wsIOParameterInfo.qualifierPrefix != null) return false;
-		return qualifierSuffix != null ? qualifierSuffix.equals(wsIOParameterInfo.qualifierSuffix) : wsIOParameterInfo.qualifierSuffix == null;
+		if (qualifierPrefix != null ? !qualifierPrefix.equals(wsIOMemberInfo.qualifierPrefix) : wsIOMemberInfo.qualifierPrefix != null) return false;
+		return qualifierSuffix != null ? qualifierSuffix.equals(wsIOMemberInfo.qualifierSuffix) : wsIOMemberInfo.qualifierSuffix == null;
 	}
 
 	@Override

@@ -1,11 +1,13 @@
 package com.fiberg.wsio.processor;
 
-import javax.lang.model.element.VariableElement;
+import io.vavr.collection.List;
+
+import javax.lang.model.element.Element;
 import javax.lang.model.type.TypeMirror;
 
-class WsIOParameterInfo {
+class WsIOMemberInfo {
 
-	private VariableElement variableElement;
+	private Element typeElement;
 
 	private TypeMirror typeMirror;
 
@@ -55,43 +57,40 @@ class WsIOParameterInfo {
 
 	private Boolean adapterPresent;
 
-	private String adapterValue;
-
-	private String adapterType;
-
 	private WsIOQualifierInfo qualifierInfo;
 
-	public static WsIOParameterInfo of(VariableElement variableElement,
-									   TypeMirror typeMirror,
-									   Boolean paramPresent,
-									   String paramName,
-									   String paramPartName,
-									   String paramTargetNamespace,
-									   String paramMode,
-									   Boolean paramHeader,
-									   Boolean elementPresent,
-									   String elementName,
-									   String elementNamespace,
-									   Boolean elementRequired,
-									   Boolean elementNillable,
-									   String elementDefaultValue,
-									   String elementType,
-									   Boolean elementWrapperPresent,
-									   String elementWrapperName,
-									   String elementWrapperNamespace,
-									   Boolean elementWrapperRequired,
-									   Boolean elementWrapperNillable,
-									   Boolean attributePresent,
-									   String attributeName,
-									   String attributeNamespace,
-									   Boolean attributeRequired,
-									   Boolean adapterPresent,
-									   String adapterValue,
-									   String adapterType,
-									   WsIOQualifierInfo qualifierInfo) {
+	private List<WsIOAdapterInfo> adapterInfos;
 
-		WsIOParameterInfo info = new WsIOParameterInfo();
-		info.variableElement = variableElement;
+	public static WsIOMemberInfo of(Element typeElement,
+									TypeMirror typeMirror,
+									Boolean paramPresent,
+									String paramName,
+									String paramPartName,
+									String paramTargetNamespace,
+									String paramMode,
+									Boolean paramHeader,
+									Boolean elementPresent,
+									String elementName,
+									String elementNamespace,
+									Boolean elementRequired,
+									Boolean elementNillable,
+									String elementDefaultValue,
+									String elementType,
+									Boolean elementWrapperPresent,
+									String elementWrapperName,
+									String elementWrapperNamespace,
+									Boolean elementWrapperRequired,
+									Boolean elementWrapperNillable,
+									Boolean attributePresent,
+									String attributeName,
+									String attributeNamespace,
+									Boolean attributeRequired,
+									Boolean adapterPresent,
+									WsIOQualifierInfo qualifierInfo,
+									List<WsIOAdapterInfo> adapterInfos) {
+
+		WsIOMemberInfo info = new WsIOMemberInfo();
+		info.typeElement = typeElement;
 		info.typeMirror = typeMirror;
 		info.paramPresent = paramPresent;
 		info.paramName = paramName;
@@ -116,19 +115,18 @@ class WsIOParameterInfo {
 		info.attributeNamespace = attributeNamespace;
 		info.attributeRequired = attributeRequired;
 		info.adapterPresent = adapterPresent;
-		info.adapterValue = adapterValue;
-		info.adapterType = adapterType;
 		info.qualifierInfo = qualifierInfo;
+		info.adapterInfos = adapterInfos;
 		return info;
 
 	}
 
-	public VariableElement getVariableElement() {
-		return variableElement;
+	public Element getTypeElement() {
+		return typeElement;
 	}
 
-	public void setVariableElement(VariableElement variableElement) {
-		this.variableElement = variableElement;
+	public void setTypeElement(Element typeElement) {
+		this.typeElement = typeElement;
 	}
 
 	public TypeMirror getTypeMirror() {
@@ -323,22 +321,6 @@ class WsIOParameterInfo {
 		this.adapterPresent = adapterPresent;
 	}
 
-	public String getAdapterValue() {
-		return adapterValue;
-	}
-
-	public void setAdapterValue(String adapterValue) {
-		this.adapterValue = adapterValue;
-	}
-
-	public String getAdapterType() {
-		return adapterType;
-	}
-
-	public void setAdapterType(String adapterType) {
-		this.adapterType = adapterType;
-	}
-
 	public WsIOQualifierInfo getQualifierInfo() {
 		return qualifierInfo;
 	}
@@ -347,72 +329,78 @@ class WsIOParameterInfo {
 		this.qualifierInfo = qualifierInfo;
 	}
 
+	public List<WsIOAdapterInfo> getAdapterInfos() {
+		return adapterInfos;
+	}
+
+	public void setAdapterInfos(List<WsIOAdapterInfo> adapterInfos) {
+		this.adapterInfos = adapterInfos;
+	}
+
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		WsIOParameterInfo wsIOParameterInfo = (WsIOParameterInfo) o;
+		WsIOMemberInfo wsIOMemberInfo = (WsIOMemberInfo) o;
 
-		if (variableElement != null ? !variableElement.equals(wsIOParameterInfo.variableElement) : wsIOParameterInfo.variableElement != null) return false;
-		if (typeMirror != null ? !typeMirror.equals(wsIOParameterInfo.typeMirror) : wsIOParameterInfo.typeMirror != null)
+		if (typeElement != null ? !typeElement.equals(wsIOMemberInfo.typeElement) : wsIOMemberInfo.typeElement != null) return false;
+		if (typeMirror != null ? !typeMirror.equals(wsIOMemberInfo.typeMirror) : wsIOMemberInfo.typeMirror != null)
 			return false;
-		if (paramPresent != null ? !paramPresent.equals(wsIOParameterInfo.paramPresent) : wsIOParameterInfo.paramPresent != null)
+		if (paramPresent != null ? !paramPresent.equals(wsIOMemberInfo.paramPresent) : wsIOMemberInfo.paramPresent != null)
 			return false;
-		if (paramName != null ? !paramName.equals(wsIOParameterInfo.paramName) : wsIOParameterInfo.paramName != null)
+		if (paramName != null ? !paramName.equals(wsIOMemberInfo.paramName) : wsIOMemberInfo.paramName != null)
 			return false;
-		if (paramPartName != null ? !paramPartName.equals(wsIOParameterInfo.paramPartName) : wsIOParameterInfo.paramPartName != null)
+		if (paramPartName != null ? !paramPartName.equals(wsIOMemberInfo.paramPartName) : wsIOMemberInfo.paramPartName != null)
 			return false;
-		if (paramTargetNamespace != null ? !paramTargetNamespace.equals(wsIOParameterInfo.paramTargetNamespace) : wsIOParameterInfo.paramTargetNamespace != null)
+		if (paramTargetNamespace != null ? !paramTargetNamespace.equals(wsIOMemberInfo.paramTargetNamespace) : wsIOMemberInfo.paramTargetNamespace != null)
 			return false;
-		if (paramMode != null ? !paramMode.equals(wsIOParameterInfo.paramMode) : wsIOParameterInfo.paramMode != null)
+		if (paramMode != null ? !paramMode.equals(wsIOMemberInfo.paramMode) : wsIOMemberInfo.paramMode != null)
 			return false;
-		if (paramHeader != null ? !paramHeader.equals(wsIOParameterInfo.paramHeader) : wsIOParameterInfo.paramHeader != null)
+		if (paramHeader != null ? !paramHeader.equals(wsIOMemberInfo.paramHeader) : wsIOMemberInfo.paramHeader != null)
 			return false;
-		if (elementPresent != null ? !elementPresent.equals(wsIOParameterInfo.elementPresent) : wsIOParameterInfo.elementPresent != null)
+		if (elementPresent != null ? !elementPresent.equals(wsIOMemberInfo.elementPresent) : wsIOMemberInfo.elementPresent != null)
 			return false;
-		if (elementName != null ? !elementName.equals(wsIOParameterInfo.elementName) : wsIOParameterInfo.elementName != null)
+		if (elementName != null ? !elementName.equals(wsIOMemberInfo.elementName) : wsIOMemberInfo.elementName != null)
 			return false;
-		if (elementNamespace != null ? !elementNamespace.equals(wsIOParameterInfo.elementNamespace) : wsIOParameterInfo.elementNamespace != null)
+		if (elementNamespace != null ? !elementNamespace.equals(wsIOMemberInfo.elementNamespace) : wsIOMemberInfo.elementNamespace != null)
 			return false;
-		if (elementRequired != null ? !elementRequired.equals(wsIOParameterInfo.elementRequired) : wsIOParameterInfo.elementRequired != null)
+		if (elementRequired != null ? !elementRequired.equals(wsIOMemberInfo.elementRequired) : wsIOMemberInfo.elementRequired != null)
 			return false;
-		if (elementNillable != null ? !elementNillable.equals(wsIOParameterInfo.elementNillable) : wsIOParameterInfo.elementNillable != null)
+		if (elementNillable != null ? !elementNillable.equals(wsIOMemberInfo.elementNillable) : wsIOMemberInfo.elementNillable != null)
 			return false;
-		if (elementDefaultValue != null ? !elementDefaultValue.equals(wsIOParameterInfo.elementDefaultValue) : wsIOParameterInfo.elementDefaultValue != null)
+		if (elementDefaultValue != null ? !elementDefaultValue.equals(wsIOMemberInfo.elementDefaultValue) : wsIOMemberInfo.elementDefaultValue != null)
 			return false;
-		if (elementType != null ? !elementType.equals(wsIOParameterInfo.elementType) : wsIOParameterInfo.elementType != null)
+		if (elementType != null ? !elementType.equals(wsIOMemberInfo.elementType) : wsIOMemberInfo.elementType != null)
 			return false;
-		if (elementWrapperPresent != null ? !elementWrapperPresent.equals(wsIOParameterInfo.elementWrapperPresent) : wsIOParameterInfo.elementWrapperPresent != null)
+		if (elementWrapperPresent != null ? !elementWrapperPresent.equals(wsIOMemberInfo.elementWrapperPresent) : wsIOMemberInfo.elementWrapperPresent != null)
 			return false;
-		if (elementWrapperName != null ? !elementWrapperName.equals(wsIOParameterInfo.elementWrapperName) : wsIOParameterInfo.elementWrapperName != null)
+		if (elementWrapperName != null ? !elementWrapperName.equals(wsIOMemberInfo.elementWrapperName) : wsIOMemberInfo.elementWrapperName != null)
 			return false;
-		if (elementWrapperNamespace != null ? !elementWrapperNamespace.equals(wsIOParameterInfo.elementWrapperNamespace) : wsIOParameterInfo.elementWrapperNamespace != null)
+		if (elementWrapperNamespace != null ? !elementWrapperNamespace.equals(wsIOMemberInfo.elementWrapperNamespace) : wsIOMemberInfo.elementWrapperNamespace != null)
 			return false;
-		if (elementWrapperRequired != null ? !elementWrapperRequired.equals(wsIOParameterInfo.elementWrapperRequired) : wsIOParameterInfo.elementWrapperRequired != null)
+		if (elementWrapperRequired != null ? !elementWrapperRequired.equals(wsIOMemberInfo.elementWrapperRequired) : wsIOMemberInfo.elementWrapperRequired != null)
 			return false;
-		if (elementWrapperNillable != null ? !elementWrapperNillable.equals(wsIOParameterInfo.elementWrapperNillable) : wsIOParameterInfo.elementWrapperNillable != null)
+		if (elementWrapperNillable != null ? !elementWrapperNillable.equals(wsIOMemberInfo.elementWrapperNillable) : wsIOMemberInfo.elementWrapperNillable != null)
 			return false;
-		if (attributePresent != null ? !attributePresent.equals(wsIOParameterInfo.attributePresent) : wsIOParameterInfo.attributePresent != null)
+		if (attributePresent != null ? !attributePresent.equals(wsIOMemberInfo.attributePresent) : wsIOMemberInfo.attributePresent != null)
 			return false;
-		if (attributeName != null ? !attributeName.equals(wsIOParameterInfo.attributeName) : wsIOParameterInfo.attributeName != null)
+		if (attributeName != null ? !attributeName.equals(wsIOMemberInfo.attributeName) : wsIOMemberInfo.attributeName != null)
 			return false;
-		if (attributeNamespace != null ? !attributeNamespace.equals(wsIOParameterInfo.attributeNamespace) : wsIOParameterInfo.attributeNamespace != null)
+		if (attributeNamespace != null ? !attributeNamespace.equals(wsIOMemberInfo.attributeNamespace) : wsIOMemberInfo.attributeNamespace != null)
 			return false;
-		if (attributeRequired != null ? !attributeRequired.equals(wsIOParameterInfo.attributeRequired) : wsIOParameterInfo.attributeRequired != null)
+		if (attributeRequired != null ? !attributeRequired.equals(wsIOMemberInfo.attributeRequired) : wsIOMemberInfo.attributeRequired != null)
 			return false;
-		if (adapterPresent != null ? !adapterPresent.equals(wsIOParameterInfo.adapterPresent) : wsIOParameterInfo.adapterPresent != null)
+		if (adapterPresent != null ? !adapterPresent.equals(wsIOMemberInfo.adapterPresent) : wsIOMemberInfo.adapterPresent != null)
 			return false;
-		if (adapterValue != null ? !adapterValue.equals(wsIOParameterInfo.adapterValue) : wsIOParameterInfo.adapterValue != null)
+		if (qualifierInfo != null ? !qualifierInfo.equals(wsIOMemberInfo.qualifierInfo) : wsIOMemberInfo.qualifierInfo != null)
 			return false;
-		if (adapterType != null ? !adapterType.equals(wsIOParameterInfo.adapterType) : wsIOParameterInfo.adapterType != null)
-			return false;
-		return qualifierInfo != null ? qualifierInfo.equals(wsIOParameterInfo.qualifierInfo) : wsIOParameterInfo.qualifierInfo == null;
+		return adapterInfos != null ? adapterInfos.equals(wsIOMemberInfo.adapterInfos) : wsIOMemberInfo.adapterInfos == null;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = variableElement != null ? variableElement.hashCode() : 0;
+		int result = typeElement != null ? typeElement.hashCode() : 0;
 		result = 31 * result + (typeMirror != null ? typeMirror.hashCode() : 0);
 		result = 31 * result + (paramPresent != null ? paramPresent.hashCode() : 0);
 		result = 31 * result + (paramName != null ? paramName.hashCode() : 0);
@@ -437,16 +425,15 @@ class WsIOParameterInfo {
 		result = 31 * result + (attributeNamespace != null ? attributeNamespace.hashCode() : 0);
 		result = 31 * result + (attributeRequired != null ? attributeRequired.hashCode() : 0);
 		result = 31 * result + (adapterPresent != null ? adapterPresent.hashCode() : 0);
-		result = 31 * result + (adapterValue != null ? adapterValue.hashCode() : 0);
-		result = 31 * result + (adapterType != null ? adapterType.hashCode() : 0);
 		result = 31 * result + (qualifierInfo != null ? qualifierInfo.hashCode() : 0);
+		result = 31 * result + (adapterInfos != null ? adapterInfos.hashCode() : 0);
 		return result;
 	}
 
 	@Override
 	public String toString() {
-		return "WsIOParameterInfo{" +
-				"variableElement='" + variableElement + '\'' +
+		return "WsIOMemberInfo{" +
+				"typeElement='" + typeElement + '\'' +
 				", typeMirror='" + typeMirror + '\'' +
 				", paramPresent='" + paramPresent + '\'' +
 				", paramName='" + paramName + '\'' +
@@ -471,9 +458,8 @@ class WsIOParameterInfo {
 				", attributeNamespace='" + attributeNamespace + '\'' +
 				", attributeRequired='" + attributeRequired + '\'' +
 				", adapterPresent='" + adapterPresent + '\'' +
-				", adapterValue='" + adapterValue + '\'' +
-				", adapterType='" + adapterType + '\'' +
 				", qualifierInfo='" + qualifierInfo + '\'' +
+				", adapterInfos='" + adapterInfos + '\'' +
 				'}';
 	}
 

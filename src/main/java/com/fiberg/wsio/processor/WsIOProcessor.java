@@ -92,8 +92,9 @@ public class WsIOProcessor extends AbstractProcessor {
 		final WsIOGenerator generator = new WsIOGenerator(messager, filer);
 
 		/* Return the result of generating the classes */
-		return generator.generateClasses(messageByType, cloneByGroup,
-				cloneMessageByGroup, wrapperByType, metadataByType);
+		return generator.generateClasses(
+				messageByType, cloneByGroup, cloneMessageByGroup, wrapperByType, metadataByType
+		);
 
 	}
 

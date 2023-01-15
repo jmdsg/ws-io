@@ -1,13 +1,11 @@
 package com.fiberg.wsio.annotation;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
  * <p>Annotation used to specify if a parameter is an attribute.</p>
  */
+@Repeatable(WsIOAttributes.class)
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.PARAMETER })
 public @interface WsIOAttribute {
@@ -20,5 +18,11 @@ public @interface WsIOAttribute {
 
     /** Namespace of the attribute */
     String namespace() default "##default";
+
+    /** Prefix name of the attribute */
+    String prefix() default "##default";
+
+    /** Suffix name of the attribute */
+    String suffix() default "##default";
 
 }

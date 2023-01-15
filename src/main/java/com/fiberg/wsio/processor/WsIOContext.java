@@ -175,8 +175,10 @@ class WsIOContext {
 	public WsIOContext withGenerate(WsIOGenerate generate) {
 
 		/* Return new context with all fields */
-		return new WsIOContext(prefixClassName, suffixClassName, prefixWrapperName, suffixWrapperName,
-				messageClasses, cloneClasses, cloneMessageClasses, typeByName, generate);
+		return new WsIOContext(
+				prefixClassName, suffixClassName, prefixWrapperName, suffixWrapperName,
+				messageClasses, cloneClasses, cloneMessageClasses, typeByName, generate
+		);
 
 	}
 
@@ -195,8 +197,10 @@ class WsIOContext {
 	                            String suffixWrapperName) {
 
 		/* Return new context with all fields */
-		return new WsIOContext(prefixClassName, suffixClassName, prefixWrapperName, suffixWrapperName,
-				messageClasses, cloneClasses, cloneMessageClasses, typeByName, generate);
+		return new WsIOContext(
+				prefixClassName, suffixClassName, prefixWrapperName, suffixWrapperName,
+				messageClasses, cloneClasses, cloneMessageClasses, typeByName, generate
+		);
 
 	}
 

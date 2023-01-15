@@ -1,13 +1,11 @@
 package com.fiberg.wsio.annotation;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
  * <p>Annotation used to specify if a parameter should be wrapped.</p>
  */
+@Repeatable(WsIOElementWrappers.class)
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.PARAMETER })
 public @interface WsIOElementWrapper {
@@ -23,5 +21,11 @@ public @interface WsIOElementWrapper {
 
 	/** Inner nillable of the element wrapper */
 	boolean nillable() default false;
+
+	/** Prefix name of the element wrapper */
+	String prefix() default "##default";
+
+	/** Suffix name of the element wrapper */
+	String suffix() default "##default";
 
 }
