@@ -1630,7 +1630,7 @@ class WsIOGenerator {
 						builder = builder.addMember("namespace", "$S", memberInfo.getElementNamespace());
 					}
 
-					if (memberInfo.getElementDefaultValue() != null && !XML_DEFAULT_VALUE.equals(memberInfo.getElementDefaultValue())) {
+					if (memberInfo.getElementDefaultValue() != null && !XML_ZERO_VALUE.equals(memberInfo.getElementDefaultValue())) {
 						builder = builder.addMember("defaultValue", "$S", memberInfo.getElementDefaultValue());
 					}
 
