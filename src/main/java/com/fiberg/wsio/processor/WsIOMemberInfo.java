@@ -61,6 +61,8 @@ class WsIOMemberInfo {
 
 	private Boolean transientPresent;
 
+	private Boolean valuePresent;
+
 	private WsIOQualifierInfo qualifierInfo;
 
 	public static WsIOMemberInfo of(Element typeElement,
@@ -91,6 +93,7 @@ class WsIOMemberInfo {
 									String adapterValue,
 									String adapterType,
 									Boolean transientPresent,
+									Boolean valuePresent,
 									WsIOQualifierInfo qualifierInfo) {
 
 		WsIOMemberInfo info = new WsIOMemberInfo();
@@ -122,6 +125,7 @@ class WsIOMemberInfo {
 		info.adapterValue = adapterValue;
 		info.adapterType = adapterType;
 		info.transientPresent = transientPresent;
+		info.valuePresent = valuePresent;
 		info.qualifierInfo = qualifierInfo;
 		return info;
 
@@ -351,6 +355,14 @@ class WsIOMemberInfo {
 		this.transientPresent = transientPresent;
 	}
 
+	public Boolean getValuePresent() {
+		return valuePresent;
+	}
+
+	public void setValuePresent(Boolean valuePresent) {
+		this.valuePresent = valuePresent;
+	}
+
 	public WsIOQualifierInfo getQualifierInfo() {
 		return qualifierInfo;
 	}
@@ -421,6 +433,8 @@ class WsIOMemberInfo {
 			return false;
 		if (transientPresent != null ? !transientPresent.equals(wsIOMemberInfo.transientPresent) : wsIOMemberInfo.transientPresent != null)
 			return false;
+		if (valuePresent != null ? !valuePresent.equals(wsIOMemberInfo.valuePresent) : wsIOMemberInfo.valuePresent != null)
+			return false;
 		return qualifierInfo != null ? qualifierInfo.equals(wsIOMemberInfo.qualifierInfo) : wsIOMemberInfo.qualifierInfo == null;
 	}
 
@@ -454,6 +468,7 @@ class WsIOMemberInfo {
 		result = 31 * result + (adapterValue != null ? adapterValue.hashCode() : 0);
 		result = 31 * result + (adapterType != null ? adapterType.hashCode() : 0);
 		result = 31 * result + (transientPresent != null ? transientPresent.hashCode() : 0);
+		result = 31 * result + (valuePresent != null ? valuePresent.hashCode() : 0);
 		result = 31 * result + (qualifierInfo != null ? qualifierInfo.hashCode() : 0);
 		return result;
 	}
@@ -489,6 +504,7 @@ class WsIOMemberInfo {
 				", adapterValue='" + adapterValue + '\'' +
 				", adapterType='" + adapterType + '\'' +
 				", transientPresent='" + transientPresent + '\'' +
+				", valuePresent='" + valuePresent + '\'' +
 				", qualifierInfo='" + qualifierInfo + '\'' +
 				'}';
 	}

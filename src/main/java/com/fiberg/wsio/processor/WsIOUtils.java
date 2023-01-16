@@ -11,10 +11,7 @@ import io.vavr.control.Option;
 import jakarta.jws.WebMethod;
 import jakarta.jws.WebParam;
 import jakarta.jws.WebResult;
-import jakarta.xml.bind.annotation.XmlAttribute;
-import jakarta.xml.bind.annotation.XmlElement;
-import jakarta.xml.bind.annotation.XmlElementWrapper;
-import jakarta.xml.bind.annotation.XmlTransient;
+import jakarta.xml.bind.annotation.*;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -529,6 +526,18 @@ final class WsIOUtils {
 				internalQualifiedTransientMirror, internalDefaultTransientMirror, externalTransientMirror
 		);
 
+		AnnotationMirror externalValueMirror = WsIOUtils.getAnnotationMirror(element, XmlValue.class);
+		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleValueMirrors = WsIOUtils.getQualifiedAnnotationMirror(
+				element, WsIOValue.class, WsIOValues.class, qualifierInitialized
+		);
+
+		AnnotationMirror internalQualifiedValueMirror = Option.of(internalTupleValueMirrors).map(Tuple2::_1).getOrNull();
+		AnnotationMirror internalDefaultValueMirror = Option.of(internalTupleValueMirrors).map(Tuple2::_2).getOrNull();
+
+		AnnotationMirror valueMirror = ObjectUtils.firstNonNull(
+				internalQualifiedValueMirror, internalDefaultValueMirror, externalValueMirror
+		);
+
 		AnnotationMirror externalAdapterMirror = WsIOUtils.getAnnotationMirror(element, XmlJavaTypeAdapter.class);
 		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleAdapterMirror = WsIOUtils.getQualifiedAnnotationMirror(
 				element, WsIOJavaTypeAdapter.class, WsIOJavaTypeAdapters.class, qualifierInitialized
@@ -609,6 +618,7 @@ final class WsIOUtils {
 		boolean elementWrapperPresent = elementWrapperMirror != null;
 		boolean attributePresent = attributeMirror != null;
 		boolean transientPresent = transientMirror != null;
+		boolean valuePresent = valueMirror != null;
 		boolean adapterPresent = adapterMirror != null;
 
 		/* Get the ws io implicit qualifier prefix */
@@ -665,6 +675,7 @@ final class WsIOUtils {
 				adapterValue,
 				adapterType,
 				transientPresent,
+				valuePresent,
 				qualifierInfo
 		);
 
