@@ -54,4 +54,10 @@ public final class WsIOConstant {
 
 	public static final String PACKAGE_END = "wsio";
 
+	public static final String XML_EMPTY_VALUE = "";
+
+	public static final String XML_DEFAULT_VALUE = "##default";
+
+	public static final String XML_ZERO_VALUE = "\u0000";
+
 }

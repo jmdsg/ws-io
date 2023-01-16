@@ -1,7 +1,5 @@
 package com.fiberg.wsio.processor;
 
-import io.vavr.collection.List;
-
 import javax.lang.model.element.Element;
 import javax.lang.model.type.TypeMirror;
 

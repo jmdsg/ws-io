@@ -2,7 +2,10 @@ package com.fiberg.wsio.annotation;
 
 import jakarta.jws.WebParam;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * <p>Annotation used to specify a param data.</p>

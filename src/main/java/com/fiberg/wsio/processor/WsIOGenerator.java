@@ -2,7 +2,6 @@ package com.fiberg.wsio.processor;
 
 import com.fiberg.wsio.annotation.*;
 import com.fiberg.wsio.handler.state.*;
-import com.fiberg.wsio.handler.state.WsIOItem;
 import com.fiberg.wsio.handler.time.WsIOInstant;
 import com.fiberg.wsio.handler.time.WsIOTime;
 import com.fiberg.wsio.util.WsIOUtil;
@@ -657,8 +656,8 @@ class WsIOGenerator {
 			VariableElement parameter = setter.getParameters().get(0);
 			TypeMirror parameterType = parameter.asType();
 
-			String prefixClassName = context.getPrefixClassName();
-			String suffixClassName = context.getSuffixClassName();
+			String prefixClassName = ObjectUtils.firstNonNull(context.getPrefixClassName(), "");
+			String suffixClassName = ObjectUtils.firstNonNull(context.getSuffixClassName(), "");
 
 			WsIOQualifierInfo qualifierInfo = WsIOQualifierInfo.of(prefixClassName, suffixClassName);
 
@@ -941,11 +940,12 @@ class WsIOGenerator {
 		String separator = nameSwap ? WsIOConstant.SWAP_SEPARATOR : WsIOConstant.NO_SWAP_SEPARATOR;
 
 		/* Method and operation names */
-		String methodName = executableElement.getSimpleName().toString();
-		String operationName = info.getOperationName();
+		String methodOperationName = info.getMethodOperationName();
+		String executableName = executableElement.getSimpleName()
+				.toString();
 
 		/* Simple and full class name */
-		String classSimpleName = StringUtils.isNotBlank(operationName) ? operationName : methodName;
+		String classSimpleName = WsIOUtils.getFirstStringNonEqualsTo(XML_EMPTY_VALUE, methodOperationName, executableName);
 		String prefixTypeName = WsIOType.RESPONSE.equals(type) ? RESPONSE_WRAPPER_PREFIX : REQUEST_WRAPPER_PREFIX;
 		String suffixTypeName = WsIOType.RESPONSE.equals(type) ? RESPONSE_WRAPPER_SUFFIX : REQUEST_WRAPPER_SUFFIX;
 		String fullClassName = WsIOUtil.addWrap(WordUtils.capitalize(classSimpleName), prefixTypeName, suffixTypeName);
@@ -974,15 +974,15 @@ class WsIOGenerator {
 
 						String calculatedElementName = !elementPresent
 								? paramName
-								: StringUtils.firstNonBlank(elementName, paramName);
+								: WsIOUtils.getFirstStringNonEqualsTo(List.of(XML_EMPTY_VALUE, XML_DEFAULT_VALUE), "", elementName, paramName);
 
 						String calculatedElementWrapperName = !elementWrapperPresent
 								? paramName
-								: StringUtils.firstNonBlank(elementWrapperName, paramName);
+								: WsIOUtils.getFirstStringNonEqualsTo(List.of(XML_EMPTY_VALUE, XML_DEFAULT_VALUE), "", elementWrapperName, paramName);
 
 						String calculatedAttributeName = !attributePresent
 								? paramName
-								: StringUtils.firstNonBlank(attributeName, paramName);
+								: WsIOUtils.getFirstStringNonEqualsTo(List.of(XML_EMPTY_VALUE, XML_DEFAULT_VALUE), "", attributeName, paramName);
 
 						String calculatedMainElementName = !elementWrapperPresent
 								? calculatedElementName
@@ -1002,7 +1002,7 @@ class WsIOGenerator {
 
 						/* Parameter name if present otherwise default value */
 						String defaultName = DEFAULT_PARAMETER + parameterIndex;
-						String parameterName = StringUtils.firstNonBlank(calculatedMainName, defaultName);
+						String parameterName = WsIOUtils.getFirstStringNonEqualsTo(List.of(XML_EMPTY_VALUE, XML_DEFAULT_VALUE), "", calculatedMainName, defaultName);
 
 						OperationIdentifier operationIdentifier = OperationIdentifier.of(
 								calculatedMainType, parameterName,
@@ -1020,11 +1020,11 @@ class WsIOGenerator {
 				WsIOQualifierInfo qualifierInfo = info.getReturnQualifierInfo();
 
 				/* Return name if present otherwise default value*/
-				String returnName = info.getReturnName();
-				String resultName = StringUtils.isNotBlank(returnName) ? returnName : DEFAULT_RESULT;
+				String resultName = info.getResultName();
+				String returnName = WsIOUtils.getFirstStringNonEqualsTo(XML_EMPTY_VALUE, resultName, DEFAULT_RESULT);
 
 				OperationIdentifier operationIdentifier = OperationIdentifier.of(
-						OperationType.DEFAULT, resultName, null, null, null
+						OperationType.DEFAULT, returnName, null, null, null
 				);
 
 				yield List.of(
@@ -1178,7 +1178,7 @@ class WsIOGenerator {
 				};
 
 				/* Check if inner wrapper is defined */
-				if (info.getExecutableWrappers().contains(WsIOWrapped.INNER_WRAPPED)
+				if (info.getDescriptorWrappers().contains(WsIOWrapped.INNER_WRAPPED)
 						&& isValidInnerType.test(mirror)
 						&& WsIOType.RESPONSE.equals(type)) {
 
@@ -1321,7 +1321,7 @@ class WsIOGenerator {
 				} else {
 
 					/* Flag indicating if empty collections, maps and arrays should be hidden */
-					boolean methodHideEmpties = info.getExecutableWrappers()
+					boolean methodHideEmpties = info.getDescriptorWrappers()
 							.contains(WsIOWrapped.HIDE_EMPTY_WRAPPED);
 
 					/* List with the internal get and set annotations */
@@ -1463,11 +1463,11 @@ class WsIOGenerator {
 		}
 
 		/* Check if the type is response and the wrapper size is greater than 0 */
-		if (WsIOType.RESPONSE.equals(type) && info.getExecutableWrappers().size() > 0) {
+		if (WsIOType.RESPONSE.equals(type) && info.getDescriptorWrappers().size() > 0) {
 
 			/* Get additionals */
 			Tuple4<List<FieldSpec>, List<MethodSpec>, List<TypeName>, List<AnnotationSpec>> additionals =
-					generateAdditionals(info.getExecutableWrappers(), fieldNames);
+					generateAdditionals(info.getDescriptorWrappers(), fieldNames);
 
 			/* Add all fields, methods, interfaces and annotations */
 			fields = fields.appendAll(additionals._1());

@@ -16,7 +16,6 @@ import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElementWrapper;
 import jakarta.xml.bind.annotation.XmlTransient;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
-import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapters;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -26,7 +25,10 @@ import javax.lang.model.type.*;
 import java.lang.annotation.Annotation;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
+
+import static com.fiberg.wsio.processor.WsIOConstant.*;
 
 /**
  * Class of utilities with helper methods over classes derived from
@@ -111,7 +113,7 @@ final class WsIOUtils {
 	 */
 	static boolean methodMatch(WsIOExecutableInfo info, ExecutableElement method) {
 		if (method != null) {
-			return method.getSimpleName().toString().equals(info.getMethodName())
+			return method.getSimpleName().toString().equals(info.getExecutableName())
 					&& method.getParameters().stream()
 					.map(VariableElement::asType)
 					.collect(Collectors.toList())
@@ -136,46 +138,83 @@ final class WsIOUtils {
 	/**
 	 * Method that extracts the method and additional info.
 	 *
-	 * @param executable executable element
-	 * @param descriptor object with all element annotations
-	 * @param qualifier pair data to specify the target qualifier
+	 * @param executableElement executable element
+	 * @param executableDescriptor object with all element annotations
+	 * @param qualifierInfo pair data to specify the target qualifier
 	 * @return object containing all the info required for the generation of a wrapper element.
 	 */
-	static WsIOExecutableInfo extractExecutableInfo(ExecutableElement executable, WsIODescriptor descriptor, WsIOQualifierInfo qualifier) {
+	static WsIOExecutableInfo extractExecutableInfo(ExecutableElement executableElement,
+													WsIODescriptor executableDescriptor,
+													WsIOQualifierInfo qualifierInfo) {
 
-		/* Get operation name */
-		String operationName = WsIOUtils.getAnnotationTypeValue(executable, WebMethod.class, "operationName", String.class, "");
+		AnnotationMirror webMethodMirror = WsIOUtils.getAnnotationMirror(executableElement, WebMethod.class);
+		AnnotationMirror webResultMirror = WsIOUtils.getAnnotationMirror(executableElement, WebResult.class);
+		AnnotationMirror xmlElementMirror = WsIOUtils.getAnnotationMirror(executableElement, XmlElement.class);
+		AnnotationMirror xmlElementWrapperMirror = WsIOUtils.getAnnotationMirror(executableElement, XmlElementWrapper.class);
 
-		/* Get wrapper name nad namespace type */
-		String wrapperName = WsIOUtils.getAnnotationTypeValue(executable, XmlElementWrapper.class, "name", String.class, "");
-		String wrapperNamespace = WsIOUtils.getAnnotationTypeValue(executable, XmlElementWrapper.class, "namespace", String.class, "");
+		/* Get operation name, action and exclude */
+		String methodOperationName = WsIOUtils.getAnnotationTypeValue(webMethodMirror, "operationName", String.class, XML_EMPTY_VALUE);
+		String methodAction = WsIOUtils.getAnnotationTypeValue(webMethodMirror, "action", String.class, XML_EMPTY_VALUE);
+		Boolean methodExclude = WsIOUtils.getAnnotationTypeValue(webMethodMirror, "exclude", Boolean.class, false);
 
-		/* Get return name, namespace, type and the prefix and suffix of ws qualifier */
-		String returnName = WsIOUtils.getAnnotationTypeValue(executable, WebResult.class, "name", String.class, "");
-		String returnNamespace = WsIOUtils.getAnnotationTypeValue(executable, WebResult.class, "targetNamespace", String.class, "");
-		TypeMirror returnType = executable.getReturnType();
-		WsIOQualifierInfo returnQualifierInfo = Option.of(WsIOUtils.getAnnotationMirror(executable, WsIOQualifier.class))
+		/* Get result name, part name, target namespace and result header */
+		String resultName = WsIOUtils.getAnnotationTypeValue(webResultMirror, "name", String.class, XML_EMPTY_VALUE);
+		String resultPartName = WsIOUtils.getAnnotationTypeValue(webResultMirror, "partName", String.class, XML_EMPTY_VALUE);
+		String resultTargetNamespace = WsIOUtils.getAnnotationTypeValue(webResultMirror, "targetNamespace", String.class, XML_EMPTY_VALUE);
+		Boolean resultHeader = WsIOUtils.getAnnotationTypeValue(webResultMirror, "header", Boolean.class, false);
+
+		/* Get wrapper name, namespace, nillable and required */
+		String elementName = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "name", String.class, XML_DEFAULT_VALUE);
+		String elementNamespace = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "namespace", String.class, XML_DEFAULT_VALUE);
+		Boolean elementNillable = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "nillable", Boolean.class, false);
+		Boolean elementRequired = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "required", Boolean.class, false);
+		String elementDefaultValue = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "defaultValue", String.class, XML_ZERO_VALUE);
+		String elementType = WsIOUtils.getAnnotationLiteralValue(xmlElementMirror, "type");
+
+		/* Get wrapper name, namespace, nillable and required */
+		String elementWrapperName = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "name", String.class, XML_DEFAULT_VALUE);
+		String elementWrapperNamespace = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "namespace", String.class, XML_DEFAULT_VALUE);
+		Boolean elementWrapperNillable = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "nillable", Boolean.class, false);
+		Boolean elementWrapperRequired = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "required", Boolean.class, false);
+
+		/* Get the present indicator */
+		boolean methodPresent = webMethodMirror != null;
+		boolean resultPresent = webResultMirror != null;
+		boolean elementPresent = xmlElementMirror != null;
+		boolean elementWrapperPresent = xmlElementWrapperMirror != null;
+
+		/* Get return type and the prefix and suffix of ws qualifier */
+		TypeMirror returnType = executableElement.getReturnType();
+		WsIOQualifierInfo returnQualifierInfo = Option.of(WsIOUtils.getAnnotationMirror(executableElement, WsIOQualifier.class))
 				.map(mirror -> WsIOQualifierInfo.of(
 						WsIOUtils.getAnnotationTypeValue(mirror, "prefix", String.class, ""),
 						WsIOUtils.getAnnotationTypeValue(mirror, "suffix", String.class, "")))
 				.getOrNull();
 
 		/* Get operation and method names */
-		String methodName = executable.getSimpleName().toString();
+		String executableName = executableElement.getSimpleName().toString();
 
-		List<WsIOMemberInfo> memberInfos = List.ofAll(executable.getParameters())
-				.map(element -> WsIOUtils.extractMemberInfo(element, qualifier));
+		List<WsIOMemberInfo> memberInfos = List.ofAll(executableElement.getParameters())
+				.map(variableElement -> WsIOUtils.extractMemberInfo(variableElement, qualifierInfo));
 
 		/* Extract the use annotations that are defined */
-		Set<WsIOWrapped> executableWrappers = WsIOWrapped.ANNOTATIONS
-				.filterValues(annotation -> Option.of(descriptor)
+		Set<WsIOWrapped> descriptorWrappers = WsIOWrapped.ANNOTATIONS
+				.filterValues(annotation -> Option.of(executableDescriptor)
 						.flatMap(desc -> desc.getSingle(annotation))
 						.isDefined())
 				.keySet();
 
 		/* Return the info */
-		return WsIOExecutableInfo.of(executable, methodName, operationName, memberInfos,
-				returnName, returnNamespace, returnType, returnQualifierInfo, wrapperName, wrapperNamespace, executableWrappers);
+		return WsIOExecutableInfo.of(
+				executableElement, executableName,
+				methodPresent, methodOperationName, methodAction, methodExclude,
+				resultPresent, resultName, resultPartName, resultTargetNamespace, resultHeader,
+				elementPresent, elementName, elementNamespace, elementRequired, elementNillable, elementDefaultValue, elementType,
+				elementWrapperPresent, elementWrapperName, elementWrapperNamespace, elementWrapperRequired, elementWrapperNillable,
+				returnType, returnQualifierInfo,
+				memberInfos,
+				descriptorWrappers
+		);
 
 	}
 
@@ -201,6 +240,8 @@ final class WsIOUtils {
 		// Get the type mirror of the variable
 		TypeMirror type = element.asType();
 
+		WsIOQualifierInfo qualifierInitialized = Objects.requireNonNullElseGet(qualifier, () -> WsIOQualifierInfo.of("", ""));
+
 		AnnotationMirror internalParamMirror = WsIOUtils.getAnnotationMirror(element, WsIOParam.class);
 		AnnotationMirror externalParamMirror = WsIOUtils.getAnnotationMirror(element, WebParam.class);
 		AnnotationMirror paramMirror = ObjectUtils.firstNonNull(
@@ -209,17 +250,17 @@ final class WsIOUtils {
 
 		/* Get the internal argument name of the param */
 		String internalParamName = WsIOUtils.getAnnotationTypeValue(
-				internalParamMirror, "name", String.class, ""
+				internalParamMirror, "name", String.class, XML_EMPTY_VALUE
 		);
 
 		/* Get the internal argument part name of the param */
 		String internalParamPartName = WsIOUtils.getAnnotationTypeValue(
-				internalParamMirror, "partName", String.class, ""
+				internalParamMirror, "partName", String.class, XML_EMPTY_VALUE
 		);
 
 		/* Get the internal argument target name space of the param */
 		String internalParamTargetNamespace = WsIOUtils.getAnnotationTypeValue(
-				internalParamMirror, "targetNamespace", String.class, ""
+				internalParamMirror, "targetNamespace", String.class, XML_EMPTY_VALUE
 		);
 
 		/* Get the internal argument mode of the param */
@@ -227,22 +268,22 @@ final class WsIOUtils {
 
 		/* Get the internal argument header of the param */
 		Boolean internalParamHeader = WsIOUtils.getAnnotationTypeValue(
-				internalParamMirror, "header", Boolean.class
+				internalParamMirror, "header", Boolean.class, false
 		);
 
 		/* Get the external argument names of the param */
 		String externalParamName = WsIOUtils.getAnnotationTypeValue(
-				externalParamMirror, "name", String.class, ""
+				externalParamMirror, "name", String.class, XML_EMPTY_VALUE
 		);
 
 		/* Get the external argument part name of the param */
 		String externalParamPartName = WsIOUtils.getAnnotationTypeValue(
-				externalParamMirror, "partName", String.class, ""
+				externalParamMirror, "partName", String.class, XML_EMPTY_VALUE
 		);
 
 		/* Get the external argument target name space of the param */
 		String externalParamTargetNamespace = WsIOUtils.getAnnotationTypeValue(
-				externalParamMirror, "targetNamespace", String.class, ""
+				externalParamMirror, "targetNamespace", String.class, XML_EMPTY_VALUE
 		);
 
 		/* Get the external argument mode of the param */
@@ -250,11 +291,11 @@ final class WsIOUtils {
 
 		/* Get the external argument header of the param */
 		Boolean externalParamHeader = WsIOUtils.getAnnotationTypeValue(
-				externalParamMirror, "header", Boolean.class
+				externalParamMirror, "header", Boolean.class, false
 		);
 
 		AnnotationMirror externalElementMirror = WsIOUtils.getAnnotationMirror(element, XmlElement.class);
-		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleElementMirrors = WsIOUtils.getQualifiedAnnotationMirror(element, WsIOElement.class, WsIOElements.class, qualifier);
+		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleElementMirrors = WsIOUtils.getQualifiedAnnotationMirror(element, WsIOElement.class, WsIOElements.class, qualifierInitialized);
 
 		AnnotationMirror internalQualifiedElementMirror = Option.of(internalTupleElementMirrors).map(Tuple2::_1).getOrNull();
 		AnnotationMirror internalDefaultElementMirror = Option.of(internalTupleElementMirrors).map(Tuple2::_2).getOrNull();
@@ -265,27 +306,27 @@ final class WsIOUtils {
 
 		/* Get the internal qualified argument name of the element */
 		String internalQualifiedElementName = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedElementMirror, "name", String.class, ""
+				internalQualifiedElementMirror, "name", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the internal qualified argument namespace of the element */
 		String internalQualifiedElementNamespace = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedElementMirror, "namespace", String.class, ""
+				internalQualifiedElementMirror, "namespace", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the internal qualified argument required of the element */
 		Boolean internalQualifiedElementRequired = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedElementMirror, "required", Boolean.class
+				internalQualifiedElementMirror, "required", Boolean.class, false
 		);
 
 		/* Get the internal qualified argument nillable of the element */
 		Boolean internalQualifiedElementNillable = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedElementMirror, "nillable", Boolean.class
+				internalQualifiedElementMirror, "nillable", Boolean.class, false
 		);
 
 		/* Get the internal qualified argument default value of the element */
 		String internalQualifiedElementDefaultValue = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedElementMirror, "defaultValue", String.class
+				internalQualifiedElementMirror, "defaultValue", String.class, XML_ZERO_VALUE
 		);
 
 		/* Get the internal qualified argument type of the element */
@@ -293,27 +334,27 @@ final class WsIOUtils {
 
 		/* Get the internal default argument name of the element */
 		String internalDefaultElementName = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultElementMirror, "name", String.class, ""
+				internalDefaultElementMirror, "name", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the internal default argument namespace of the element */
 		String internalDefaultElementNamespace = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultElementMirror, "namespace", String.class, ""
+				internalDefaultElementMirror, "namespace", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the internal default argument required of the element */
 		Boolean internalDefaultElementRequired = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultElementMirror, "required", Boolean.class
+				internalDefaultElementMirror, "required", Boolean.class, false
 		);
 
 		/* Get the internal default argument nillable of the element */
 		Boolean internalDefaultElementNillable = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultElementMirror, "nillable", Boolean.class
+				internalDefaultElementMirror, "nillable", Boolean.class, false
 		);
 
 		/* Get the internal default argument default value of the element */
 		String internalDefaultElementDefaultValue = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultElementMirror, "defaultValue", String.class
+				internalDefaultElementMirror, "defaultValue", String.class, XML_ZERO_VALUE
 		);
 
 		/* Get the internal default argument type of the element */
@@ -321,27 +362,27 @@ final class WsIOUtils {
 
 		/* Get the external argument name of the element */
 		String externalElementName = WsIOUtils.getAnnotationTypeValue(
-				externalElementMirror, "name", String.class, ""
+				externalElementMirror, "name", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the external argument namespace of the element */
 		String externalElementNamespace = WsIOUtils.getAnnotationTypeValue(
-				externalElementMirror, "namespace", String.class, ""
+				externalElementMirror, "namespace", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the external argument required of the element */
 		Boolean externalElementRequired = WsIOUtils.getAnnotationTypeValue(
-				externalElementMirror, "required", Boolean.class
+				externalElementMirror, "required", Boolean.class, false
 		);
 
 		/* Get the external argument nillable of the element */
 		Boolean externalElementNillable = WsIOUtils.getAnnotationTypeValue(
-				externalElementMirror, "nillable", Boolean.class
+				externalElementMirror, "nillable", Boolean.class, false
 		);
 
 		/* Get the external argument default value of the element */
 		String externalElementDefaultValue = WsIOUtils.getAnnotationTypeValue(
-				externalElementMirror, "defaultValue", String.class
+				externalElementMirror, "defaultValue", String.class, XML_ZERO_VALUE
 		);
 
 		/* Get the external argument type of the element */
@@ -349,7 +390,7 @@ final class WsIOUtils {
 
 		AnnotationMirror externalElementWrapperMirror = WsIOUtils.getAnnotationMirror(element, XmlElementWrapper.class);
 		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleElementWrapperMirrors = WsIOUtils.getQualifiedAnnotationMirror(
-				element, WsIOElementWrapper.class, WsIOElementWrappers.class, qualifier
+				element, WsIOElementWrapper.class, WsIOElementWrappers.class, qualifierInitialized
 		);
 
 		AnnotationMirror internalQualifiedElementWrapperMirror = Option.of(internalTupleElementWrapperMirrors).map(Tuple2::_1).getOrNull();
@@ -361,67 +402,67 @@ final class WsIOUtils {
 
 		/* Get the internal qualified argument name of the element wrapper */
 		String internalQualifiedElementWrapperName = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedElementWrapperMirror, "name", String.class, ""
+				internalQualifiedElementWrapperMirror, "name", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the internal qualified argument namespace of the element wrapper */
 		String internalQualifiedElementWrapperNamespace = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedElementWrapperMirror, "namespace", String.class, ""
+				internalQualifiedElementWrapperMirror, "namespace", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the internal qualified argument required of the element wrapper */
 		Boolean internalQualifiedElementWrapperRequired = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedElementWrapperMirror, "required", Boolean.class
+				internalQualifiedElementWrapperMirror, "required", Boolean.class, false
 		);
 
 		/* Get the internal qualified argument nillable of the element wrapper */
 		Boolean internalQualifiedElementWrapperNillable = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedElementWrapperMirror, "nillable", Boolean.class
+				internalQualifiedElementWrapperMirror, "nillable", Boolean.class, false
 		);
 
 		/* Get the internal default argument name of the element wrapper */
 		String internalDefaultElementWrapperName = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultElementWrapperMirror, "name", String.class, ""
+				internalDefaultElementWrapperMirror, "name", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the internal default argument namespace of the element wrapper */
 		String internalDefaultElementWrapperNamespace = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultElementWrapperMirror, "namespace", String.class, ""
+				internalDefaultElementWrapperMirror, "namespace", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the internal default argument required of the element wrapper */
 		Boolean internalDefaultElementWrapperRequired = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultElementWrapperMirror, "required", Boolean.class
+				internalDefaultElementWrapperMirror, "required", Boolean.class, false
 		);
 
 		/* Get the internal default argument nillable of the element wrapper */
 		Boolean internalDefaultElementWrapperNillable = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultElementWrapperMirror, "nillable", Boolean.class
+				internalDefaultElementWrapperMirror, "nillable", Boolean.class, false
 		);
 
 		/* Get the external argument name of the element wrapper */
 		String externalElementWrapperName = WsIOUtils.getAnnotationTypeValue(
-				externalElementWrapperMirror, "name", String.class, ""
+				externalElementWrapperMirror, "name", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the external argument namespace of the element wrapper */
 		String externalElementWrapperNamespace = WsIOUtils.getAnnotationTypeValue(
-				externalElementWrapperMirror, "namespace", String.class, ""
+				externalElementWrapperMirror, "namespace", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the external argument required of the element wrapper */
 		Boolean externalElementWrapperRequired = WsIOUtils.getAnnotationTypeValue(
-				externalElementWrapperMirror, "required", Boolean.class
+				externalElementWrapperMirror, "required", Boolean.class, false
 		);
 
 		/* Get the external argument nillable of the element wrapper */
 		Boolean externalElementWrapperNillable = WsIOUtils.getAnnotationTypeValue(
-				externalElementWrapperMirror, "nillable", Boolean.class
+				externalElementWrapperMirror, "nillable", Boolean.class, false
 		);
 
 		AnnotationMirror externalAttributeMirror = WsIOUtils.getAnnotationMirror(element, XmlAttribute.class);
 		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleAttributeMirrors = WsIOUtils.getQualifiedAnnotationMirror(
-				element, WsIOAttribute.class, WsIOAttributes.class, qualifier
+				element, WsIOAttribute.class, WsIOAttributes.class, qualifierInitialized
 		);
 
 		AnnotationMirror internalQualifiedAttributeMirror = Option.of(internalTupleAttributeMirrors).map(Tuple2::_1).getOrNull();
@@ -433,50 +474,52 @@ final class WsIOUtils {
 
 		/* Get the internal qualified argument name of the attribute */
 		String internalQualifiedAttributeName = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedAttributeMirror, "name", String.class, ""
+				internalQualifiedAttributeMirror, "name", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the internal qualified argument namespace of the attribute */
 		String internalQualifiedAttributeNamespace = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedAttributeMirror, "namespace", String.class, ""
+				internalQualifiedAttributeMirror, "namespace", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the internal qualified argument required of the attribute */
 		Boolean internalQualifiedAttributeRequired = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedAttributeMirror, "required", Boolean.class);
+				internalQualifiedAttributeMirror, "required", Boolean.class, false
+		);
 
 		/* Get the internal default argument name of the attribute */
 		String internalDefaultAttributeName = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultAttributeMirror, "name", String.class, ""
+				internalDefaultAttributeMirror, "name", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the internal default argument namespace of the attribute */
 		String internalDefaultAttributeNamespace = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultAttributeMirror, "namespace", String.class, ""
+				internalDefaultAttributeMirror, "namespace", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the internal default argument required of the attribute */
 		Boolean internalDefaultAttributeRequired = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultAttributeMirror, "required", Boolean.class);
+				internalDefaultAttributeMirror, "required", Boolean.class, false
+		);
 
 		/* Get the external argument name of the attribute */
 		String externalAttributeName = WsIOUtils.getAnnotationTypeValue(
-				externalAttributeMirror, "name", String.class, ""
+				externalAttributeMirror, "name", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the external argument namespace of the attribute */
 		String externalAttributeNamespace = WsIOUtils.getAnnotationTypeValue(
-				externalAttributeMirror, "namespace", String.class, ""
+				externalAttributeMirror, "namespace", String.class, XML_DEFAULT_VALUE
 		);
 
 		/* Get the external argument required of the attribute */
 		Boolean externalAttributeRequired = WsIOUtils.getAnnotationTypeValue(
-				externalAttributeMirror, "required", Boolean.class
+				externalAttributeMirror, "required", Boolean.class, false
 		);
 
 		AnnotationMirror externalTransientMirror = WsIOUtils.getAnnotationMirror(element, XmlTransient.class);
 		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleTransientMirrors = WsIOUtils.getQualifiedAnnotationMirror(
-				element, WsIOTransient.class, WsIOTransients.class, qualifier
+				element, WsIOTransient.class, WsIOTransients.class, qualifierInitialized
 		);
 
 		AnnotationMirror internalQualifiedTransientMirror = Option.of(internalTupleTransientMirrors).map(Tuple2::_1).getOrNull();
@@ -488,7 +531,7 @@ final class WsIOUtils {
 
 		AnnotationMirror externalAdapterMirror = WsIOUtils.getAnnotationMirror(element, XmlJavaTypeAdapter.class);
 		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleAdapterMirror = WsIOUtils.getQualifiedAnnotationMirror(
-				element, WsIOJavaTypeAdapter.class, WsIOJavaTypeAdapters.class, qualifier
+				element, WsIOJavaTypeAdapter.class, WsIOJavaTypeAdapters.class, qualifierInitialized
 		);
 
 		AnnotationMirror internalQualifiedAdapterMirror = Option.of(internalTupleAdapterMirror).map(Tuple2::_1).getOrNull();
@@ -517,42 +560,42 @@ final class WsIOUtils {
 		String externalAdapterType = WsIOUtils.getAnnotationLiteralValue(externalAdapterMirror, "type");
 
 		/* Get the priority param values */
-		String paramName = StringUtils.firstNonBlank(internalParamName, externalParamName);
-		String paramPartName = StringUtils.firstNonBlank(internalParamPartName, externalParamPartName);
-		String paramTargetNamespace = StringUtils.firstNonBlank(internalParamTargetNamespace, externalParamTargetNamespace);
+		String paramName = WsIOUtils.getFirstStringNonEqualsTo(XML_EMPTY_VALUE, internalParamName, externalParamName);
+		String paramPartName = WsIOUtils.getFirstStringNonEqualsTo(XML_EMPTY_VALUE, internalParamPartName, externalParamPartName);
+		String paramTargetNamespace = WsIOUtils.getFirstStringNonEqualsTo(XML_EMPTY_VALUE, internalParamTargetNamespace, externalParamTargetNamespace);
 		String paramMode = StringUtils.firstNonBlank(internalParamMode, externalParamMode);
 		Boolean paramHeader = ObjectUtils.firstNonNull(internalParamHeader, externalParamHeader);
 
 		/* Get the priority element values */
-		String internalElementName = StringUtils.firstNonBlank(internalQualifiedElementName, internalDefaultElementName);
-		String internalElementNamespace = StringUtils.firstNonBlank(internalQualifiedElementNamespace, internalDefaultElementNamespace);
+		String internalElementName = WsIOUtils.getFirstStringNonEqualsTo(XML_DEFAULT_VALUE, internalQualifiedElementName, internalDefaultElementName);
+		String internalElementNamespace = WsIOUtils.getFirstStringNonEqualsTo(XML_DEFAULT_VALUE, internalQualifiedElementNamespace, internalDefaultElementNamespace);
 		Boolean internalElementRequired = ObjectUtils.firstNonNull(internalQualifiedElementRequired, internalDefaultElementRequired);
 		Boolean internalElementNillable = ObjectUtils.firstNonNull(internalQualifiedElementNillable, internalDefaultElementNillable);
 		String internalElementDefaultValue = ObjectUtils.firstNonNull(internalQualifiedElementDefaultValue, internalDefaultElementDefaultValue);
 		String internalElementType = ObjectUtils.firstNonNull(internalQualifiedElementType, internalDefaultElementType);
-		String elementName = StringUtils.firstNonBlank(internalElementName, externalElementName);
-		String elementNamespace = StringUtils.firstNonBlank(internalElementNamespace, externalElementNamespace);
+		String elementName = getFirstStringNonEqualsTo(XML_DEFAULT_VALUE, internalElementName, externalElementName);
+		String elementNamespace = getFirstStringNonEqualsTo(XML_DEFAULT_VALUE, internalElementNamespace, externalElementNamespace);
 		Boolean elementRequired = ObjectUtils.firstNonNull(internalElementRequired, externalElementRequired);
 		Boolean elementNillable = ObjectUtils.firstNonNull(internalElementNillable, externalElementNillable);
 		String elementDefaultValue = ObjectUtils.firstNonNull(internalElementDefaultValue, externalElementDefaultValue);
 		String elementType = ObjectUtils.firstNonNull(internalElementType, externalElementType);
 
 		/* Get the priority element wrapper values */
-		String internalElementWrapperName = StringUtils.firstNonBlank(internalQualifiedElementWrapperName, internalDefaultElementWrapperName);
-		String internalElementWrapperNamespace = StringUtils.firstNonBlank(internalQualifiedElementWrapperNamespace, internalDefaultElementWrapperNamespace);
+		String internalElementWrapperName = WsIOUtils.getFirstStringNonEqualsTo(XML_DEFAULT_VALUE, internalQualifiedElementWrapperName, internalDefaultElementWrapperName);
+		String internalElementWrapperNamespace = WsIOUtils.getFirstStringNonEqualsTo(XML_DEFAULT_VALUE, internalQualifiedElementWrapperNamespace, internalDefaultElementWrapperNamespace);
 		Boolean internalElementWrapperRequired = ObjectUtils.firstNonNull(internalQualifiedElementWrapperRequired, internalDefaultElementWrapperRequired);
 		Boolean internalElementWrapperNillable = ObjectUtils.firstNonNull(internalQualifiedElementWrapperNillable, internalDefaultElementWrapperNillable);
-		String elementWrapperName = StringUtils.firstNonBlank(internalElementWrapperName, externalElementWrapperName);
-		String elementWrapperNamespace = StringUtils.firstNonBlank(internalElementWrapperNamespace, externalElementWrapperNamespace);
+		String elementWrapperName = WsIOUtils.getFirstStringNonEqualsTo(XML_DEFAULT_VALUE, internalElementWrapperName, externalElementWrapperName);
+		String elementWrapperNamespace = WsIOUtils.getFirstStringNonEqualsTo(XML_DEFAULT_VALUE, internalElementWrapperNamespace, externalElementWrapperNamespace);
 		Boolean elementWrapperRequired = ObjectUtils.firstNonNull(internalElementWrapperRequired, externalElementWrapperRequired);
 		Boolean elementWrapperNillable = ObjectUtils.firstNonNull(internalElementWrapperNillable, externalElementWrapperNillable);
 
 		/* Get the priority attribute values */
-		String internalAttributeName = StringUtils.firstNonBlank(internalQualifiedAttributeName, internalDefaultAttributeName);
-		String internalAttributeNamespace = StringUtils.firstNonBlank(internalQualifiedAttributeNamespace, internalDefaultAttributeNamespace);
+		String internalAttributeName = WsIOUtils.getFirstStringNonEqualsTo(XML_DEFAULT_VALUE, internalQualifiedAttributeName, internalDefaultAttributeName);
+		String internalAttributeNamespace = WsIOUtils.getFirstStringNonEqualsTo(XML_DEFAULT_VALUE, internalQualifiedAttributeNamespace, internalDefaultAttributeNamespace);
 		Boolean internalAttributeRequired = ObjectUtils.firstNonNull(internalQualifiedAttributeRequired, internalDefaultAttributeRequired);
-		String attributeName = StringUtils.firstNonBlank(internalAttributeName, externalAttributeName);
-		String attributeNamespace = StringUtils.firstNonBlank(internalAttributeNamespace, externalAttributeNamespace);
+		String attributeName = WsIOUtils.getFirstStringNonEqualsTo(XML_DEFAULT_VALUE, internalAttributeName, externalAttributeName);
+		String attributeNamespace = WsIOUtils.getFirstStringNonEqualsTo(XML_DEFAULT_VALUE, internalAttributeNamespace, externalAttributeNamespace);
 		Boolean attributeRequired = ObjectUtils.firstNonNull(internalAttributeRequired, externalAttributeRequired);
 
 		/* Get the priority adapter values */
@@ -568,15 +611,27 @@ final class WsIOUtils {
 		boolean transientPresent = transientMirror != null;
 		boolean adapterPresent = adapterMirror != null;
 
-		/* Get the ws io qualifier prefix */
-		String qualifierPrefix = WsIOUtils.getAnnotationTypeValue(
+		/* Get the ws io implicit qualifier prefix */
+		String qualifierImplicitPrefix = WsIOUtils.getAnnotationTypeValue(
 				element, WsIOQualifier.class, "prefix", String.class, ""
 		);
 
-		/* Get the ws io qualifier suffix */
-		String qualifierSuffix = WsIOUtils.getAnnotationTypeValue(
+		/* Get the ws io implicit qualifier suffix */
+		String qualifierImplicitSuffix = WsIOUtils.getAnnotationTypeValue(
 				element, WsIOQualifier.class, "suffix", String.class, ""
 		);
+
+		/* Get the ws io explicit qualifier prefix */
+		String qualifierExplicitPrefix = qualifierInitialized.getQualifierPrefix();
+
+		/* Get the ws io explicit qualifier suffix */
+		String qualifierExplicitSuffix = qualifierInitialized.getQualifierSuffix();
+
+		/* Get the ws io qualifier prefix */
+		String qualifierPrefix = WsIOUtils.getFirstStringNonEqualsTo("", qualifierExplicitPrefix, qualifierImplicitPrefix);
+
+		/* Get the ws io qualifier suffix */
+		String qualifierSuffix = WsIOUtils.getFirstStringNonEqualsTo("", qualifierExplicitSuffix, qualifierImplicitSuffix);
 
 		/* Get the qualifier info */
 		WsIOQualifierInfo qualifierInfo = WsIOQualifierInfo.of(qualifierPrefix, qualifierSuffix);
@@ -900,6 +955,39 @@ final class WsIOUtils {
 	}
 
 	/**
+	 * Method that returns the first element not matching the specified value or the default value.
+	 *
+	 * @param match the value to match against
+	 * @param values the list of values to check
+	 * @return the first element not matching the specified value or the default value
+	 */
+	static String getFirstStringNonEqualsTo(String match, String... values) {
+		for (String value : values) {
+			if (!Objects.equals(match, value)) {
+				return value;
+			}
+		}
+		return match;
+	}
+
+	/**
+	 * Method that returns the first element not matching the specified value or the default value.
+	 *
+	 * @param matches the list of values to match against
+	 * @param or the default value
+	 * @param values the list of values to check
+	 * @return the first element not matching the specified value or the default value
+	 */
+	static String getFirstStringNonEqualsTo(List<String> matches, String or, String... values) {
+		for (String value : values) {
+			if (!matches.contains(value)) {
+				return value;
+			}
+		}
+		return or;
+	}
+
+	/**
 	 * Method that returns the full inner name.
 	 *
 	 * @param element type element
@@ -1061,10 +1149,10 @@ final class WsIOUtils {
 	 */
 	static <T> T getAnnotationTypeValue(Element target, Class<? extends Annotation> annotation, String field, Class<T> type, T or) {
 		AnnotationMirror annotationMirror = getAnnotationMirror(target, annotation);
-		if (annotationMirror == null) {
-			return or;
+		if (annotationMirror != null) {
+			return getAnnotationTypeValue(annotationMirror, field, type, or);
 		}
-		return getAnnotationTypeValue(annotationMirror, field, type, or);
+		return or;
 	}
 
 	/**
@@ -1077,15 +1165,13 @@ final class WsIOUtils {
 	 */
 	static <T> T getAnnotationTypeValue(AnnotationMirror mirror, String field, Class<T> type, T or) {
 		AnnotationValue annotationValue = getAnnotationValue(mirror, field);
-		if (annotationValue == null) {
-			return null;
-		} else {
+		if (annotationValue != null) {
 			Object value = annotationValue.getValue();
 			if (type.isInstance(value)) {
 				return type.cast(value);
 			}
-			return or;
 		}
+		return or;
 	}
 
 	/**
@@ -1215,6 +1301,11 @@ final class WsIOUtils {
 
 				}
 			}
+			for (AnnotationMirror wrapperMirror : target.getAnnotationMirrors()) {
+				if (wrapperMirror.getAnnotationType().toString().equals(annotationName)) {
+					return List.of(wrapperMirror);
+				}
+			}
 		}
 		return null;
 
@@ -1277,15 +1368,15 @@ final class WsIOUtils {
 	 *
 	 * @param target element to process
 	 * @param annotation class of the annotation
-	 * @param list class of the annotation list
+	 * @param wrapper class of the annotation wrapper
 	 * @param qualifier pair indicating the qualifier to search
 	 * @return the annotation mirror of an element
 	 */
 	static Tuple2<AnnotationMirror, AnnotationMirror> getQualifiedAnnotationMirror(Element target,
 																				   Class<? extends Annotation> annotation,
-																				   Class<? extends Annotation> list,
+																				   Class<? extends Annotation> wrapper,
 																				   WsIOQualifierInfo qualifier) {
-		return getQualifiedAnnotationMirror(target, annotation, list, qualifier, "value");
+		return getQualifiedAnnotationMirror(target, annotation, wrapper, qualifier, "value");
 	}
 
 	/**
@@ -1293,19 +1384,19 @@ final class WsIOUtils {
 	 *
 	 * @param target element to process
 	 * @param annotation class of the annotation
-	 * @param list class of the annotation list
+	 * @param wrapper class of the annotation wrapper
 	 * @param qualifier pair indicating the qualifier to search
 	 * @param field name of the field
 	 * @return the annotation mirror of an element
 	 */
 	static Tuple2<AnnotationMirror, AnnotationMirror> getQualifiedAnnotationMirror(Element target,
 																				   Class<? extends Annotation> annotation,
-																				   Class<? extends Annotation> list,
+																				   Class<? extends Annotation> wrapper,
 																				   WsIOQualifierInfo qualifier,
 																				   String field) {
 
 		Tuple2<List<AnnotationMirror>, List<AnnotationMirror>> annotationMirrors = getQualifiedAnnotationMirrors(
-				target, annotation, list, qualifier, field
+				target, annotation, wrapper, qualifier, field
 		);
 
 		if (annotationMirrors != null) {
@@ -1323,15 +1414,15 @@ final class WsIOUtils {
 	 *
 	 * @param target element to process
 	 * @param annotation class of the annotation
-	 * @param list class of the annotation list
+	 * @param wrapper class of the annotation wrapper
 	 * @param qualifier pair indicating the qualifier to search
 	 * @return the annotation mirrors of an element
 	 */
 	static Tuple2<List<AnnotationMirror>, List<AnnotationMirror>> getQualifiedAnnotationMirrors(Element target,
 																								Class<? extends Annotation> annotation,
-																								Class<? extends Annotation> list,
+																								Class<? extends Annotation> wrapper,
 																								WsIOQualifierInfo qualifier) {
-		return getQualifiedAnnotationMirrors(target, annotation, list, qualifier, "value");
+		return getQualifiedAnnotationMirrors(target, annotation, wrapper, qualifier, "value");
 	}
 
 	/**
@@ -1339,34 +1430,31 @@ final class WsIOUtils {
 	 *
 	 * @param target element to process
 	 * @param annotation class of the annotation
-	 * @param list class of the annotation list
+	 * @param wrapper class of the annotation wrapper
 	 * @param qualifier pair indicating the qualifier to search
 	 * @param field name of the field
 	 * @return the annotation mirrors of an element
 	 */
 	static Tuple2<List<AnnotationMirror>, List<AnnotationMirror>> getQualifiedAnnotationMirrors(Element target,
 																								Class<? extends Annotation> annotation,
-																								Class<? extends Annotation> list,
+																								Class<? extends Annotation> wrapper,
 																								WsIOQualifierInfo qualifier,
 																								String field) {
 
-		String defaultValue = "##default";
-		List<AnnotationMirror> annotationMirrors = getAnnotationMirrors(target, annotation, list, field);
+		List<AnnotationMirror> annotationMirrors = getAnnotationMirrors(target, annotation, wrapper, field);
 
-		if (qualifier != null && annotationMirrors != null) {
+		if (annotationMirrors != null) {
 
-			String qualifierPrefix = qualifier.getQualifierPrefix();
-			String qualifierSuffix = qualifier.getQualifierSuffix();
+			String qualifierPrefix = ObjectUtils.firstNonNull(qualifier != null ? qualifier.getQualifierPrefix() : null, "");
+			String qualifierSuffix = ObjectUtils.firstNonNull(qualifier != null ? qualifier.getQualifierSuffix() : null, "");
 
 			List<AnnotationMirror> matchingMirror = annotationMirrors
 					.filter(annotationMirror -> {
 
-						String prefix = getAnnotationTypeValue(annotationMirror, "prefix", String.class);
-						String suffix = getAnnotationTypeValue(annotationMirror, "suffix", String.class);
+						String prefix = getAnnotationTypeValue(annotationMirror, "prefix", String.class, XML_DEFAULT_VALUE);
+						String suffix = getAnnotationTypeValue(annotationMirror, "suffix", String.class, XML_DEFAULT_VALUE);
 
-						return qualifierPrefix != null
-								&& qualifierPrefix.equals(prefix)
-								&& qualifierSuffix != null
+						return qualifierPrefix.equals(prefix)
 								&& qualifierSuffix.equals(suffix);
 
 					});
@@ -1374,21 +1462,24 @@ final class WsIOUtils {
 			List<AnnotationMirror> defaultMirror = annotationMirrors
 					.filter(annotationMirror -> {
 
-						String prefix = getAnnotationTypeValue(annotationMirror, "prefix", String.class);
-						String suffix = getAnnotationTypeValue(annotationMirror, "suffix", String.class);
+						String prefix = getAnnotationTypeValue(annotationMirror, "prefix", String.class, XML_DEFAULT_VALUE);
+						String suffix = getAnnotationTypeValue(annotationMirror, "suffix", String.class, XML_DEFAULT_VALUE);
 
-						boolean exact = qualifierPrefix != null
-								&& qualifierPrefix.equals(prefix)
-								&& qualifierSuffix != null
+						boolean exact = qualifierPrefix.equals(prefix)
 								&& qualifierSuffix.equals(suffix);
 
 						return !exact
-								&& qualifierPrefix != null
-								&& qualifierPrefix.equals(defaultValue)
-								&& qualifierSuffix != null
-								&& qualifierSuffix.equals(defaultValue);
+								&& (qualifierPrefix.equals(prefix) || XML_DEFAULT_VALUE.equals(prefix))
+								&& (qualifierSuffix.equals(suffix) || XML_DEFAULT_VALUE.equals(suffix));
 
-					});
+					}).sortBy(annotationMirror -> {
+
+						String prefix = getAnnotationTypeValue(annotationMirror, "prefix", String.class, XML_DEFAULT_VALUE);
+						String suffix = getAnnotationTypeValue(annotationMirror, "suffix", String.class, XML_DEFAULT_VALUE);
+
+						return (qualifierPrefix.equals(prefix) ? 1 : 0) + (qualifierSuffix.equals(suffix) ? 1 : 0);
+
+					}).reverse();
 
 			return Tuple.of(matchingMirror, defaultMirror);
 

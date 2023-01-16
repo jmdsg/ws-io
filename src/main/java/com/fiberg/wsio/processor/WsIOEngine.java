@@ -43,12 +43,12 @@ final class WsIOEngine {
 
 		/* Get actual package name */
 		final String actualPackageName = Option.of(packageName)
-				.filter(Predicates.noneOf("##default"::equals))
+				.filter(Predicates.noneOf(WsIOConstant.XML_DEFAULT_VALUE::equals))
 				.getOrElse(currentPackageName);
 
 		/* Get actual package path */
 		final String actualPackagePath = Option.of(packagePath)
-				.filter(Predicates.noneOf("##default"::equals))
+				.filter(Predicates.noneOf(WsIOConstant.XML_DEFAULT_VALUE::equals))
 				.getOrElse(currentPackagePath);
 
 		return WsIOScript.evaluate(
