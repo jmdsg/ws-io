@@ -11,4 +11,7 @@ public enum WsIOType {
 	/** Request message */
 	REQUEST,
 
+	/** Both message */
+	BOTH,
+
 }

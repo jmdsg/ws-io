@@ -88,10 +88,14 @@ public final class WsIOWalker {
 
 					/* Map with the prefix and suffix for response and request wrappers */
 					final Map<WsIOType, Tuple2<String, String>> messageMap = HashMap.of(
-							WsIOType.RESPONSE, Tuple.of(WsIOConstant.RESPONSE_WRAPPER_PREFIX,
-									WsIOConstant.RESPONSE_WRAPPER_SUFFIX),
-							WsIOType.REQUEST, Tuple.of(WsIOConstant.REQUEST_WRAPPER_PREFIX,
-									WsIOConstant.REQUEST_WRAPPER_SUFFIX)
+							WsIOType.RESPONSE, Tuple.of(
+									WsIOConstant.RESPONSE_WRAPPER_PREFIX,
+									WsIOConstant.RESPONSE_WRAPPER_SUFFIX
+							),
+							WsIOType.REQUEST, Tuple.of(
+									WsIOConstant.REQUEST_WRAPPER_PREFIX,
+									WsIOConstant.REQUEST_WRAPPER_SUFFIX
+							)
 					);
 
 					/* Return the package name and the prefixes and suffixes of response and requests */

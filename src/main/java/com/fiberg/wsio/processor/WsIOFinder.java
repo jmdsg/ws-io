@@ -175,7 +175,8 @@ class WsIOFinder {
 					String packageName = WsIOUtils.extractPackage(element).getQualifiedName().toString();
 
 					/* Get final package name */
-					String finalPackage = WsIOEngine.obtainPackage(executableName, className, packageName,
+					String finalPackage = WsIOEngine.obtainPackage(
+							executableName, className, packageName,
 							wrapper.getPackageName(), wrapper.getPackagePath(), wrapper.getPackagePrefix(),
 							wrapper.getPackageSuffix(), wrapper.getPackageStart(), wrapper.getPackageMiddle(),
 							wrapper.getPackageEnd(), wrapper.getPackageFunc());

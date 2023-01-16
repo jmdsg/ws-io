@@ -1,5 +1,6 @@
 package com.fiberg.wsio.annotation;
 
+import com.fiberg.wsio.processor.WsIOType;
 import jakarta.xml.bind.annotation.adapters.XmlAdapter;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
@@ -24,5 +25,8 @@ public @interface WsIOJavaTypeAdapter {
 
 	/** Suffix name of the adapter */
 	String suffix() default "##default";
+
+	/** Target value of the adapter */
+	WsIOType target() default WsIOType.BOTH;
 
 }

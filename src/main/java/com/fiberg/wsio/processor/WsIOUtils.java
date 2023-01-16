@@ -129,7 +129,31 @@ final class WsIOUtils {
 	 * @return object containing all the info required for the generation of a wrapper element.
 	 */
 	static WsIOExecutableInfo extractExecutableInfo(ExecutableElement executable, WsIODescriptor descriptor) {
-		return extractExecutableInfo(executable, descriptor, null);
+		return extractExecutableInfo(executable, descriptor, null, null);
+	}
+
+	/**
+	 * Method that extracts the method and additional info.
+	 *
+	 * @param executable executable element
+	 * @param descriptor object with all element annotations
+	 * @param targetType target type of the io
+	 * @return object containing all the info required for the generation of a wrapper element.
+	 */
+	static WsIOExecutableInfo extractExecutableInfo(ExecutableElement executable, WsIODescriptor descriptor, WsIOType targetType) {
+		return extractExecutableInfo(executable, descriptor, null, targetType);
+	}
+
+	/**
+	 * Method that extracts the method and additional info.
+	 *
+	 * @param executable executable element
+	 * @param descriptor object with all element annotations
+	 * @param qualifierInfo pair data to specify the target qualifier
+	 * @return object containing all the info required for the generation of a wrapper element.
+	 */
+	static WsIOExecutableInfo extractExecutableInfo(ExecutableElement executable, WsIODescriptor descriptor, WsIOQualifierInfo qualifierInfo) {
+		return extractExecutableInfo(executable, descriptor, qualifierInfo, null);
 	}
 
 	/**
@@ -138,11 +162,13 @@ final class WsIOUtils {
 	 * @param executableElement executable element
 	 * @param executableDescriptor object with all element annotations
 	 * @param qualifierInfo pair data to specify the target qualifier
+	 * @param targetType target type of the io
 	 * @return object containing all the info required for the generation of a wrapper element.
 	 */
 	static WsIOExecutableInfo extractExecutableInfo(ExecutableElement executableElement,
 													WsIODescriptor executableDescriptor,
-													WsIOQualifierInfo qualifierInfo) {
+													WsIOQualifierInfo qualifierInfo,
+													WsIOType targetType) {
 
 		AnnotationMirror webMethodMirror = WsIOUtils.getAnnotationMirror(executableElement, WebMethod.class);
 		AnnotationMirror webResultMirror = WsIOUtils.getAnnotationMirror(executableElement, WebResult.class);
@@ -192,7 +218,7 @@ final class WsIOUtils {
 		String executableName = executableElement.getSimpleName().toString();
 
 		List<WsIOMemberInfo> memberInfos = List.ofAll(executableElement.getParameters())
-				.map(variableElement -> WsIOUtils.extractMemberInfo(variableElement, qualifierInfo));
+				.map(variableElement -> WsIOUtils.extractMemberInfo(variableElement, qualifierInfo, targetType));
 
 		/* Extract the use annotations that are defined */
 		Set<WsIOWrapped> descriptorWrappers = WsIOWrapped.ANNOTATIONS
@@ -222,7 +248,7 @@ final class WsIOUtils {
 	 * @return the full member info of an element
 	 */
 	static WsIOMemberInfo extractMemberInfo(Element element) {
-		return extractMemberInfo(element, null);
+		return extractMemberInfo(element, null, null);
 	}
 
 	/**
@@ -233,10 +259,34 @@ final class WsIOUtils {
 	 * @return the full member info of an element
 	 */
 	static WsIOMemberInfo extractMemberInfo(Element element, WsIOQualifierInfo qualifier) {
+		return extractMemberInfo(element, qualifier, null);
+	}
+
+	/**
+	 * Method that returns the full member info of an element.
+	 *
+	 * @param element type element
+	 * @param target type of the io to handle
+	 * @return the full member info of an element
+	 */
+	static WsIOMemberInfo extractMemberInfo(Element element, WsIOType target) {
+		return extractMemberInfo(element, null, target);
+	}
+
+	/**
+	 * Method that returns the full member info of an element.
+	 *
+	 * @param element type element
+	 * @param qualifier pair data to specify the target qualifier
+	 * @param target type of the io to handle
+	 * @return the full member info of an element
+	 */
+	static WsIOMemberInfo extractMemberInfo(Element element, WsIOQualifierInfo qualifier, WsIOType target) {
 
 		// Get the type mirror of the variable
 		TypeMirror type = element.asType();
 
+		WsIOType targetInitialized = Objects.requireNonNullElseGet(target, () -> WsIOType.BOTH);
 		WsIOQualifierInfo qualifierInitialized = Objects.requireNonNullElseGet(qualifier, () -> WsIOQualifierInfo.of("", ""));
 
 		AnnotationMirror internalParamMirror = WsIOUtils.getAnnotationMirror(element, WsIOParam.class);
@@ -292,7 +342,9 @@ final class WsIOUtils {
 		);
 
 		AnnotationMirror externalElementMirror = WsIOUtils.getAnnotationMirror(element, XmlElement.class);
-		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleElementMirrors = WsIOUtils.getQualifiedAnnotationMirror(element, WsIOElement.class, WsIOElements.class, qualifierInitialized);
+		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleElementMirrors = WsIOUtils.getQualifiedAnnotationMirror(
+				element, WsIOElement.class, WsIOElements.class, qualifierInitialized, targetInitialized
+		);
 
 		AnnotationMirror internalQualifiedElementMirror = Option.of(internalTupleElementMirrors).map(Tuple2::_1).getOrNull();
 		AnnotationMirror internalDefaultElementMirror = Option.of(internalTupleElementMirrors).map(Tuple2::_2).getOrNull();
@@ -387,7 +439,7 @@ final class WsIOUtils {
 
 		AnnotationMirror externalElementWrapperMirror = WsIOUtils.getAnnotationMirror(element, XmlElementWrapper.class);
 		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleElementWrapperMirrors = WsIOUtils.getQualifiedAnnotationMirror(
-				element, WsIOElementWrapper.class, WsIOElementWrappers.class, qualifierInitialized
+				element, WsIOElementWrapper.class, WsIOElementWrappers.class, qualifierInitialized, targetInitialized
 		);
 
 		AnnotationMirror internalQualifiedElementWrapperMirror = Option.of(internalTupleElementWrapperMirrors).map(Tuple2::_1).getOrNull();
@@ -459,7 +511,7 @@ final class WsIOUtils {
 
 		AnnotationMirror externalAttributeMirror = WsIOUtils.getAnnotationMirror(element, XmlAttribute.class);
 		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleAttributeMirrors = WsIOUtils.getQualifiedAnnotationMirror(
-				element, WsIOAttribute.class, WsIOAttributes.class, qualifierInitialized
+				element, WsIOAttribute.class, WsIOAttributes.class, qualifierInitialized, targetInitialized
 		);
 
 		AnnotationMirror internalQualifiedAttributeMirror = Option.of(internalTupleAttributeMirrors).map(Tuple2::_1).getOrNull();
@@ -516,7 +568,7 @@ final class WsIOUtils {
 
 		AnnotationMirror externalTransientMirror = WsIOUtils.getAnnotationMirror(element, XmlTransient.class);
 		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleTransientMirrors = WsIOUtils.getQualifiedAnnotationMirror(
-				element, WsIOTransient.class, WsIOTransients.class, qualifierInitialized
+				element, WsIOTransient.class, WsIOTransients.class, qualifierInitialized, targetInitialized
 		);
 
 		AnnotationMirror internalQualifiedTransientMirror = Option.of(internalTupleTransientMirrors).map(Tuple2::_1).getOrNull();
@@ -528,7 +580,7 @@ final class WsIOUtils {
 
 		AnnotationMirror externalValueMirror = WsIOUtils.getAnnotationMirror(element, XmlValue.class);
 		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleValueMirrors = WsIOUtils.getQualifiedAnnotationMirror(
-				element, WsIOValue.class, WsIOValues.class, qualifierInitialized
+				element, WsIOValue.class, WsIOValues.class, qualifierInitialized, targetInitialized
 		);
 
 		AnnotationMirror internalQualifiedValueMirror = Option.of(internalTupleValueMirrors).map(Tuple2::_1).getOrNull();
@@ -540,7 +592,7 @@ final class WsIOUtils {
 
 		AnnotationMirror externalAdapterMirror = WsIOUtils.getAnnotationMirror(element, XmlJavaTypeAdapter.class);
 		Tuple2<AnnotationMirror, AnnotationMirror> internalTupleAdapterMirror = WsIOUtils.getQualifiedAnnotationMirror(
-				element, WsIOJavaTypeAdapter.class, WsIOJavaTypeAdapters.class, qualifierInitialized
+				element, WsIOJavaTypeAdapter.class, WsIOJavaTypeAdapters.class, qualifierInitialized, targetInitialized
 		);
 
 		AnnotationMirror internalQualifiedAdapterMirror = Option.of(internalTupleAdapterMirror).map(Tuple2::_1).getOrNull();
@@ -1097,17 +1149,17 @@ final class WsIOUtils {
 	/**
 	 * Method that returns the string value of an annotation field.
 	 *
-	 * @param target element to process
+	 * @param element element to process
 	 * @param annotation class of the annotation
 	 * @param field field of the annotation
 	 * @return the string value of the annotation field
 	 */
-	static String getAnnotationLiteralValue(Element target, Class<? extends Annotation> annotation, String field) {
-		AnnotationMirror annotationMirror = getAnnotationMirror(target, annotation);
-		if (annotationMirror == null) {
-			return null;
+	static String getAnnotationLiteralValue(Element element, Class<? extends Annotation> annotation, String field) {
+		AnnotationMirror annotationMirror = getAnnotationMirror(element, annotation);
+		if (annotationMirror != null) {
+			return getAnnotationLiteralValue(annotationMirror, field);
 		}
-		return getAnnotationLiteralValue(annotationMirror, field);
+		return null;
 	}
 
 	/**
@@ -1119,23 +1171,60 @@ final class WsIOUtils {
 	 */
 	static String getAnnotationLiteralValue(AnnotationMirror mirror, String field) {
 		AnnotationValue annotationValue = getAnnotationValue(mirror, field);
-		if (annotationValue == null) {
-			return null;
-		} else {
+		if (annotationValue != null) {
 			return annotationValue.toString();
 		}
+		return null;
+	}
+
+	/**
+	 * Method that returns the string value of an annotation field.
+	 *
+	 * @param element element to process
+	 * @param annotation class of the annotation
+	 * @param enumerate class of the enum
+	 * @param field field of the annotation
+	 * @return the string value of the annotation field
+	 */
+	static <T extends Enum<T>> T getAnnotationEnumValue(Element element, Class<? extends Annotation> annotation, Class<? extends T> enumerate, String field) {
+		AnnotationMirror annotationMirror = getAnnotationMirror(element, annotation);
+		if (annotationMirror != null) {
+			return getAnnotationEnumValue(annotationMirror, enumerate, field);
+		}
+		return null;
+	}
+
+	/**
+	 * Method that returns the string value of an annotation field.
+	 *
+	 * @param mirror annotated mirror
+	 * @param enumerate class of the enum
+	 * @param field field of the annotation
+	 * @return the string value of the annotation field
+	 */
+	static <T extends Enum<T>> T getAnnotationEnumValue(AnnotationMirror mirror, Class<? extends T> enumerate, String field) {
+		AnnotationValue annotationValue = getAnnotationValue(mirror, field);
+		if (annotationValue != null) {
+			Object value = annotationValue.getValue();
+			if (value instanceof VariableElement element) {
+				if (element.getSimpleName() != null) {
+					return WsIOUtils.toEnum(enumerate, element.getSimpleName().toString());
+				}
+			}
+		}
+		return null;
 	}
 
 	/**
 	 * Method that returns the type value of an annotation field.
 	 *
-	 * @param target element to process
+	 * @param element element to process
 	 * @param annotation class of the annotation
 	 * @param field field of the annotation
 	 * @return the type value of the annotation field
 	 */
-	static <T> T getAnnotationTypeValue(Element target, Class<? extends Annotation> annotation, String field, Class<T> type) {
-		return getAnnotationTypeValue(target, annotation, field, type, null);
+	static <T> T getAnnotationTypeValue(Element element, Class<? extends Annotation> annotation, String field, Class<T> type) {
+		return getAnnotationTypeValue(element, annotation, field, type, null);
 	}
 
 	/**
@@ -1152,14 +1241,14 @@ final class WsIOUtils {
 	/**
 	 * Method that returns the type value of an annotation field.
 	 *
-	 * @param target element to process
+	 * @param element element to process
 	 * @param annotation class of the annotation
 	 * @param field field of the annotation
 	 * @param or default element to return
 	 * @return the type value of the annotation field
 	 */
-	static <T> T getAnnotationTypeValue(Element target, Class<? extends Annotation> annotation, String field, Class<T> type, T or) {
-		AnnotationMirror annotationMirror = getAnnotationMirror(target, annotation);
+	static <T> T getAnnotationTypeValue(Element element, Class<? extends Annotation> annotation, String field, Class<T> type, T or) {
+		AnnotationMirror annotationMirror = getAnnotationMirror(element, annotation);
 		if (annotationMirror != null) {
 			return getAnnotationTypeValue(annotationMirror, field, type, or);
 		}
@@ -1188,13 +1277,13 @@ final class WsIOUtils {
 	/**
 	 * Method that returns the type value of an annotation field.
 	 *
-	 * @param target element to process
+	 * @param element element to process
 	 * @param annotation class of the annotation
 	 * @param field field of the annotation
 	 * @return the type value of the annotation field
 	 */
-	static <T> java.util.List<T> getAnnotationTypeListValue(Element target, Class<? extends Annotation> annotation, String field, Class<T> type) {
-		AnnotationMirror annotationMirror = getAnnotationMirror(target, annotation);
+	static <T> java.util.List<T> getAnnotationTypeListValue(Element element, Class<? extends Annotation> annotation, String field, Class<T> type) {
+		AnnotationMirror annotationMirror = getAnnotationMirror(element, annotation);
 		if (annotationMirror == null) {
 			return null;
 		}
@@ -1235,14 +1324,14 @@ final class WsIOUtils {
 	/**
 	 * Method that returns the annotation mirror of an element.
 	 *
-	 * @param target element to process
+	 * @param element element to process
 	 * @param annotation class of the annotation
 	 * @return the annotation mirror of an element
 	 */
-	static AnnotationMirror getAnnotationMirror(Element target, Class<? extends Annotation> annotation) {
-		if (target != null) {
+	static AnnotationMirror getAnnotationMirror(Element element, Class<? extends Annotation> annotation) {
+		if (element != null) {
 			String annotationName = annotation.getName();
-			for (AnnotationMirror annotationMirror : target.getAnnotationMirrors()) {
+			for (AnnotationMirror annotationMirror : element.getAnnotationMirrors()) {
 				if (annotationMirror.getAnnotationType().toString().equals(annotationName)) {
 					return annotationMirror;
 				}
@@ -1254,32 +1343,32 @@ final class WsIOUtils {
 	/**
 	 * Method that returns the annotation mirror of an element.
 	 *
-	 * @param target element to process
+	 * @param element element to process
 	 * @param annotation class of the annotation
 	 * @param wrapper class of the annotation
 	 * @return the annotations mirror of an element
 	 */
-	static List<AnnotationMirror> getAnnotationMirrors(Element target, Class<? extends Annotation> annotation, Class<? extends Annotation> wrapper) {
-		return getAnnotationMirrors(target, annotation, wrapper, "value");
+	static List<AnnotationMirror> getAnnotationMirrors(Element element, Class<? extends Annotation> annotation, Class<? extends Annotation> wrapper) {
+		return getAnnotationMirrors(element, annotation, wrapper, "value");
 	}
 
 	/**
 	 * Method that returns the annotation mirror of an element.
 	 *
-	 * @param target element to process
+	 * @param element element to process
 	 * @param annotation class of the annotation
 	 * @param wrapper class of the annotation
 	 * @param field name of the annotation wrapper
 	 * @return the annotations mirror of an element
 	 */
-	static List<AnnotationMirror> getAnnotationMirrors(Element target, Class<? extends Annotation> annotation, Class<? extends Annotation> wrapper, String field) {
+	static List<AnnotationMirror> getAnnotationMirrors(Element element, Class<? extends Annotation> annotation, Class<? extends Annotation> wrapper, String field) {
 
-		if (target != null) {
+		if (element != null) {
 
 			String wrapperName = wrapper.getName();
 			String annotationName = annotation.getName();
 
-			for (AnnotationMirror wrapperMirror : target.getAnnotationMirrors()) {
+			for (AnnotationMirror wrapperMirror : element.getAnnotationMirrors()) {
 				if (wrapperMirror.getAnnotationType().toString().equals(wrapperName)) {
 
 					AnnotationValue wrapperValue = getAnnotationValue(wrapperMirror, field);
@@ -1312,7 +1401,7 @@ final class WsIOUtils {
 
 				}
 			}
-			for (AnnotationMirror wrapperMirror : target.getAnnotationMirrors()) {
+			for (AnnotationMirror wrapperMirror : element.getAnnotationMirrors()) {
 				if (wrapperMirror.getAnnotationType().toString().equals(annotationName)) {
 					return List.of(wrapperMirror);
 				}
@@ -1343,12 +1432,12 @@ final class WsIOUtils {
 	/**
 	 * Method that returns the annotation descriptions of an element.
 	 *
-	 * @param target element to process
+	 * @param element element to process
 	 * @return the annotation descriptions of the element
 	 */
-	static Map<DeclaredType, Map<String, String>> getAnnotationDescriptions(Element target) {
-		if (target != null) {
-			return Stream.ofAll(target.getAnnotationMirrors())
+	static Map<DeclaredType, Map<String, String>> getAnnotationDescriptions(Element element) {
+		if (element != null) {
+			return Stream.ofAll(element.getAnnotationMirrors())
 					.toMap(annotationMirror -> {
 
 						DeclaredType annotationType = annotationMirror.getAnnotationType();
@@ -1377,37 +1466,41 @@ final class WsIOUtils {
 	/**
 	 * Method that returns the annotation mirror of an element.
 	 *
-	 * @param target element to process
+	 * @param element element to process
 	 * @param annotation class of the annotation
 	 * @param wrapper class of the annotation wrapper
 	 * @param qualifier pair indicating the qualifier to search
+	 * @param type type of the io to handle
 	 * @return the annotation mirror of an element
 	 */
-	static Tuple2<AnnotationMirror, AnnotationMirror> getQualifiedAnnotationMirror(Element target,
+	static Tuple2<AnnotationMirror, AnnotationMirror> getQualifiedAnnotationMirror(Element element,
 																				   Class<? extends Annotation> annotation,
 																				   Class<? extends Annotation> wrapper,
-																				   WsIOQualifierInfo qualifier) {
-		return getQualifiedAnnotationMirror(target, annotation, wrapper, qualifier, "value");
+																				   WsIOQualifierInfo qualifier,
+																				   WsIOType type) {
+		return getQualifiedAnnotationMirror(element, annotation, wrapper, qualifier, type, "value");
 	}
 
 	/**
 	 * Method that returns the annotation mirror of an element.
 	 *
-	 * @param target element to process
+	 * @param element element to process
 	 * @param annotation class of the annotation
 	 * @param wrapper class of the annotation wrapper
 	 * @param qualifier pair indicating the qualifier to search
+	 * @param type type of the io to handle
 	 * @param field name of the field
 	 * @return the annotation mirror of an element
 	 */
-	static Tuple2<AnnotationMirror, AnnotationMirror> getQualifiedAnnotationMirror(Element target,
+	static Tuple2<AnnotationMirror, AnnotationMirror> getQualifiedAnnotationMirror(Element element,
 																				   Class<? extends Annotation> annotation,
 																				   Class<? extends Annotation> wrapper,
 																				   WsIOQualifierInfo qualifier,
+																				   WsIOType type,
 																				   String field) {
 
 		Tuple2<List<AnnotationMirror>, List<AnnotationMirror>> annotationMirrors = getQualifiedAnnotationMirrors(
-				target, annotation, wrapper, qualifier, field
+				element, annotation, wrapper, qualifier, type, field
 		);
 
 		if (annotationMirrors != null) {
@@ -1423,72 +1516,83 @@ final class WsIOUtils {
 	/**
 	 * Method that returns the annotation mirrors of an element.
 	 *
-	 * @param target element to process
+	 * @param element element to process
 	 * @param annotation class of the annotation
 	 * @param wrapper class of the annotation wrapper
 	 * @param qualifier pair indicating the qualifier to search
+     * @param type type of the io to handle
 	 * @return the annotation mirrors of an element
 	 */
-	static Tuple2<List<AnnotationMirror>, List<AnnotationMirror>> getQualifiedAnnotationMirrors(Element target,
+	static Tuple2<List<AnnotationMirror>, List<AnnotationMirror>> getQualifiedAnnotationMirrors(Element element,
 																								Class<? extends Annotation> annotation,
 																								Class<? extends Annotation> wrapper,
-																								WsIOQualifierInfo qualifier) {
-		return getQualifiedAnnotationMirrors(target, annotation, wrapper, qualifier, "value");
+																								WsIOQualifierInfo qualifier,
+																								WsIOType type) {
+		return getQualifiedAnnotationMirrors(element, annotation, wrapper, qualifier, type, "value");
 	}
 
 	/**
 	 * Method that returns the annotation mirrors of an element.
 	 *
-	 * @param target element to process
+	 * @param element element to process
 	 * @param annotation class of the annotation
 	 * @param wrapper class of the annotation wrapper
 	 * @param qualifier pair indicating the qualifier to search
+	 * @param type type of the io to handle
 	 * @param field name of the field
 	 * @return the annotation mirrors of an element
 	 */
-	static Tuple2<List<AnnotationMirror>, List<AnnotationMirror>> getQualifiedAnnotationMirrors(Element target,
+	static Tuple2<List<AnnotationMirror>, List<AnnotationMirror>> getQualifiedAnnotationMirrors(Element element,
 																								Class<? extends Annotation> annotation,
 																								Class<? extends Annotation> wrapper,
 																								WsIOQualifierInfo qualifier,
+																								WsIOType type,
 																								String field) {
 
-		List<AnnotationMirror> annotationMirrors = getAnnotationMirrors(target, annotation, wrapper, field);
+		List<AnnotationMirror> annotationMirrors = getAnnotationMirrors(element, annotation, wrapper, field);
 
 		if (annotationMirrors != null) {
 
+			WsIOType targetType = ObjectUtils.firstNonNull(type, WsIOType.BOTH);
 			String qualifierPrefix = ObjectUtils.firstNonNull(qualifier != null ? qualifier.getQualifierPrefix() : null, "");
 			String qualifierSuffix = ObjectUtils.firstNonNull(qualifier != null ? qualifier.getQualifierSuffix() : null, "");
 
 			List<AnnotationMirror> matchingMirror = annotationMirrors
 					.filter(annotationMirror -> {
 
+						WsIOType target = getAnnotationEnumValue(annotationMirror, WsIOType.class, "target");
 						String prefix = getAnnotationTypeValue(annotationMirror, "prefix", String.class, XML_DEFAULT_VALUE);
 						String suffix = getAnnotationTypeValue(annotationMirror, "suffix", String.class, XML_DEFAULT_VALUE);
 
 						return qualifierPrefix.equals(prefix)
-								&& qualifierSuffix.equals(suffix);
+								&& qualifierSuffix.equals(suffix)
+								&& targetType.equals(target);
 
 					});
 
 			List<AnnotationMirror> defaultMirror = annotationMirrors
 					.filter(annotationMirror -> {
 
+						WsIOType target = getAnnotationEnumValue(annotationMirror, WsIOType.class, "target");
 						String prefix = getAnnotationTypeValue(annotationMirror, "prefix", String.class, XML_DEFAULT_VALUE);
 						String suffix = getAnnotationTypeValue(annotationMirror, "suffix", String.class, XML_DEFAULT_VALUE);
 
 						boolean exact = qualifierPrefix.equals(prefix)
-								&& qualifierSuffix.equals(suffix);
+								&& qualifierSuffix.equals(suffix)
+								&& targetType.equals(target);
 
 						return !exact
 								&& (qualifierPrefix.equals(prefix) || XML_DEFAULT_VALUE.equals(prefix))
-								&& (qualifierSuffix.equals(suffix) || XML_DEFAULT_VALUE.equals(suffix));
+								&& (qualifierSuffix.equals(suffix) || XML_DEFAULT_VALUE.equals(suffix))
+								&& (targetType.equals(target) || WsIOType.BOTH.equals(target));
 
 					}).sortBy(annotationMirror -> {
 
+						WsIOType target = getAnnotationEnumValue(annotationMirror, WsIOType.class, "target");
 						String prefix = getAnnotationTypeValue(annotationMirror, "prefix", String.class, XML_DEFAULT_VALUE);
 						String suffix = getAnnotationTypeValue(annotationMirror, "suffix", String.class, XML_DEFAULT_VALUE);
 
-						return (qualifierPrefix.equals(prefix) ? 1 : 0) + (qualifierSuffix.equals(suffix) ? 1 : 0);
+						return (qualifierPrefix.equals(prefix) ? 1 : 0) + (qualifierSuffix.equals(suffix) ? 1 : 0) + (targetType.equals(target) ? 1 : 0);
 
 					}).reverse();
 
@@ -1641,6 +1745,29 @@ final class WsIOUtils {
 	static String toUpperCase(String name) {
 		return Objects.nonNull(name) ?
 				CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_UNDERSCORE, name) : null;
+	}
+
+	/**
+	 * Method that returns the enum from a value ignoring the case.
+	 *
+	 * @param enumerate enumerate to get from value
+	 * @param name      name to get the enum
+	 * @param <T>       type of the enumerate
+	 * @return the enum of the value compared ignoring case
+	 */
+	static <T extends Enum<T>> T toEnum(final Class<? extends T> enumerate,
+										final String name) {
+
+		/* Search the enum by value and return if found */
+		for (final T value : enumerate.getEnumConstants()) {
+			if (value.name().equalsIgnoreCase(name)) {
+				return value;
+			}
+		}
+
+		/* Return when not found */
+		return null;
+
 	}
 
 	/**

@@ -281,10 +281,12 @@ class WsIOGenerator {
 				String packageName = infos._2();
 
 				/* Generate request and response type spec */
-				TypeSpec request = generateWrapperType(WsIOType.REQUEST, info,
-						messageClasses, cloneClasses, cloneMessageClasses, typeByName);
-				TypeSpec response = generateWrapperType(WsIOType.RESPONSE, info,
-						messageClasses, cloneClasses, cloneMessageClasses, typeByName);
+				TypeSpec request = generateWrapperType(
+						WsIOType.REQUEST, info, messageClasses, cloneClasses, cloneMessageClasses, typeByName
+				);
+				TypeSpec response = generateWrapperType(
+						WsIOType.RESPONSE, info, messageClasses, cloneClasses, cloneMessageClasses, typeByName
+				);
 
 				/* Get upper name of the method and class */
 				String upperName = WordUtils.capitalize(name);
@@ -487,13 +489,13 @@ class WsIOGenerator {
 			/* Option with super class */
 			Option<TypeName> superClass = inheritance.get(WsIOLevel.CLASS_INTERNAL)
 					.flatMap(Set::headOption)
-					.map(declaredType -> context.getRecursiveFullTypeName(declaredType,
-							true, false, true));
+					.map(declaredType -> context.getRecursiveFullTypeName(
+							declaredType, true, false, true));
 
 			/* Super interfaces set */
 			List<TypeName> superInterfaces = inheritance.getOrElse(WsIOLevel.INTERFACE_INTERNAL, HashSet.empty())
-					.map(declaredType -> context.getRecursiveFullTypeName(declaredType,
-							true, false, true))
+					.map(declaredType -> context.getRecursiveFullTypeName(
+							declaredType, true, false, true))
 					.toList();
 
 			/* List with all internal fields */
@@ -509,8 +511,9 @@ class WsIOGenerator {
 			boolean hideEmpties = descriptor.getSingle(WsIOUseHideEmpty.class).isDefined();
 
 			/* Generate the property methods */
-			List<MethodSpec> propertyMethods = generatePropertyMethods(getterPriorities, setterPriorities,
-					HashMap.empty(), WsIOConstant.GET_DELEGATOR, hideEmpties, context);
+			List<MethodSpec> propertyMethods = generatePropertyMethods(
+					getterPriorities, setterPriorities, HashMap.empty(), WsIOConstant.GET_DELEGATOR, hideEmpties, context
+			);
 
 			/* Generate the override main methods */
 			List<MethodSpec> overrideMethods = generateOverrideMethods(element, context);
@@ -1032,6 +1035,9 @@ class WsIOGenerator {
 				);
 
 			}
+			default -> {
+				throw new IllegalStateException(String.format("The type has an invalid type %s", type));
+			}
 		};
 
 		/* Add jaxb annotations to the class */
@@ -1235,7 +1241,7 @@ class WsIOGenerator {
 										.map(Tuple4::_3)
 										.getOrNull();
 
-								WsIOMemberInfo memberWrappedInfo = WsIOUtils.extractMemberInfo(getterExecutable, qualifierInfo);
+								WsIOMemberInfo memberWrappedInfo = WsIOUtils.extractMemberInfo(getterExecutable, qualifierInfo, type);
 
 								/* Get the forwarded and the xml annotations */
 								List<Class<?>> forwardedGetterExcludeClasses = List.of(

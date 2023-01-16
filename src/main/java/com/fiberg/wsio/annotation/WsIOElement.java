@@ -1,5 +1,6 @@
 package com.fiberg.wsio.annotation;
 
+import com.fiberg.wsio.processor.WsIOType;
 import jakarta.xml.bind.annotation.XmlElement;
 
 import java.lang.annotation.*;
@@ -35,5 +36,8 @@ public @interface WsIOElement {
 
 	/** Suffix name of the element */
 	String suffix() default "##default";
+
+	/** Target value of the element */
+	WsIOType target() default WsIOType.BOTH;
 
 }

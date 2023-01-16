@@ -1,5 +1,7 @@
 package com.fiberg.wsio.annotation;
 
+import com.fiberg.wsio.processor.WsIOType;
+
 import java.lang.annotation.*;
 
 /**
@@ -24,5 +26,8 @@ public @interface WsIOAttribute {
 
     /** Suffix name of the attribute */
     String suffix() default "##default";
+
+    /** Target value of the attribute */
+    WsIOType target() default WsIOType.BOTH;
 
 }
