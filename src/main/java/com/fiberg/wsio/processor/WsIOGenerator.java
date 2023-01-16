@@ -1591,20 +1591,20 @@ class WsIOGenerator {
 				AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlAttribute.class);
 
 				if (operationIdentifier != null) {
-					if (operationIdentifier.getAttributeName() != null) {
+					if (operationIdentifier.getAttributeName() != null && !XML_DEFAULT_VALUE.equals(operationIdentifier.getAttributeName())) {
 						builder = builder.addMember("name", "$S", operationIdentifier.getAttributeName());
 					}
 				} else {
-					if (memberInfo.getAttributeName() != null) {
+					if (memberInfo.getAttributeName() != null && !XML_DEFAULT_VALUE.equals(memberInfo.getAttributeName())) {
 						builder = builder.addMember("name", "$S", memberInfo.getAttributeName());
 					}
 				}
 
-				if (memberInfo.getAttributeNamespace() != null) {
+				if (memberInfo.getAttributeNamespace() != null && !XML_DEFAULT_VALUE.equals(memberInfo.getAttributeNamespace())) {
 					builder = builder.addMember("namespace", "$S", memberInfo.getAttributeNamespace());
 				}
 
-				if (memberInfo.getAttributeRequired() != null) {
+				if (memberInfo.getAttributeRequired() != null && !XML_FLAG_VALUE.equals(memberInfo.getAttributeRequired())) {
 					builder = builder.addMember("required", "$L", memberInfo.getAttributeRequired());
 				}
 
@@ -1617,28 +1617,28 @@ class WsIOGenerator {
 					AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlElement.class);
 
 					if (operationIdentifier != null) {
-						if (operationIdentifier.getElementName() != null) {
+						if (operationIdentifier.getElementName() != null && !XML_DEFAULT_VALUE.equals(operationIdentifier.getElementName())) {
 							builder = builder.addMember("name", "$S", operationIdentifier.getElementName());
 						}
 					} else {
-						if (memberInfo.getElementName() != null) {
+						if (memberInfo.getElementName() != null && !XML_DEFAULT_VALUE.equals(memberInfo.getElementName())) {
 							builder = builder.addMember("name", "$S", memberInfo.getElementName());
 						}
 					}
 
-					if (memberInfo.getElementNamespace() != null) {
+					if (memberInfo.getElementNamespace() != null && !XML_DEFAULT_VALUE.equals(memberInfo.getElementNamespace())) {
 						builder = builder.addMember("namespace", "$S", memberInfo.getElementNamespace());
 					}
 
-					if (memberInfo.getElementDefaultValue() != null) {
+					if (memberInfo.getElementDefaultValue() != null && !XML_DEFAULT_VALUE.equals(memberInfo.getElementDefaultValue())) {
 						builder = builder.addMember("defaultValue", "$S", memberInfo.getElementDefaultValue());
 					}
 
-					if (memberInfo.getElementRequired() != null) {
+					if (memberInfo.getElementRequired() != null && !XML_FLAG_VALUE.equals(memberInfo.getElementRequired())) {
 						builder = builder.addMember("required", "$L", memberInfo.getElementRequired());
 					}
 
-					if (memberInfo.getElementNillable() != null) {
+					if (memberInfo.getElementNillable() != null && !XML_FLAG_VALUE.equals(memberInfo.getElementNillable())) {
 						builder = builder.addMember("nillable", "$L", memberInfo.getElementNillable());
 					}
 
@@ -1655,24 +1655,24 @@ class WsIOGenerator {
 					AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlElementWrapper.class);
 
 					if (operationIdentifier != null) {
-						if (operationIdentifier.getElementWrapperName() != null) {
+						if (operationIdentifier.getElementWrapperName() != null && !XML_DEFAULT_VALUE.equals(operationIdentifier.getElementWrapperName())) {
 							builder = builder.addMember("name", "$S", operationIdentifier.getElementWrapperName());
 						}
 					} else {
-						if (memberInfo.getElementWrapperName() != null) {
+						if (memberInfo.getElementWrapperName() != null && !XML_DEFAULT_VALUE.equals(memberInfo.getElementWrapperName())) {
 							builder = builder.addMember("name", "$S", memberInfo.getElementWrapperName());
 						}
 					}
 
-					if (memberInfo.getElementNamespace() != null) {
+					if (memberInfo.getElementNamespace() != null && !XML_DEFAULT_VALUE.equals(memberInfo.getElementNamespace())) {
 						builder = builder.addMember("namespace", "$S", memberInfo.getElementNamespace());
 					}
 
-					if (memberInfo.getElementRequired() != null) {
+					if (memberInfo.getElementRequired() != null && !XML_FLAG_VALUE.equals(memberInfo.getElementRequired())) {
 						builder = builder.addMember("required", "$L", memberInfo.getElementRequired());
 					}
 
-					if (memberInfo.getElementNillable() != null) {
+					if (memberInfo.getElementNillable() != null && !XML_FLAG_VALUE.equals(memberInfo.getElementNillable())) {
 						builder = builder.addMember("nillable", "$L", memberInfo.getElementNillable());
 					}
 

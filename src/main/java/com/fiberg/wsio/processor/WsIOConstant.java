@@ -60,4 +60,6 @@ public final class WsIOConstant {
 
 	public static final String XML_ZERO_VALUE = "\u0000";
 
+	public static final Boolean XML_FLAG_VALUE = false;
+
 }

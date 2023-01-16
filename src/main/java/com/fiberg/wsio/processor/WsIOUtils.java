@@ -155,27 +155,27 @@ final class WsIOUtils {
 		/* Get operation name, action and exclude */
 		String methodOperationName = WsIOUtils.getAnnotationTypeValue(webMethodMirror, "operationName", String.class, XML_EMPTY_VALUE);
 		String methodAction = WsIOUtils.getAnnotationTypeValue(webMethodMirror, "action", String.class, XML_EMPTY_VALUE);
-		Boolean methodExclude = WsIOUtils.getAnnotationTypeValue(webMethodMirror, "exclude", Boolean.class, false);
+		Boolean methodExclude = WsIOUtils.getAnnotationTypeValue(webMethodMirror, "exclude", Boolean.class, XML_FLAG_VALUE);
 
 		/* Get result name, part name, target namespace and result header */
 		String resultName = WsIOUtils.getAnnotationTypeValue(webResultMirror, "name", String.class, XML_EMPTY_VALUE);
 		String resultPartName = WsIOUtils.getAnnotationTypeValue(webResultMirror, "partName", String.class, XML_EMPTY_VALUE);
 		String resultTargetNamespace = WsIOUtils.getAnnotationTypeValue(webResultMirror, "targetNamespace", String.class, XML_EMPTY_VALUE);
-		Boolean resultHeader = WsIOUtils.getAnnotationTypeValue(webResultMirror, "header", Boolean.class, false);
+		Boolean resultHeader = WsIOUtils.getAnnotationTypeValue(webResultMirror, "header", Boolean.class, XML_FLAG_VALUE);
 
 		/* Get wrapper name, namespace, nillable and required */
 		String elementName = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "name", String.class, XML_DEFAULT_VALUE);
 		String elementNamespace = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "namespace", String.class, XML_DEFAULT_VALUE);
-		Boolean elementNillable = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "nillable", Boolean.class, false);
-		Boolean elementRequired = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "required", Boolean.class, false);
+		Boolean elementNillable = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "nillable", Boolean.class, XML_FLAG_VALUE);
+		Boolean elementRequired = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "required", Boolean.class, XML_FLAG_VALUE);
 		String elementDefaultValue = WsIOUtils.getAnnotationTypeValue(xmlElementMirror, "defaultValue", String.class, XML_ZERO_VALUE);
 		String elementType = WsIOUtils.getAnnotationLiteralValue(xmlElementMirror, "type");
 
 		/* Get wrapper name, namespace, nillable and required */
 		String elementWrapperName = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "name", String.class, XML_DEFAULT_VALUE);
 		String elementWrapperNamespace = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "namespace", String.class, XML_DEFAULT_VALUE);
-		Boolean elementWrapperNillable = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "nillable", Boolean.class, false);
-		Boolean elementWrapperRequired = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "required", Boolean.class, false);
+		Boolean elementWrapperNillable = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "nillable", Boolean.class, XML_FLAG_VALUE);
+		Boolean elementWrapperRequired = WsIOUtils.getAnnotationTypeValue(xmlElementWrapperMirror, "required", Boolean.class, XML_FLAG_VALUE);
 
 		/* Get the present indicator */
 		boolean methodPresent = webMethodMirror != null;
@@ -268,7 +268,7 @@ final class WsIOUtils {
 
 		/* Get the internal argument header of the param */
 		Boolean internalParamHeader = WsIOUtils.getAnnotationTypeValue(
-				internalParamMirror, "header", Boolean.class, false
+				internalParamMirror, "header", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the external argument names of the param */
@@ -291,7 +291,7 @@ final class WsIOUtils {
 
 		/* Get the external argument header of the param */
 		Boolean externalParamHeader = WsIOUtils.getAnnotationTypeValue(
-				externalParamMirror, "header", Boolean.class, false
+				externalParamMirror, "header", Boolean.class, XML_FLAG_VALUE
 		);
 
 		AnnotationMirror externalElementMirror = WsIOUtils.getAnnotationMirror(element, XmlElement.class);
@@ -316,12 +316,12 @@ final class WsIOUtils {
 
 		/* Get the internal qualified argument required of the element */
 		Boolean internalQualifiedElementRequired = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedElementMirror, "required", Boolean.class, false
+				internalQualifiedElementMirror, "required", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the internal qualified argument nillable of the element */
 		Boolean internalQualifiedElementNillable = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedElementMirror, "nillable", Boolean.class, false
+				internalQualifiedElementMirror, "nillable", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the internal qualified argument default value of the element */
@@ -344,12 +344,12 @@ final class WsIOUtils {
 
 		/* Get the internal default argument required of the element */
 		Boolean internalDefaultElementRequired = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultElementMirror, "required", Boolean.class, false
+				internalDefaultElementMirror, "required", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the internal default argument nillable of the element */
 		Boolean internalDefaultElementNillable = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultElementMirror, "nillable", Boolean.class, false
+				internalDefaultElementMirror, "nillable", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the internal default argument default value of the element */
@@ -372,12 +372,12 @@ final class WsIOUtils {
 
 		/* Get the external argument required of the element */
 		Boolean externalElementRequired = WsIOUtils.getAnnotationTypeValue(
-				externalElementMirror, "required", Boolean.class, false
+				externalElementMirror, "required", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the external argument nillable of the element */
 		Boolean externalElementNillable = WsIOUtils.getAnnotationTypeValue(
-				externalElementMirror, "nillable", Boolean.class, false
+				externalElementMirror, "nillable", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the external argument default value of the element */
@@ -412,12 +412,12 @@ final class WsIOUtils {
 
 		/* Get the internal qualified argument required of the element wrapper */
 		Boolean internalQualifiedElementWrapperRequired = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedElementWrapperMirror, "required", Boolean.class, false
+				internalQualifiedElementWrapperMirror, "required", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the internal qualified argument nillable of the element wrapper */
 		Boolean internalQualifiedElementWrapperNillable = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedElementWrapperMirror, "nillable", Boolean.class, false
+				internalQualifiedElementWrapperMirror, "nillable", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the internal default argument name of the element wrapper */
@@ -432,12 +432,12 @@ final class WsIOUtils {
 
 		/* Get the internal default argument required of the element wrapper */
 		Boolean internalDefaultElementWrapperRequired = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultElementWrapperMirror, "required", Boolean.class, false
+				internalDefaultElementWrapperMirror, "required", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the internal default argument nillable of the element wrapper */
 		Boolean internalDefaultElementWrapperNillable = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultElementWrapperMirror, "nillable", Boolean.class, false
+				internalDefaultElementWrapperMirror, "nillable", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the external argument name of the element wrapper */
@@ -452,12 +452,12 @@ final class WsIOUtils {
 
 		/* Get the external argument required of the element wrapper */
 		Boolean externalElementWrapperRequired = WsIOUtils.getAnnotationTypeValue(
-				externalElementWrapperMirror, "required", Boolean.class, false
+				externalElementWrapperMirror, "required", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the external argument nillable of the element wrapper */
 		Boolean externalElementWrapperNillable = WsIOUtils.getAnnotationTypeValue(
-				externalElementWrapperMirror, "nillable", Boolean.class, false
+				externalElementWrapperMirror, "nillable", Boolean.class, XML_FLAG_VALUE
 		);
 
 		AnnotationMirror externalAttributeMirror = WsIOUtils.getAnnotationMirror(element, XmlAttribute.class);
@@ -484,7 +484,7 @@ final class WsIOUtils {
 
 		/* Get the internal qualified argument required of the attribute */
 		Boolean internalQualifiedAttributeRequired = WsIOUtils.getAnnotationTypeValue(
-				internalQualifiedAttributeMirror, "required", Boolean.class, false
+				internalQualifiedAttributeMirror, "required", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the internal default argument name of the attribute */
@@ -499,7 +499,7 @@ final class WsIOUtils {
 
 		/* Get the internal default argument required of the attribute */
 		Boolean internalDefaultAttributeRequired = WsIOUtils.getAnnotationTypeValue(
-				internalDefaultAttributeMirror, "required", Boolean.class, false
+				internalDefaultAttributeMirror, "required", Boolean.class, XML_FLAG_VALUE
 		);
 
 		/* Get the external argument name of the attribute */
@@ -514,7 +514,7 @@ final class WsIOUtils {
 
 		/* Get the external argument required of the attribute */
 		Boolean externalAttributeRequired = WsIOUtils.getAnnotationTypeValue(
-				externalAttributeMirror, "required", Boolean.class, false
+				externalAttributeMirror, "required", Boolean.class, XML_FLAG_VALUE
 		);
 
 		AnnotationMirror externalTransientMirror = WsIOUtils.getAnnotationMirror(element, XmlTransient.class);
