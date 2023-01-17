@@ -2,7 +2,7 @@ package com.fiberg.wsio.processor;
 
 import com.fiberg.wsio.annotation.*;
 import com.fiberg.wsio.util.WsIOUtil;
-import io.vavr.Function4;
+import io.vavr.Function2;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
@@ -131,7 +131,7 @@ class WsIOFinder {
 	 * @param elements set of type elements
 	 * @return map identified by the element type containing wrapper annotations info of all elements
 	 */
-	static Map<TypeElement, Map<String, Tuple2<WsIOExecutableInfo, String>>> findWrapperRecursively(Set<TypeElement> elements) {
+	static Map<TypeElement, Map<String, Tuple3<ExecutableElement, WsIODescriptor, String>>> findWrapperRecursively(Set<TypeElement> elements) {
 
 		/* Return the map for each element and finally fold the results with an empty map */
 		return elements.map(WsIOFinder::findWrapperRecursively)
@@ -145,7 +145,7 @@ class WsIOFinder {
 	 * @param element type element
 	 * @return map identified by the element type containing wrapper annotations info of a single element
 	 */
-	private static Map<TypeElement, Map<String, Tuple2<WsIOExecutableInfo, String>>> findWrapperRecursively(TypeElement element) {
+	private static Map<TypeElement, Map<String, Tuple3<ExecutableElement, WsIODescriptor, String>>> findWrapperRecursively(TypeElement element) {
 
 		/* Check if the current element is not or not */
 		if (Objects.nonNull(element)) {
@@ -159,7 +159,7 @@ class WsIOFinder {
 							WsIOUtils.getAnnotationMirror(executable, WebMethod.class)));
 
 			/* Get current element info for every method */
-			Map<String, Tuple2<WsIOExecutableInfo, String>> currentInfo = executables.flatMap(executable -> {
+			Map<String, Tuple3<ExecutableElement, WsIODescriptor, String>> currentInfo = executables.flatMap(executable -> {
 
 				/* Get simple name, current descriptor and annotation option */
 				String executableName = executable.getSimpleName().toString();
@@ -181,12 +181,9 @@ class WsIOFinder {
 							wrapper.getPackageSuffix(), wrapper.getPackageStart(), wrapper.getPackageMiddle(),
 							wrapper.getPackageEnd(), wrapper.getPackageFunc());
 
-					/* Get current info of the executable with descriptor annotations descriptor */
-					WsIOExecutableInfo info = WsIOUtils.extractExecutableInfo(executable, descriptor);
-
 					/* Return the tuple with executable name and
 					 * other tuple with executable info and package name */
-					return Tuple.of(executableName, Tuple.of(info, finalPackage));
+					return Map.entry(executableName, Tuple.of(executable, descriptor, finalPackage));
 
 				});
 
@@ -194,7 +191,7 @@ class WsIOFinder {
 
 			/* Create zero map with current element, call recursively this function with each declared class
 			 * and finally fold the results with zero map */
-			Map<TypeElement, Map<String, Tuple2<WsIOExecutableInfo, String>>> zeroMap = HashMap.of(element, currentInfo);
+			Map<TypeElement, Map<String, Tuple3<ExecutableElement, WsIODescriptor, String>>> zeroMap = HashMap.of(element, currentInfo);
 			return Stream.ofAll(element.getEnclosedElements())
 					.filter(TypeElement.class::isInstance)
 					.map(TypeElement.class::cast)
@@ -279,7 +276,7 @@ class WsIOFinder {
 	 * @return map identified by the prefix and suffix containing a set
 	 * of tuples with the type element and the package name
 	 */
-	static Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> findCloneRecursively(Set<TypeElement> elements) {
+	static Map<WsIOIdentifier, Set<WsIODestination>> findCloneRecursively(Set<TypeElement> elements) {
 
 		/* Return the map for each element and finally fold the results with an empty map */
 		return elements.map(WsIOFinder::findCloneRecursively)
@@ -294,19 +291,18 @@ class WsIOFinder {
 	 * @return map identified by the prefix and suffix containing a set
 	 * of tuples with the type element and the package name
 	 */
-	private static Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> findCloneRecursively(TypeElement element) {
+	private static Map<WsIOIdentifier, Set<WsIODestination>> findCloneRecursively(TypeElement element) {
 
 		/* Check if the current element is not or not */
 		if (Objects.nonNull(element) && isValid(element)) {
 
 			/* Get current element descriptor with annotations info */
 			WsIODescriptor descriptor = WsIODescriptor.of(element);
-			Map<Tuple2<String, String>, WsIOAnnotation> clones = descriptor.getMultiple(WsIOClone.class)
-					.map(((comparable, clone) -> Tuple.of(Tuple.of(clone.prefix(), clone.suffix()),
-							WsIOAnnotation.of(clone))));
+			Map<WsIOIdentifier, WsIOAnnotation> clones = descriptor.getMultiple(WsIOClone.class)
+					.map(((comparable, clone) -> Map.entry(WsIOIdentifier.of(clone), WsIOAnnotation.of(clone))));
 
 			/* Get current clone annotations info */
-			Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> current = clones.mapValues(clone -> {
+			Map<WsIOIdentifier, Set<WsIODestination>> current = clones.mapValues(clone -> {
 
 				/* Get class, package and final package name */
 				String className = element.getSimpleName().toString();
@@ -317,7 +313,7 @@ class WsIOFinder {
 						clone.getPackageEnd(), clone.getPackageFunc());
 
 				/* Return the tuple of element and final package name */
-				return Tuple.of(element, finalPackage);
+				return WsIODestination.of(element, finalPackage);
 
 			}).mapValues(HashSet::of);
 
@@ -344,21 +340,20 @@ class WsIOFinder {
 	 * @param clones   map with clone info
 	 * @return map with message clone class info
 	 */
-	static Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> findCloneMessage(Map<TypeElement, String> messages,
-	                                                                                      Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> clones) {
+	static Map<WsIOIdentifier, Set<WsIODestination>> findCloneMessage(Map<TypeElement, String> messages,
+																	  Map<WsIOIdentifier, Set<WsIODestination>> clones) {
 
 		/* Function that obtains the type element and package name given the prefix, suffix, type element and current package */
-		Function4<String, String, TypeElement, String, Option<Tuple2<TypeElement, String>>> transformPackage =
-				(prefix, suffix, element, currentPackage) -> {
+		Function2<WsIOIdentifier, WsIODestination, Option<WsIODestination>> transformPackage =
+				(identifier, destination) -> {
 
 					/* Get current element descriptor with annotations info */
+					TypeElement element = destination.getElementType();
 					WsIODescriptor descriptor = WsIODescriptor.of(element);
-					Map<Tuple2<String, String>, WsIOAnnotation> infos = descriptor.getMultiple(WsIOClone.class)
-							.map(((comparable, clone) -> Tuple.of(Tuple.of(clone.prefix(), clone.suffix()),
-									WsIOAnnotation.of(clone))));
+					Map<WsIOIdentifier, WsIOAnnotation> infos = descriptor.getMultiple(WsIOClone.class)
+							.map(((comparable, clone) -> Map.entry(WsIOIdentifier.of(clone), WsIOAnnotation.of(clone))));
 
 					/* Get current clone by identifier and return tuple if option is defined */
-					Tuple2<String, String> identifier = Tuple.of(prefix, suffix);
 					return infos.get(identifier)
 							.map(clone -> {
 
@@ -371,20 +366,22 @@ class WsIOFinder {
 										clone.getPackageEnd(), clone.getPackageFunc());
 
 								/* Return tuple with type element and package name */
-								return Tuple.of(element, finalPackage);
+								return WsIODestination.of(element, finalPackage);
 
 							});
 
 				};
 
 		/* Get current clone that are present in message info map */
-		Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> present = clones
-				.mapValues(set -> set.filter(tuple -> messages.keySet().contains(tuple._1())))
+		Map<WsIOIdentifier, Set<WsIODestination>> present = clones
+				.mapValues(set -> set.filter(destinationDescriptor -> messages.keySet()
+						.contains(destinationDescriptor.getElementType())))
 				.filter((key, value) -> value.nonEmpty());
 
 		/* Return the package name transformed of the clone messages that are present */
-		return present.map((identifier, set) -> Tuple.of(identifier, set.flatMap(tuple ->
-				transformPackage.apply(identifier._1(), identifier._2(), tuple._1(), tuple._2()))));
+		return present.map((identifier, set) -> Map
+				.entry(identifier, set.flatMap(destinationDescriptor -> transformPackage
+						.apply(identifier, destinationDescriptor))));
 
 	}
 
@@ -492,30 +489,33 @@ class WsIOFinder {
 					.getOrElse(type);
 
 			/* Find the clone recursively */
-			Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> searchedType = findCloneRecursively(HashSet.of(root))
-					.filterValues(set -> set.map(Tuple2::_1).contains(type));
+			Map<WsIOIdentifier, Set<WsIODestination>> searchedType = findCloneRecursively(HashSet.of(root))
+					.filterValues(set -> set.map(WsIODestination::getElementType).contains(type));
 
 			/* Iterate for each unique identifier { prefix - suffix } found */
-			for (Tuple2<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> searched : searchedType) {
+			for (Tuple2<WsIOIdentifier, Set<WsIODestination>> searched : searchedType) {
 
 				/* Get the identifier and the set of values */
-				Tuple2<String, String> identifier = searched._1();
-				Set<Tuple2<TypeElement, String>> elements = searched._2();
+				WsIOIdentifier identifier = searched._1();
+				Set<WsIODestination> elements = searched._2();
 
 				/* Get the prefix and suffix names */
-				String prefix = identifier._1();
-				String suffix = identifier._2();
+				String prefix = identifier.getIdentifierPrefix();
+				String suffix = identifier.getIdentifierSuffix();
 
-				/* Find the current element and check if is defined */
-				Option<Tuple2<TypeElement, String>> infoOpt = elements.find(tuple -> type.equals(tuple._1()));
+				/* Find the current element */
+				Option<WsIODestination> infoOpt = elements.find(destinationDescriptor -> type
+						.equals(destinationDescriptor.getElementType()));
+
+				/* Check if is defined */
 				if (infoOpt.isDefined()) {
 
 					/* Get the tuple with element and package info */
-					Tuple2<TypeElement, String> info = infoOpt.get();
+					WsIODestination destinationDescriptor = infoOpt.get();
 
 					/* Get the searched class and package names */
 					String searchedName = type.getSimpleName().toString();
-					String searchedPackage = info._2();
+					String searchedPackage = destinationDescriptor.getElementPackage();
 
 					/* Get the current class and package names */
 					String elementName = element.getSimpleName().toString();
@@ -573,25 +573,25 @@ class WsIOFinder {
 					.filterKeys(type::equals);
 
 			/* Find the clone recursively */
-			Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> searchedCloneType =
+			Map<WsIOIdentifier, Set<WsIODestination>> searchedCloneType =
 					findCloneRecursively(HashSet.of(root))
-							.filterValues(set -> set.map(Tuple2::_1).contains(type));
+							.filterValues(set -> set.map(WsIODestination::getElementType).contains(type));
 
 			/* Find the clone message map */
-			Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> searchedType =
+			Map<WsIOIdentifier, Set<WsIODestination>> searchedType =
 					findCloneMessage(searchedMessageType, searchedCloneType)
-							.filterValues(set -> set.map(Tuple2::_1).contains(type));
+							.filterValues(set -> set.map(WsIODestination::getElementType).contains(type));
 
 			/* Iterate for each unique identifier { prefix - suffix } found */
-			for (Tuple2<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> searched : searchedType) {
+			for (Tuple2<WsIOIdentifier, Set<WsIODestination>> searched : searchedType) {
 
 				/* Get the identifier and the set of values */
-				Tuple2<String, String> identifier = searched._1();
-				Set<Tuple2<TypeElement, String>> elements = searched._2();
+				WsIOIdentifier identifier = searched._1();
+				Set<WsIODestination> elements = searched._2();
 
 				/* Get the prefix and suffix class names */
-				String prefixClass = identifier._1();
-				String suffixClass = identifier._2();
+				String prefixClass = identifier.getIdentifierPrefix();
+				String suffixClass = identifier.getIdentifierSuffix();
 
 				/* Get the prefix and suffix request names */
 				String prefixRequest = WsIOConstant.REQUEST_PREFIX + prefixClass;
@@ -601,16 +601,19 @@ class WsIOFinder {
 				String prefixResponse = WsIOConstant.RESPONSE_PREFIX + prefixClass;
 				String suffixResponse = suffixClass + WsIOConstant.RESPONSE_SUFFIX;
 
-				/* Find the current element and check if is defined */
-				Option<Tuple2<TypeElement, String>> infoOpt = elements.find(tuple -> type.equals(tuple._1()));
+				/* Find the current element */
+				Option<WsIODestination> infoOpt = elements.find(destinationDescriptor -> type
+						.equals(destinationDescriptor.getElementType()));
+
+				/* Check if is defined */
 				if (infoOpt.isDefined()) {
 
 					/* Get the tuple with element and package info */
-					Tuple2<TypeElement, String> info = infoOpt.get();
+					WsIODestination destinationDescriptor = infoOpt.get();
 
 					/* Get the searched class and package names */
 					String searchedName = type.getSimpleName().toString();
-					String searchedPackage = info._2();
+					String searchedPackage = destinationDescriptor.getElementPackage();
 
 					/* Get the current class and package names */
 					String elementName = element.getSimpleName().toString();

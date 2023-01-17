@@ -5,6 +5,7 @@ import jakarta.xml.bind.annotation.*;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import java.time.ZonedDateTime;
+import java.util.Objects;
 
 @XmlRootElement
 @XmlAccessorType(XmlAccessType.PROPERTY)
@@ -58,27 +59,31 @@ public class WsIOInstant {
 		this.dateTime = dateTime;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
-		WsIOInstant timeEntry = (WsIOInstant) o;
-
-		if (id != null ? !id.equals(timeEntry.id) : timeEntry.id != null) return false;
-		return dateTime != null ? dateTime.equals(timeEntry.dateTime) : timeEntry.dateTime == null;
+		WsIOInstant that = (WsIOInstant) o;
+		return Objects.equals(id, that.id) && Objects.equals(dateTime, that.dateTime);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public int hashCode() {
-		int result = id != null ? id.hashCode() : 0;
-		result = 31 * result + (dateTime != null ? dateTime.hashCode() : 0);
-		return result;
+		return Objects.hash(id, dateTime);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String toString() {
-		return "TimeEntry{" +
+		return "WsIOInstant{" +
 				"id='" + id + '\'' +
 				", dateTime=" + dateTime +
 				'}';

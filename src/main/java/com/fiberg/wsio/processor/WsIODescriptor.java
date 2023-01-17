@@ -243,18 +243,18 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Method that extracts the info for annotated element.
+	 * Method that extracts the descriptors for annotated element.
 	 *
 	 * @param annotated annotated method or class
 	 * @return list of tuples with annotation and skip type of all recursive annotated elements
 	 */
 	private static Map<Class<? extends Annotation>, List<Tuple2<Annotation, SkipType>>>
-	extractAnnotationInfos(final Annotated annotated) {
+	extractAnnotationDescriptors(final Annotated annotated) {
 
-		/* Map with all classes info */
+		/* Map with all class descriptors */
 		return SINGLES.keySet().toMap(annotation -> annotation,
 				annotation -> WsIODescriptor.extractElementHierarchy(annotated).map(elem ->
-						WsIODescriptor.extractElementAnnotationInfo(elem, annotation)));
+						WsIODescriptor.extractElementAnnotationDescriptor(elem, annotation)));
 
 	}
 
@@ -275,13 +275,13 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Method that extracts the info for current annotated element.
+	 * Method that extracts the descriptor for current annotated element.
 	 *
 	 * @param annotated  annotated element
 	 * @param annotation class of the annotation
 	 * @return tuple with annotation and skip type
 	 */
-	private static Tuple2<Annotation, SkipType> extractElementAnnotationInfo(final Annotated annotated,
+	private static Tuple2<Annotation, SkipType> extractElementAnnotationDescriptor(final Annotated annotated,
 	                                                                         final Class<? extends Annotation> annotation) {
 
 		/* Get annotation, and skip type from function call, finally filter tuple of nulls and return */
@@ -294,32 +294,32 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Method that extracts the info for annotated element.
+	 * Method that extracts the descriptor for annotated element.
 	 *
 	 * @param annotated annotated method or class
 	 * @return list of tuples with annotation and skip type of all recursive annotated elements
 	 */
 	private static Map<Class<? extends Annotation>, Map<Comparable<?>, List<Tuple2<Annotation, SkipType>>>>
-	extractAnnotationsInfos(final Annotated annotated) {
+	extractAnnotationsDescriptors(final Annotated annotated) {
 
-		/* Return annotations info */
-		return extractAnnotationsInfos(annotated, WsIODescriptor::extractElementHierarchy,
-				WsIODescriptor::extractElementAnnotationsInfo);
+		/* Return annotations descriptor */
+		return extractAnnotationsDescriptors(annotated, WsIODescriptor::extractElementHierarchy,
+				WsIODescriptor::extractElementAnnotationsDescriptor);
 
 	}
 
 	/**
-	 * Method that extracts the info for current annotated element.
+	 * Method that extracts the descriptor for current annotated element.
 	 *
 	 * @param annotated  annotated element
 	 * @param annotation class of the annotation
 	 * @return tuple with annotation and skip type
 	 */
-	private static Map<Comparable<?>, Tuple2<Annotation, SkipType>> extractElementAnnotationsInfo(
+	private static Map<Comparable<?>, Tuple2<Annotation, SkipType>> extractElementAnnotationsDescriptor(
 			final Annotated annotated,
 			final Class<? extends Annotation> annotation) {
 
-		/* Return the annotations info */
+		/* Return the annotations descriptor */
 		return Map.narrow(REPEATABLES.get(annotation)
 				.map(repeatable -> {
 
@@ -339,7 +339,7 @@ public class WsIODescriptor {
 	}
 
 	/**
-	 * Method that extracts the info for all generics.
+	 * Method that extracts the descriptor for all generics.
 	 *
 	 * @param element   type, package or executable generic
 	 * @param hierarchy hierarchy function
@@ -348,11 +348,11 @@ public class WsIODescriptor {
 	 * @return list of tuples with annotation and skip type of all recursive methods
 	 */
 	private static <E> Map<Class<? extends Annotation>, Map<Comparable<?>, List<Tuple2<Annotation, SkipType>>>>
-	extractAnnotationsInfos(final E element,
+	extractAnnotationsDescriptors(final E element,
 	                        final Function1<E, List<E>> hierarchy,
 	                        final Function2<E, Class<? extends Annotation>, Map<Comparable<?>, Tuple2<Annotation, SkipType>>> extractor) {
 
-		/* Map with all classes info */
+		/* Map with all classes descriptor */
 		return REPEATABLES.keySet().toMap(annotation -> annotation,
 				annotation -> {
 
@@ -363,7 +363,7 @@ public class WsIODescriptor {
 					/* Get all keys */
 					final Set<Comparable<?>> keys = annotations.flatMap(Map::keySet).toSet();
 
-					/* Return the map of annotation class and the info by comparable */
+					/* Return the map of annotation class and the descriptor by comparable */
 					return keys.toMap(comparable -> comparable,
 							comparable -> annotations.map(map -> map.get(comparable).getOrNull()));
 
@@ -595,13 +595,13 @@ public class WsIODescriptor {
 		final WsIODescriptor descriptor = new WsIODescriptor();
 
 		/* Initialize single elements */
-		descriptor.singles = extractAnnotationInfos(annotated)
+		descriptor.singles = extractAnnotationDescriptors(annotated)
 				.mapValues(WsIODescriptor::resolve)
 				.flatMap((key, value) ->
 						value.map(annotation -> Tuple.of(key, annotation)));
 
 		/* Initialize multiple elements */
-		descriptor.multiples = extractAnnotationsInfos(annotated)
+		descriptor.multiples = extractAnnotationsDescriptors(annotated)
 				.mapValues(map -> map.mapValues(WsIODescriptor::resolve)
 						.flatMap((key, value) ->
 								value.map(annotation -> Tuple.of(key, annotation))));

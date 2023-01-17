@@ -3,6 +3,8 @@ package com.fiberg.wsio.processor;
 import com.fiberg.wsio.annotation.WsIOClone;
 import com.fiberg.wsio.annotation.WsIOMessage;
 import com.fiberg.wsio.annotation.WsIOMessageWrapper;
+import com.fiberg.wsio.enumerate.WsIOGenerate;
+import com.fiberg.wsio.enumerate.WsIOType;
 import com.fiberg.wsio.util.WsIOUtil;
 import io.vavr.Function2;
 import io.vavr.Tuple;
@@ -34,7 +36,7 @@ public final class WsIOWalker {
 	 * @param types list of ct classes
 	 * @return map identified by the element type containing wrapper annotations info of all elements
 	 */
-	public static Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>>
+	public static Map<String, Map<String, Tuple2<String, Map<WsIOType, WsIOIdentifier>>>>
 	findWrapperRecursively(final List<TypeDescription> types) {
 
 		/* Return the map for each element and finally fold the results with an empty map */
@@ -49,7 +51,7 @@ public final class WsIOWalker {
 	 * @param type type element
 	 * @return map identified by the element type containing wrapper annotations info of a single element
 	 */
-	private static Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>>
+	private static Map<String, Map<String, Tuple2<String, Map<WsIOType, WsIOIdentifier>>>>
 	findWrapperRecursively(final TypeDescription type) {
 
 		/* Check if the current class is null or not */
@@ -63,7 +65,7 @@ public final class WsIOWalker {
 							.isAnnotationPresent(WebMethod.class));
 
 			/* Get current element info for every method */
-			final Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> currentInfo = methods.flatMap(method -> {
+			final Map<String, Tuple2<String, Map<WsIOType, WsIOIdentifier>>> currentInfo = methods.flatMap(method -> {
 
 				/* Get simple name, long name, current descriptor and annotation option */
 				final String methodName = method.getName();
@@ -87,12 +89,12 @@ public final class WsIOWalker {
 							wrapper.getPackageEnd(), wrapper.getPackageFunc());
 
 					/* Map with the prefix and suffix for response and request wrappers */
-					final Map<WsIOType, Tuple2<String, String>> messageMap = HashMap.of(
-							WsIOType.RESPONSE, Tuple.of(
+					final Map<WsIOType, WsIOIdentifier> messageMap = HashMap.of(
+							WsIOType.RESPONSE, WsIOIdentifier.of(
 									WsIOConstant.RESPONSE_WRAPPER_PREFIX,
 									WsIOConstant.RESPONSE_WRAPPER_SUFFIX
 							),
-							WsIOType.REQUEST, Tuple.of(
+							WsIOType.REQUEST, WsIOIdentifier.of(
 									WsIOConstant.REQUEST_WRAPPER_PREFIX,
 									WsIOConstant.REQUEST_WRAPPER_SUFFIX
 							)
@@ -106,7 +108,7 @@ public final class WsIOWalker {
 			}).toMap(tuple -> tuple);
 
 			/* Create zero map with current element */
-			final Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>> zeroMap =
+			final Map<String, Map<String, Tuple2<String, Map<WsIOType, WsIOIdentifier>>>> zeroMap =
 					HashMap.of(type.getName(), currentInfo);
 
 			/* Call recursively this function with each declared class
@@ -142,8 +144,8 @@ public final class WsIOWalker {
 				.map(WsIOAnnotation::of);
 
 		/* Get the clone map */
-		final Map<Tuple2<String, String>, WsIOAnnotation> cloneMap = descriptor.getMultiple(WsIOClone.class)
-				.map((key, clone) -> Tuple.of(Tuple.of(clone.prefix(), clone.suffix()), WsIOAnnotation.of(clone)));
+		final Map<WsIOIdentifier, WsIOAnnotation> cloneMap = descriptor.getMultiple(WsIOClone.class)
+				.map((key, clone) -> Map.entry(WsIOIdentifier.of(clone), WsIOAnnotation.of(clone)));
 
 		/* Class and package names */
 		final String currentClass = type.getSimpleName();
@@ -176,16 +178,17 @@ public final class WsIOWalker {
 				.map(tuple -> {
 
 					/* Get identifier and package name */
-					final Tuple2<String, String> identifier = tuple._1();
+					final WsIOIdentifier identifier = tuple._1();
 					final String packageName = tuple._2();
 
 					/* Get clone prefix and suffix */
-					final String prefix = identifier._1();
-					final String suffix = identifier._2();
+					final String prefix = identifier.getIdentifierPrefix();
+					final String suffix = identifier.getIdentifierSuffix();
 
 					/* Return the class name */
-					return WsIOUtil.addPrefixName(WsIOUtil.addWrap(currentFullClass,
-							prefix, suffix), packageName);
+					return WsIOUtil.addPrefixName(
+							WsIOUtil.addWrap(currentFullClass, prefix, suffix), packageName
+					);
 
 				}).toSet();
 
@@ -195,13 +198,13 @@ public final class WsIOWalker {
 				.flatMap(tuple -> {
 
 					/* Get identifier, package name and message annotation */
-					final Tuple2<String, String> identifier = tuple._1();
+					final WsIOIdentifier identifier = tuple._1();
 					final String packageName = tuple._2();
 					final WsIOAnnotation annotation = tuple._3();
 
 					/* Get clone prefix and suffix */
-					final String prefixClass = identifier._1();
-					final String suffixClass = identifier._2();
+					final String prefixClass = identifier.getIdentifierPrefix();
+					final String suffixClass = identifier.getIdentifierSuffix();
 
 					/* Get the prefix and suffix response names */
 					final String prefixResponse = WsIOConstant.RESPONSE_PREFIX + prefixClass;

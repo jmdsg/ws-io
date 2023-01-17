@@ -1,4 +1,4 @@
-package com.fiberg.wsio.processor;
+package com.fiberg.wsio.enumerate;
 
 /**
  * Enum containing the possible stage of the generation.

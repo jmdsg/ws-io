@@ -1,9 +1,10 @@
 package com.fiberg.wsio.auto;
 
 import com.fiberg.wsio.annotation.WsIOAnnotate;
+import com.fiberg.wsio.enumerate.WsIOType;
 import com.fiberg.wsio.processor.WsIOConstant;
 import com.fiberg.wsio.processor.WsIODescriptor;
-import com.fiberg.wsio.processor.WsIOType;
+import com.fiberg.wsio.processor.WsIOIdentifier;
 import com.fiberg.wsio.processor.WsIOWalker;
 import com.fiberg.wsio.util.WsIOUtil;
 import io.github.classgraph.ClassGraph;
@@ -83,7 +84,7 @@ public final class WsIOAuto {
 				.filterValues(Objects::nonNull);
 
 		/* Get current wrappers of the class */
-		Map<String, Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>>> wrappers =
+		Map<String, Map<String, Tuple2<String, Map<WsIOType, WsIOIdentifier>>>> wrappers =
 				WsIOWalker.findWrapperRecursively(types.values().toList());
 
 		/* Iterate for each wrapper class */
@@ -99,7 +100,7 @@ public final class WsIOAuto {
 						/* Get main, root class and the wrappers */
 						TypeDescription type = typeOpt.get();
 						String typeName = type.getName();
-						Map<String, Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> wrapper =
+						Map<String, Tuple2<String, Map<WsIOType, WsIOIdentifier>>> wrapper =
 								wrappers.getOrElse(typeName, HashMap.empty());
 
 						/* Iterate for each method */
@@ -108,14 +109,14 @@ public final class WsIOAuto {
 								.flatMap(method -> {
 
 									/* Get method info */
-									Option<Tuple2<String, Map<WsIOType, Tuple2<String, String>>>> info = wrapper
+									Option<Tuple2<String, Map<WsIOType, WsIOIdentifier>>> info = wrapper
 											.get(method.toString());
 
 									/* Get package, response and request options */
 									Option<String> packageOpt = info.map(Tuple2::_1).filter(Objects::nonNull);
-									Option<Tuple2<String, String>> responseOpt = info.map(Tuple2::_2)
+									Option<WsIOIdentifier> responseOpt = info.map(Tuple2::_2)
 											.flatMap(map -> map.get(WsIOType.RESPONSE));
-									Option<Tuple2<String, String>> requestOpt = info.map(Tuple2::_2)
+									Option<WsIOIdentifier> requestOpt = info.map(Tuple2::_2)
 											.flatMap(map -> map.get(WsIOType.REQUEST));
 
 									/* Check if all fields are present */
@@ -130,8 +131,8 @@ public final class WsIOAuto {
 
 										/* Get package name, response and request info with prefixes and suffixes */
 										String packageName = packageOpt.get();
-										Tuple2<String, String> response = responseOpt.get();
-										Tuple2<String, String> request = requestOpt.get();
+										WsIOIdentifier response = responseOpt.get();
+										WsIOIdentifier request = requestOpt.get();
 										Map<Class<? extends Annotation>, List<AnnotationDescription>>
 										wrapperAnnotation = getWrapperAnnotation(
 												method, packageName, response, request, classNames
@@ -299,8 +300,8 @@ public final class WsIOAuto {
 	private static Map<Class<? extends Annotation>, List<AnnotationDescription>>
 	getWrapperAnnotation(MethodDescription method,
 						 String packageName,
-						 Tuple2<String, String> response,
-						 Tuple2<String, String> request,
+						 WsIOIdentifier response,
+						 WsIOIdentifier request,
 						 List<String> classNames) {
 
 		/* Get method name and upper name to create wrapper names */
@@ -308,8 +309,8 @@ public final class WsIOAuto {
 		String upperName = WordUtils.capitalize(methodName);
 
 		/* Response and request names with prefix and suffix */
-		String responseName = WsIOUtil.addWrap(upperName, response._1(), response._2());
-		String requestName = WsIOUtil.addWrap(upperName, request._1(), request._2());
+		String responseName = WsIOUtil.addWrap(upperName, response.getIdentifierPrefix(), response.getIdentifierSuffix());
+		String requestName = WsIOUtil.addWrap(upperName, request.getIdentifierPrefix(), request.getIdentifierSuffix());
 
 		/* Get full qualified response and request class names */
 		String responseClass = WsIOUtil.addPrefixName(responseName, packageName);

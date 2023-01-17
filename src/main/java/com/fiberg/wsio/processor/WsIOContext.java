@@ -1,5 +1,7 @@
 package com.fiberg.wsio.processor;
 
+import com.fiberg.wsio.enumerate.WsIOGenerate;
+import com.fiberg.wsio.enumerate.WsIOType;
 import com.fiberg.wsio.util.WsIOUtil;
 import com.squareup.javapoet.*;
 import io.vavr.API;
@@ -22,17 +24,11 @@ import java.util.Objects;
  */
 class WsIOContext {
 
-	/** Prefix class name */
-	private final String prefixClassName;
+	/** Main class identifier */
+	private final WsIOIdentifier mainIdentifier;
 
-	/** Suffix class name */
-	private final String suffixClassName;
-
-	/** Prefix wrapper name */
-	private final String prefixWrapperName;
-
-	/** Suffix wrapper name */
-	private final String suffixWrapperName;
+	/** Wrapper class identifier */
+	private final WsIOIdentifier wrapperIdentifier;
 
 	/** Map of message classes and package name */
 	private final Map<String, String> messageClasses;
@@ -47,78 +43,80 @@ class WsIOContext {
 	private final Map<String, TypeElement> typeByName;
 
 	/** Flag to indicate if the class is a clone, a message or a clone message */
-	private final WsIOGenerate generate;
+	private final WsIOGenerate targetGenerate;
+
+	/** Indicates the target type of the context */
+	private final WsIOType targetType;
 
 	/**
 	 * Class constructor
 	 *
-	 * @param prefixClassName prefix name of the class
-	 * @param suffixClassName suffix name of the class
-	 * @param prefixWrapperName prefix name of the wrapper
-	 * @param suffixWrapperName suffix name of the wrapper
+	 * @param mainIdentifier identifier of the class
+	 * @param wrapperIdentifier identifier of the wrapper
 	 * @param messageClasses map of message classes and package name
 	 * @param cloneClasses map of cloned classes and package name
 	 * @param cloneMessageClasses map of cloned message classes and package name
 	 * @param typeByName map of type elements by name
-	 * @param generate indicates if the class is a clone, a message or a clone message
+	 * @param targetGenerate indicates if the class is a clone, a message or a clone message
+	 * @param targetType indicates the target type
 	 */
-	WsIOContext(String prefixClassName,
-	            String suffixClassName,
-	            String prefixWrapperName,
-	            String suffixWrapperName,
-	            Map<String, String> messageClasses,
-	            Map<String, String> cloneClasses,
-	            Map<String, String> cloneMessageClasses,
-	            Map<String, TypeElement> typeByName,
-	            WsIOGenerate generate) {
+	WsIOContext(WsIOIdentifier mainIdentifier,
+				WsIOIdentifier wrapperIdentifier,
+				Map<String, String> messageClasses,
+				Map<String, String> cloneClasses,
+				Map<String, String> cloneMessageClasses,
+				Map<String, TypeElement> typeByName,
+				WsIOGenerate targetGenerate,
+				WsIOType targetType) {
 
 		/* Assign fields */
-		this.prefixClassName = prefixClassName;
-		this.suffixClassName = suffixClassName;
-		this.prefixWrapperName = prefixWrapperName;
-		this.suffixWrapperName = suffixWrapperName;
+		this.mainIdentifier = mainIdentifier;
+		this.wrapperIdentifier = wrapperIdentifier;
 		this.messageClasses = messageClasses;
 		this.cloneClasses = cloneClasses;
 		this.cloneMessageClasses = cloneMessageClasses;
 		this.typeByName = typeByName;
-		this.generate = generate;
+		this.targetGenerate = targetGenerate;
+		this.targetType = targetType;
 
 	}
 
-	/**
-	 * Getter method of field prefixClassName.
-	 *
-	 * @return prefix name of the class
-	 */
-	public String getPrefixClassName() {
-		return prefixClassName;
+	public static WsIOContext of(WsIOIdentifier mainIdentifier,
+								 WsIOIdentifier wrapperIdentifier,
+								 Map<String, String> messageClasses,
+								 Map<String, String> cloneClasses,
+								 Map<String, String> cloneMessageClasses,
+								 Map<String, TypeElement> typeByName,
+								 WsIOGenerate targetGenerate,
+								 WsIOType targetType) {
+		return new WsIOContext(
+				mainIdentifier,
+				wrapperIdentifier,
+				messageClasses,
+				cloneClasses,
+				cloneMessageClasses,
+				typeByName,
+				targetGenerate,
+				targetType
+		);
 	}
 
 	/**
-	 * Getter method of field suffixClassName.
+	 * Getter method of field mainIdentifier.
 	 *
-	 * @return suffix name of the class
+	 * @return identifier of the class
 	 */
-	public String getSuffixClassName() {
-		return suffixClassName;
+	public WsIOIdentifier getMainIdentifier() {
+		return mainIdentifier;
 	}
 
 	/**
-	 * Getter method of field prefixWrapperName.
+	 * Getter method of field wrapperIdentifier.
 	 *
-	 * @return prefix name of the wrapper
+	 * @return identifier of the wrapper
 	 */
-	public String getPrefixWrapperName() {
-		return prefixWrapperName;
-	}
-
-	/**
-	 * Getter method of field suffixWrapperName.
-	 *
-	 * @return suffix name of the wrapper
-	 */
-	public String getSuffixWrapperName() {
-		return suffixWrapperName;
+	public WsIOIdentifier getWrapperIdentifier() {
+		return wrapperIdentifier;
 	}
 
 	/**
@@ -158,26 +156,36 @@ class WsIOContext {
 	}
 
 	/**
-	 * Getter method of field generate.
+	 * Getter method of field targetGenerate.
 	 *
 	 * @return an enum that indicates if the class is a clone, a message or a clone message
 	 */
-	public WsIOGenerate getGenerate() {
-		return generate;
+	public WsIOGenerate getTargetGenerate() {
+		return targetGenerate;
+	}
+
+	/**
+	 * Getter method of field targetGenerate.
+	 *
+	 * @return the target type of the context
+	 */
+	public WsIOType getTargetType() {
+		return targetType;
 	}
 
 	/**
 	 * With method to create a new context with a specified generate.
 	 *
-	 * @param generate an enum that indicates if the class is a clone, a message or a clone message
+	 * @param targetGenerate an enum that indicates if the class is a clone, a message or a clone message
 	 * @return a new context with the new generate
 	 */
-	public WsIOContext withGenerate(WsIOGenerate generate) {
+	public WsIOContext withGenerate(WsIOGenerate targetGenerate) {
 
 		/* Return new context with all fields */
-		return new WsIOContext(
-				prefixClassName, suffixClassName, prefixWrapperName, suffixWrapperName,
-				messageClasses, cloneClasses, cloneMessageClasses, typeByName, generate
+		return WsIOContext.of(
+				mainIdentifier, wrapperIdentifier,
+				messageClasses, cloneClasses, cloneMessageClasses,
+				typeByName, targetGenerate, targetType
 		);
 
 	}
@@ -185,66 +193,20 @@ class WsIOContext {
 	/**
 	 * With method to create a new context with a specified names.
 	 *
-	 * @param prefixClassName prefix name of the class
-	 * @param suffixClassName suffix name of the class
-	 * @param prefixWrapperName prefix name of the wrapper
-	 * @param suffixWrapperName suffix name of the wrapper
+	 * @param mainIdentifier identifier of the class
+	 * @param wrapperIdentifier identifier of the wrapper
 	 * @return a new context with the new names
 	 */
-	public WsIOContext withName(String prefixClassName,
-	                            String suffixClassName,
-	                            String prefixWrapperName,
-	                            String suffixWrapperName) {
+	public WsIOContext withIdentifier(WsIOIdentifier mainIdentifier,
+									  WsIOIdentifier wrapperIdentifier) {
 
 		/* Return new context with all fields */
-		return new WsIOContext(
-				prefixClassName, suffixClassName, prefixWrapperName, suffixWrapperName,
-				messageClasses, cloneClasses, cloneMessageClasses, typeByName, generate
+		return WsIOContext.of(
+				mainIdentifier, wrapperIdentifier,
+				messageClasses, cloneClasses, cloneMessageClasses,
+				typeByName, targetGenerate, targetType
 		);
 
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		WsIOContext that = (WsIOContext) o;
-
-		if (messageClasses != null ? !messageClasses.equals(that.messageClasses) : that.messageClasses != null)
-			return false;
-		if (cloneClasses != null ? !cloneClasses.equals(that.cloneClasses) : that.cloneClasses != null) return false;
-		if (cloneMessageClasses != null ? !cloneMessageClasses.equals(that.cloneMessageClasses) : that.cloneMessageClasses != null)
-			return false;
-		return generate == that.generate;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public int hashCode() {
-		int result = messageClasses != null ? messageClasses.hashCode() : 0;
-		result = 31 * result + (cloneClasses != null ? cloneClasses.hashCode() : 0);
-		result = 31 * result + (cloneMessageClasses != null ? cloneMessageClasses.hashCode() : 0);
-		result = 31 * result + (generate != null ? generate.hashCode() : 0);
-		return result;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String toString() {
-		return "WsIOContext{" +
-				"messageClasses=" + messageClasses +
-				", cloneClasses=" + cloneClasses +
-				", cloneMessageClasses=" + cloneMessageClasses +
-				", generate=" + generate +
-				'}';
 	}
 
 	/**
@@ -260,9 +222,9 @@ class WsIOContext {
 		boolean inClone = cloneClasses.keySet().contains(elementName);
 
 		/* Return if is cloned or message */
-		return (WsIOGenerate.MESSAGE.equals(generate) && inMessage)
-				|| (WsIOGenerate.CLONE.equals(generate) && inClone)
-				|| (WsIOGenerate.CLONE_MESSAGE.equals(generate) && (inMessage || inClone));
+		return (WsIOGenerate.MESSAGE.equals(targetGenerate) && inMessage)
+				|| (WsIOGenerate.CLONE.equals(targetGenerate) && inClone)
+				|| (WsIOGenerate.CLONE_MESSAGE.equals(targetGenerate) && (inMessage || inClone));
 
 	}
 
@@ -394,11 +356,11 @@ class WsIOContext {
 
 				/* Name by generate */
 				WsIOGenerate realType = getTypeByGenerate(elementName);
-				Tuple2<String, String> nameByGenerate = getNameByGenerate(elementName);
+				WsIOIdentifier nameByGenerate = getNameByGenerate(elementName);
 
 				/* Prefix and suffix names */
-				String prefixName = nameByGenerate._1();
-				String suffixName = nameByGenerate._2();
+				String prefixName = nameByGenerate.getIdentifierPrefix();
+				String suffixName = nameByGenerate.getIdentifierSuffix();
 
 				/* Package class name */
 				String packageName = StringUtils.EMPTY;
@@ -491,7 +453,7 @@ class WsIOContext {
 	 * @param elementName name of the element
 	 * @return a tuple containing the prefix and suffix name
 	 */
-	Tuple2<String,String> getNameByGenerate(String elementName) {
+	WsIOIdentifier getNameByGenerate(String elementName) {
 
 		/* Get generate real type */
 		WsIOGenerate type = getTypeByGenerate(elementName);
@@ -499,23 +461,28 @@ class WsIOContext {
 		/* Check type is not ull */
 		if (Objects.nonNull(type)) {
 
+			String prefixClassName = mainIdentifier.getIdentifierPrefix();
+			String suffixClassName = mainIdentifier.getIdentifierSuffix();
+			String prefixWrapperName = wrapperIdentifier.getIdentifierPrefix();
+			String suffixWrapperName = wrapperIdentifier.getIdentifierSuffix();
+
 			/* Switch the current type and return tuple */
 			switch (type) {
 
 				case CLONE_MESSAGE:
 
 					/* Return full prefix name and suffix */
-					return Tuple.of(prefixWrapperName + prefixClassName, suffixClassName + suffixWrapperName);
+					return WsIOIdentifier.of(prefixWrapperName + prefixClassName, suffixClassName + suffixWrapperName);
 
 				case MESSAGE:
 
 					/* Return wrapper prefix and suffix name because element is not in clone classes */
-					return Tuple.of(prefixWrapperName, suffixWrapperName);
+					return WsIOIdentifier.of(prefixWrapperName, suffixWrapperName);
 
 				case CLONE:
 
 					/* Return class prefix and suffix name because element is not in message classes */
-					return Tuple.of(prefixClassName, suffixClassName);
+					return WsIOIdentifier.of(prefixClassName, suffixClassName);
 
 				default:
 
@@ -538,21 +505,21 @@ class WsIOContext {
 	private WsIOGenerate getTypeByGenerate(String elementName) {
 
 		/* Check generate and if the element is in clone and message classes */
-		if (WsIOGenerate.CLONE_MESSAGE.equals(generate)
+		if (WsIOGenerate.CLONE_MESSAGE.equals(targetGenerate)
 				&& cloneMessageClasses.containsKey(elementName)) {
 
 			/* Return clone message type */
 			return WsIOGenerate.CLONE_MESSAGE;
 
-		} else if (WsIOGenerate.MESSAGE.equals(generate)
-				|| (WsIOGenerate.CLONE_MESSAGE.equals(generate)
+		} else if (WsIOGenerate.MESSAGE.equals(targetGenerate)
+				|| (WsIOGenerate.CLONE_MESSAGE.equals(targetGenerate)
 				&& messageClasses.containsKey(elementName))) {
 
 			/* Return message type */
 			return WsIOGenerate.MESSAGE;
 
-		} else if (WsIOGenerate.CLONE.equals(generate)
-				|| (WsIOGenerate.CLONE_MESSAGE.equals(generate)
+		} else if (WsIOGenerate.CLONE.equals(targetGenerate)
+				|| (WsIOGenerate.CLONE_MESSAGE.equals(targetGenerate)
 				&& cloneClasses.containsKey(elementName))) {
 
 			/* Return clone type */
@@ -585,11 +552,11 @@ class WsIOContext {
 		/* Real type and name by generate */
 		String elementName = element.getQualifiedName().toString();
 		WsIOGenerate realType = getTypeByGenerate(elementName);
-		Tuple2<String, String> nameByGenerate = getNameByGenerate(elementName);
+		WsIOIdentifier nameByGenerate = getNameByGenerate(elementName);
 
 		/* Prefix and suffix names */
-		String prefixName = nameByGenerate._1();
-		String suffixName = nameByGenerate._2();
+		String prefixName = nameByGenerate.getIdentifierPrefix();
+		String suffixName = nameByGenerate.getIdentifierSuffix();
 
 		/* Return candidates class names and package separated joined by dot and them separated with commas */
 		return API.Match(realType).option(
@@ -605,6 +572,42 @@ class WsIOContext {
 				.map(tuple -> WsIOUtil.addPrefixName(tuple._1(), tuple._2()))
 				.toSet();
 
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		WsIOContext that = (WsIOContext) o;
+		return Objects.equals(mainIdentifier, that.mainIdentifier) && Objects.equals(wrapperIdentifier, that.wrapperIdentifier) && Objects.equals(messageClasses, that.messageClasses) && Objects.equals(cloneClasses, that.cloneClasses) && Objects.equals(cloneMessageClasses, that.cloneMessageClasses) && Objects.equals(typeByName, that.typeByName) && targetGenerate == that.targetGenerate && targetType == that.targetType;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public int hashCode() {
+		return Objects.hash(mainIdentifier, wrapperIdentifier, messageClasses, cloneClasses, cloneMessageClasses, typeByName, targetGenerate, targetType);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String toString() {
+		return "WsIOContext{" +
+				"mainIdentifier=" + mainIdentifier +
+				", wrapperIdentifier=" + wrapperIdentifier +
+				", messageClasses=" + messageClasses +
+				", cloneClasses=" + cloneClasses +
+				", cloneMessageClasses=" + cloneMessageClasses +
+				", typeByName=" + typeByName +
+				", targetGenerate=" + targetGenerate +
+				", targetType=" + targetType +
+				'}';
 	}
 
 }

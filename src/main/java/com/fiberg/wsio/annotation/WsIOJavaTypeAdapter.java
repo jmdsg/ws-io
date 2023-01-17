@@ -1,6 +1,6 @@
 package com.fiberg.wsio.annotation;
 
-import com.fiberg.wsio.processor.WsIOType;
+import com.fiberg.wsio.enumerate.WsIOType;
 import jakarta.xml.bind.annotation.adapters.XmlAdapter;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 

@@ -2,6 +2,8 @@ package com.fiberg.wsio.handler.state;
 
 import jakarta.xml.bind.annotation.*;
 
+import java.util.Objects;
+
 @XmlRootElement
 @XmlAccessorType(XmlAccessType.PROPERTY)
 public class WsIOText {
@@ -48,27 +50,31 @@ public class WsIOText {
 		this.text = text;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
-		WsIOText that = (WsIOText) o;
-
-		if (language != that.language) return false;
-		return text != null ? text.equals(that.text) : that.text == null;
+		WsIOText wsIOText = (WsIOText) o;
+		return language == wsIOText.language && Objects.equals(text, wsIOText.text);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public int hashCode() {
-		int result = language != null ? language.hashCode() : 0;
-		result = 31 * result + (text != null ? text.hashCode() : 0);
-		return result;
+		return Objects.hash(language, text);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String toString() {
-		return "StateTextEntry{" +
+		return "WsIOText{" +
 				"language=" + language +
 				", text='" + text + '\'' +
 				'}';

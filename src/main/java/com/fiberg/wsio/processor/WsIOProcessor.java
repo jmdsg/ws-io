@@ -7,7 +7,6 @@ import com.fiberg.wsio.annotation.WsIOMessageWrapper;
 import com.google.auto.service.AutoService;
 import io.vavr.Function1;
 import io.vavr.Predicates;
-import io.vavr.Tuple2;
 import io.vavr.Tuple3;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.Map;
@@ -17,6 +16,7 @@ import io.vavr.collection.Stream;
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 
 /**
@@ -70,17 +70,17 @@ public class WsIOProcessor extends AbstractProcessor {
 		final Map<TypeElement, String> messageByType = WsIOFinder.findMessageRecursively(rootTypeNotGeneratedElements);
 
 		/* Find clone classes recursively */
-		final Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneByGroup =
+		final Map<WsIOIdentifier, Set<WsIODestination>> cloneByGroup =
 				WsIOFinder.findCloneRecursively(rootTypeNotGeneratedElements)
 						.filterValues(Set::nonEmpty);
 
 		/* Find wrapper classes recursively */
-		final Map<TypeElement, Map<String, Tuple2<WsIOExecutableInfo, String>>> wrapperByType =
+		final Map<TypeElement, Map<String, Tuple3<ExecutableElement, WsIODescriptor, String>>> wrapperByType =
 				WsIOFinder.findWrapperRecursively(rootTypeElements)
 						.filterValues(Map::nonEmpty);
 
 		/* Find message of cloned classes from the current clone and message classes */
-		final Map<Tuple2<String, String>, Set<Tuple2<TypeElement, String>>> cloneMessageByGroup =
+		final Map<WsIOIdentifier, Set<WsIODestination>> cloneMessageByGroup =
 				WsIOFinder.findCloneMessage(messageByType, cloneByGroup)
 						.filterValues(Set::nonEmpty);
 

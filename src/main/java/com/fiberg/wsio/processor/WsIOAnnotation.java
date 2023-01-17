@@ -4,6 +4,8 @@ import com.fiberg.wsio.annotation.WsIOClone;
 import com.fiberg.wsio.annotation.WsIOMessage;
 import com.fiberg.wsio.annotation.WsIOMessageWrapper;
 
+import java.util.Objects;
+
 class WsIOAnnotation {
 
 	private String packageName;
@@ -145,20 +147,8 @@ class WsIOAnnotation {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
 		WsIOAnnotation that = (WsIOAnnotation) o;
-
-		if (packageName != null ? !packageName.equals(that.packageName) : that.packageName != null) return false;
-		if (packagePath != null ? !packagePath.equals(that.packagePath) : that.packagePath != null) return false;
-		if (packagePrefix != null ? !packagePrefix.equals(that.packagePrefix) : that.packagePrefix != null)
-			return false;
-		if (packageSuffix != null ? !packageSuffix.equals(that.packageSuffix) : that.packageSuffix != null)
-			return false;
-		if (packageStart != null ? !packageStart.equals(that.packageStart) : that.packageStart != null) return false;
-		if (packageMiddle != null ? !packageMiddle.equals(that.packageMiddle) : that.packageMiddle != null)
-			return false;
-		if (packageEnd != null ? !packageEnd.equals(that.packageEnd) : that.packageEnd != null) return false;
-		return packageFunc != null ? packageFunc.equals(that.packageFunc) : that.packageFunc == null;
+		return Objects.equals(packageName, that.packageName) && Objects.equals(packagePath, that.packagePath) && Objects.equals(packagePrefix, that.packagePrefix) && Objects.equals(packageSuffix, that.packageSuffix) && Objects.equals(packageStart, that.packageStart) && Objects.equals(packageMiddle, that.packageMiddle) && Objects.equals(packageEnd, that.packageEnd) && Objects.equals(packageFunc, that.packageFunc);
 	}
 
 	/**
@@ -166,15 +156,7 @@ class WsIOAnnotation {
 	 */
 	@Override
 	public int hashCode() {
-		int result = packageName != null ? packageName.hashCode() : 0;
-		result = 31 * result + (packagePath != null ? packagePath.hashCode() : 0);
-		result = 31 * result + (packagePrefix != null ? packagePrefix.hashCode() : 0);
-		result = 31 * result + (packageSuffix != null ? packageSuffix.hashCode() : 0);
-		result = 31 * result + (packageStart != null ? packageStart.hashCode() : 0);
-		result = 31 * result + (packageMiddle != null ? packageMiddle.hashCode() : 0);
-		result = 31 * result + (packageEnd != null ? packageEnd.hashCode() : 0);
-		result = 31 * result + (packageFunc != null ? packageFunc.hashCode() : 0);
-		return result;
+		return Objects.hash(packageName, packagePath, packagePrefix, packageSuffix, packageStart, packageMiddle, packageEnd, packageFunc);
 	}
 
 	/**
