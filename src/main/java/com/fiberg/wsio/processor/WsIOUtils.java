@@ -23,6 +23,7 @@ import javax.lang.model.type.*;
 import java.lang.annotation.Annotation;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static com.fiberg.wsio.processor.WsIOConstant.*;
@@ -349,11 +350,6 @@ final class WsIOUtils {
 		/* Get the identifier descriptor and target type */
 		WsIOType targetType = ObjectUtils.firstNonNull(target, WsIOType.BOTH);
 		WsIOIdentifier targetIdentifier = WsIOIdentifier.of(identifierPrefix, identifierSuffix);
-
-
-
-
-
 
 		AnnotationMirror internalParamMirror = WsIOUtils.getAnnotationMirror(element, WsIOParam.class);
 		AnnotationMirror externalParamMirror = WsIOUtils.getAnnotationMirror(element, WebParam.class);
@@ -1508,28 +1504,40 @@ final class WsIOUtils {
 		if (element != null) {
 			return Stream.ofAll(element.getAnnotationMirrors())
 					.toMap(annotationMirror -> {
-
 						DeclaredType annotationType = annotationMirror.getAnnotationType();
-						Map<String, String> annotationDescription = HashMap.ofAll(annotationMirror.getElementValues())
-								.toMap(tuple -> {
-
-									AnnotationValue annotationValue = tuple._2();
-									ExecutableElement executableElement = tuple._1();
-
-									String fieldValue = getAnnotationDescription(annotationValue);
-									String fieldName = executableElement
-											.getSimpleName()
-											.toString();
-
-									return Map.entry(fieldName, fieldValue);
-
-								}).filterValues(Objects::nonNull);
-
+						Map<String, String> annotationDescription = getAnnotationDescriptions(annotationMirror);
 						return Map.entry(annotationType, annotationDescription);
-
 					});
 		}
 		return null;
+	}
+
+	/**
+	 * Method that returns the annotation descriptions of an element.
+	 *
+	 * @param annotationMirror annotation mirror to process
+	 * @return the annotation descriptions of the element
+	 */
+	static Map<String, String> getAnnotationDescriptions(AnnotationMirror annotationMirror) {
+
+		if (annotationMirror != null) {
+			return HashMap.ofAll(annotationMirror.getElementValues())
+					.toMap(tuple -> {
+
+						AnnotationValue annotationValue = tuple._2();
+						ExecutableElement executableElement = tuple._1();
+
+						String fieldValue = getAnnotationDescription(annotationValue);
+						String fieldName = executableElement
+								.getSimpleName()
+								.toString();
+
+						return Map.entry(fieldName, fieldValue);
+
+					}).filterValues(Objects::nonNull);
+		}
+		return null;
+
 	}
 
 	/**
