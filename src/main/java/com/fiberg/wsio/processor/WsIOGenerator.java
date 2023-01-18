@@ -1012,7 +1012,8 @@ class WsIOGenerator {
 						Integer parameterIndex = tuple._2();
 						WsIOMember memberDescriptor = tuple._1();
 
-						/* Check if the type mirror is a mirror type and the identifier descriptor */
+                        /* Check if the type mirror is a mirror type and the identifier descriptor */
+                        Element typeElement = memberDescriptor.getTypeElement();
 						TypeMirror typeMirror = memberDescriptor.getTypeMirror();
 						WsIOIdentifier identifierDescriptor = memberDescriptor.getTargetIdentifier();
 
@@ -1053,8 +1054,13 @@ class WsIOGenerator {
 								? calculatedMainElementType
 								: OperationType.ATTRIBUTE;
 
+                        Name typeName = typeElement != null ? typeElement.getSimpleName() : null;
+                        String argumentName = typeName != null
+                                ? typeName.toString()
+                                : null;
+
 						/* Parameter name if present otherwise default value */
-						String defaultName = DEFAULT_PARAMETER + parameterIndex;
+						String defaultName = ObjectUtils.firstNonNull(argumentName, DEFAULT_PARAMETER + parameterIndex);
 						String parameterName = WsIOUtils.getFirstStringNonEqualsTo(List.of(XML_EMPTY_VALUE, XML_DEFAULT_VALUE), "", calculatedMainName, defaultName);
 
 						OperationIdentifier operationIdentifier = OperationIdentifier.of(
@@ -1070,11 +1076,21 @@ class WsIOGenerator {
 				/* Set the member descriptor to null */
 				WsIOMember memberDescriptor = null;
 				TypeMirror typeMirror = executable.getReturnType();
-				WsIOIdentifier identifierDescriptor = executable.getReturnIdentifier();
+                WsIOIdentifier identifierDescriptor = executable.getReturnIdentifier();
+
+                Name typeName = executableElement.getSimpleName();
+                String methodName = typeName != null
+                        ? typeName.toString()
+                        : null;
+
+                String propertyName = methodName != null
+						? WsIOUtil.getterToProperty(methodName)
+						: null;
 
 				/* Return name if present otherwise default value*/
 				String resultName = executable.getResultName();
-				String returnName = WsIOUtils.getFirstStringNonEqualsTo(XML_EMPTY_VALUE, resultName, DEFAULT_RESULT);
+                String defaultName = ObjectUtils.firstNonNull(propertyName, DEFAULT_RESULT);
+				String returnName = WsIOUtils.getFirstStringNonEqualsTo(XML_EMPTY_VALUE, resultName, defaultName);
 
 				OperationIdentifier operationIdentifier = OperationIdentifier.of(
 						OperationType.DEFAULT, returnName, null, null, null
