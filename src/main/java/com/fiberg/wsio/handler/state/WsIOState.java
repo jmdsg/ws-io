@@ -30,26 +30,26 @@ public interface WsIOState {
 
 	List<WsIOItem> getSuccessfulItems();
 
-	void setSuccessfulItems(List<WsIOItem> successfuls);
+	void setSuccessfulItems(List<WsIOItem> successfulItems);
 
 	List<WsIOItem> getFailureItems();
 
-	void setFailureItems(List<WsIOItem> failures);
+	void setFailureItems(List<WsIOItem> failureItems);
 
 	List<WsIOItem> getWarningItems();
 
-	void setWarningItems(List<WsIOItem> warnings);
+	void setWarningItems(List<WsIOItem> warningItems);
 
 	Boolean getShowSuccessfulItems();
 
-	void setShowSuccessfulItems(Boolean ShowSuccessfuls);
+	void setShowSuccessfulItems(Boolean ShowSuccessfulItems);
 
 	Boolean getShowFailureItems();
 
-	void setShowFailureItems(Boolean ShowFailures);
+	void setShowFailureItems(Boolean ShowFailureItems);
 
 	Boolean getShowWarningItems();
 
-	void setShowWarningItems(Boolean ShowWarnings);
+	void setShowWarningItems(Boolean ShowWarningItems);
 
 }

@@ -180,34 +180,34 @@ public final class WsIOInterceptor {
 					};
 
 					/* Set default languages to successfuls, failures and warnings */
-					if (Objects.nonNull(State.getSuccessfuls())) {
-						State.getSuccessfuls().forEach(successful -> {
+					if (Objects.nonNull(State.getSuccessfulItems())) {
+						State.getSuccessfulItems().forEach(successful -> {
 							setDefaultLanguage.accept(successful, WsIOItem::getMessage);
 							setDefaultLanguage.accept(successful, WsIOItem::getDescription);
 						});
 					}
-					if (Objects.nonNull(State.getFailures())) {
-						State.getFailures().forEach(failure -> {
+					if (Objects.nonNull(State.getFailureItems())) {
+						State.getFailureItems().forEach(failure -> {
 							setDefaultLanguage.accept(failure, WsIOItem::getMessage);
 							setDefaultLanguage.accept(failure, WsIOItem::getDescription);
 						});
 					}
-					if (Objects.nonNull(State.getWarnings())) {
-						State.getWarnings().forEach(warning -> {
+					if (Objects.nonNull(State.getWarningItems())) {
+						State.getWarningItems().forEach(warning -> {
 							setDefaultLanguage.accept(warning, WsIOItem::getMessage);
 							setDefaultLanguage.accept(warning, WsIOItem::getDescription);
 						});
 					}
 
 					/* Set state shows for successfuls, failures and warnings */
-					if (Objects.isNull(State.getShowSuccessfuls())) {
-						State.setShowSuccessfuls(useState.successful());
+					if (Objects.isNull(State.getShowSuccessfulItems())) {
+						State.setShowSuccessfulItems(useState.successful());
 					}
-					if (Objects.isNull(State.getShowFailures())) {
-						State.setShowFailures(useState.failure());
+					if (Objects.isNull(State.getShowFailureItems())) {
+						State.setShowFailureItems(useState.failure());
 					}
-					if (Objects.isNull(State.getShowWarnings())) {
-						State.setShowWarnings(useState.warning());
+					if (Objects.isNull(State.getShowWarningItems())) {
+						State.setShowWarningItems(useState.warning());
 					}
 
 					/* Transfer state to response */

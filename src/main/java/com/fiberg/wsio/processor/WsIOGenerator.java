@@ -1932,12 +1932,12 @@ class WsIOGenerator {
 				Tuple.of("types", "type", null),
 				Tuple.of("status", "status", null),
 				Tuple.of("details", "detail", null),
-				Tuple.of("successfuls", "successful", "showSuccessfuls"),
-				Tuple.of("failures", "failure", "showFailures"),
-				Tuple.of("warnings", "warning", "showWarnings"),
-				Tuple.of("showSuccessfuls", "showSuccessful", null),
-				Tuple.of("showFailures", "showFailure", null),
-				Tuple.of("showWarnings", "showWarning", null));
+				Tuple.of("successfulItems", "successful", "showSuccessfulItems"),
+				Tuple.of("failureItems", "failure", "showFailureItems"),
+				Tuple.of("warningItems", "warning", "showWarningItems"),
+				Tuple.of("showSuccessfulItems", "showSuccessful", null),
+				Tuple.of("showFailureItems", "showFailure", null),
+				Tuple.of("showWarningItems", "showWarning", null));
 
 		/* Next line counter to format the code */
 		Integer nextLine = 0;

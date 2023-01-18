@@ -142,17 +142,17 @@ public class WsIOHandler {
 
 		private static final ThreadLocal<WsIODetail> detail = new ThreadLocal<>();
 
-		private static final ThreadLocal<List<WsIOItem>> successfuls = new ThreadLocal<>();
+		private static final ThreadLocal<List<WsIOItem>> successfulItems = new ThreadLocal<>();
 
-		private static final ThreadLocal<List<WsIOItem>> failures = new ThreadLocal<>();
+		private static final ThreadLocal<List<WsIOItem>> failureItems = new ThreadLocal<>();
 
-		private static final ThreadLocal<List<WsIOItem>> warnings = new ThreadLocal<>();
+		private static final ThreadLocal<List<WsIOItem>> warningItems = new ThreadLocal<>();
 
-		private static final ThreadLocal<Boolean> showSuccessfuls = new ThreadLocal<>();
+		private static final ThreadLocal<Boolean> showSuccessfulItems = new ThreadLocal<>();
 
-		private static final ThreadLocal<Boolean> showFailures = new ThreadLocal<>();
+		private static final ThreadLocal<Boolean> showFailureItems = new ThreadLocal<>();
 
-		private static final ThreadLocal<Boolean> showWarnings = new ThreadLocal<>();
+		private static final ThreadLocal<Boolean> showWarningItems = new ThreadLocal<>();
 
 		private static final ThreadLocal<WsIOLanguage> defaultLanguage = new ThreadLocal<>();
 
@@ -176,31 +176,31 @@ public class WsIOHandler {
 				if (detail.get() != null) {
 					stateWrapper.setDetail(detail.get());
 				}
-				if (successfuls.get() != null) {
-					stateWrapper.setSuccessfulItems(successfuls.get());
+				if (successfulItems.get() != null) {
+					stateWrapper.setSuccessfulItems(successfulItems.get());
 				}
-				if (failures.get() != null) {
-					stateWrapper.setFailureItems(failures.get());
+				if (failureItems.get() != null) {
+					stateWrapper.setFailureItems(failureItems.get());
 				}
-				if (warnings.get() != null) {
-					stateWrapper.setWarningItems(warnings.get());
+				if (warningItems.get() != null) {
+					stateWrapper.setWarningItems(warningItems.get());
 				}
-				if (showSuccessfuls.get() != null) {
-					stateWrapper.setShowSuccessfulItems(showSuccessfuls.get());
+				if (showSuccessfulItems.get() != null) {
+					stateWrapper.setShowSuccessfulItems(showSuccessfulItems.get());
 				}
-				if (showFailures.get() != null) {
-					stateWrapper.setShowFailureItems(showFailures.get());
+				if (showFailureItems.get() != null) {
+					stateWrapper.setShowFailureItems(showFailureItems.get());
 				}
-				if (showWarnings.get() != null) {
-					stateWrapper.setShowWarningItems(showWarnings.get());
+				if (showWarningItems.get() != null) {
+					stateWrapper.setShowWarningItems(showWarningItems.get());
 				}
 			}
 		}
 
 		public static void clear() {
-			clearSuccessfuls();
-			clearFailures();
-			clearWarnings();
+			clearSuccessfulItems();
+			clearFailureItems();
+			clearWarningItems();
 		}
 
 		public static void reset() {
@@ -212,12 +212,12 @@ public class WsIOHandler {
 			resetType();
 			resetStatus();
 			resetDetail();
-			resetSuccessfuls();
-			resetFailures();
-			resetWarnings();
-			resetShowSuccessfuls();
-			resetShowFailures();
-			resetShowWarnings();
+			resetSuccessfulItems();
+			resetFailureItems();
+			resetWarningItems();
+			resetShowSuccessfulItems();
+			resetShowFailureItems();
+			resetShowWarningItems();
 			resetDefaultLanguage();
 		}
 
@@ -289,52 +289,52 @@ public class WsIOHandler {
 			State.detail.set(detail);
 		}
 
-		public static List<WsIOItem> getSuccessfuls() {
-			return successfuls.get();
+		public static List<WsIOItem> getSuccessfulItems() {
+			return successfulItems.get();
 		}
 
-		public static void setSuccessfuls(List<WsIOItem> successfuls) {
-			State.successfuls.set(successfuls);
+		public static void setSuccessfulItems(List<WsIOItem> successfulItems) {
+			State.successfulItems.set(successfulItems);
 		}
 
-		public static List<WsIOItem> getFailures() {
-			return failures.get();
+		public static List<WsIOItem> getFailureItems() {
+			return failureItems.get();
 		}
 
-		public static void setFailures(List<WsIOItem> failures) {
-			State.failures.set(failures);
+		public static void setFailureItems(List<WsIOItem> failureItems) {
+			State.failureItems.set(failureItems);
 		}
 
-		public static List<WsIOItem> getWarnings() {
-			return warnings.get();
+		public static List<WsIOItem> getWarningItems() {
+			return warningItems.get();
 		}
 
-		public static void setWarnings(List<WsIOItem> warnings) {
-			State.warnings.set(warnings);
+		public static void setWarningItems(List<WsIOItem> warningItems) {
+			State.warningItems.set(warningItems);
 		}
 
-		public static Boolean getShowSuccessfuls() {
-			return showSuccessfuls.get();
+		public static Boolean getShowSuccessfulItems() {
+			return showSuccessfulItems.get();
 		}
 
-		public static void setShowSuccessfuls(Boolean showSuccessfuls) {
-			State.showSuccessfuls.set(showSuccessfuls);
+		public static void setShowSuccessfulItems(Boolean showSuccessfulItems) {
+			State.showSuccessfulItems.set(showSuccessfulItems);
 		}
 
-		public static Boolean getShowFailures() {
-			return showFailures.get();
+		public static Boolean getShowFailureItems() {
+			return showFailureItems.get();
 		}
 
-		public static void setShowFailures(Boolean showFailures) {
-			State.showFailures.set(showFailures);
+		public static void setShowFailureItems(Boolean showFailureItems) {
+			State.showFailureItems.set(showFailureItems);
 		}
 
-		public static Boolean getShowWarnings() {
-			return showWarnings.get();
+		public static Boolean getShowWarningItems() {
+			return showWarningItems.get();
 		}
 
-		public static void setShowWarnings(Boolean showWarnings) {
-			State.showWarnings.set(showWarnings);
+		public static void setShowWarningItems(Boolean showWarningItems) {
+			State.showWarningItems.set(showWarningItems);
 		}
 
 		public static WsIOLanguage getDefaultLanguage() {
@@ -377,90 +377,90 @@ public class WsIOHandler {
 			State.detail.set(null);
 		}
 
-		public static void resetSuccessfuls() {
-			State.successfuls.set(null);
+		public static void resetSuccessfulItems() {
+			State.successfulItems.set(null);
 		}
 
-		public static void resetFailures() {
-			State.failures.set(null);
+		public static void resetFailureItems() {
+			State.failureItems.set(null);
 		}
 
-		public static void resetWarnings() {
-			State.warnings.set(null);
+		public static void resetWarningItems() {
+			State.warningItems.set(null);
 		}
 
-		public static void resetShowSuccessfuls() {
-			State.showSuccessfuls.set(null);
+		public static void resetShowSuccessfulItems() {
+			State.showSuccessfulItems.set(null);
 		}
 
-		public static void resetShowFailures() {
-			State.showFailures.set(null);
+		public static void resetShowFailureItems() {
+			State.showFailureItems.set(null);
 		}
 
-		public static void resetShowWarnings() {
-			State.showWarnings.set(null);
+		public static void resetShowWarningItems() {
+			State.showWarningItems.set(null);
 		}
 
 		public static void resetDefaultLanguage() {
 			State.defaultLanguage.set(null);
 		}
 
-		public static void clearSuccessfuls() {
-			if (State.successfuls.get() != null) {
-				State.successfuls.get().clear();
+		public static void clearSuccessfulItems() {
+			if (State.successfulItems.get() != null) {
+				State.successfulItems.get().clear();
 			}
 		}
 
-		public static void clearFailures() {
-			if (State.failures.get() != null) {
-				State.failures.get().clear();
+		public static void clearFailureItems() {
+			if (State.failureItems.get() != null) {
+				State.failureItems.get().clear();
 			}
 		}
 
-		public static void clearWarnings() {
-			if (State.warnings.get() != null) {
-				State.warnings.get().clear();
+		public static void clearWarningItems() {
+			if (State.warningItems.get() != null) {
+				State.warningItems.get().clear();
 			}
 		}
 
 		public static boolean addSuccessful(WsIOItem element) {
-			if (State.successfuls.get() == null) {
-				State.successfuls.set(new ArrayList<>());
+			if (State.successfulItems.get() == null) {
+				State.successfulItems.set(new ArrayList<>());
 			}
-			return State.successfuls.get().add(element);
+			return State.successfulItems.get().add(element);
 		}
 
 		public static boolean removeSuccessful(WsIOItem element) {
-			if (State.successfuls.get() != null) {
-				return State.successfuls.get().remove(element);
+			if (State.successfulItems.get() != null) {
+				return State.successfulItems.get().remove(element);
 			}
 			return false;
 		}
 
 		public static boolean addFailure(WsIOItem element) {
-			if (State.failures.get() == null) {
-				State.failures.set(new ArrayList<>());
+			if (State.failureItems.get() == null) {
+				State.failureItems.set(new ArrayList<>());
 			}
-			return State.failures.get().add(element);
+			return State.failureItems.get().add(element);
 		}
 
 		public static boolean removeFailure(WsIOItem element) {
-			if (State.failures.get() != null) {
-				return State.failures.get().remove(element);
+			if (State.failureItems.get() != null) {
+				return State.failureItems.get().remove(element);
 			}
 			return false;
 		}
 
 		public static boolean addWarning(WsIOItem element) {
-			if (State.warnings.get() == null) {
-				State.warnings.set(new ArrayList<>());
+			if (State.warningItems.get() == null) {
+				State.warningItems.set(new ArrayList<>());
 			}
-			return State.warnings.get().add(element);
+			return State.warningItems.get().add(element);
 		}
 
 		public static boolean removeWarning(WsIOItem element) {
-			if (State.warnings.get() != null) {
-				return State.warnings.get().remove(element);
+			if (State.warningItems.get() != null) {
+				return State.warningItems.get().remove(element);
 			}
 			return false;
 		}
