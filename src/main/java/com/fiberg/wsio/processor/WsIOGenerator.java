@@ -1619,129 +1619,131 @@ class WsIOGenerator {
 
 		if (memberDescriptor != null) {
 
-			if (memberDescriptor.getAdapterPresent()) {
-
-				AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlJavaTypeAdapter.class);
-
-				if (memberDescriptor.getAdapterValue() != null) {
-					builder = builder.addMember("value", "$L", memberDescriptor.getAdapterValue());
-				}
-
-				if (memberDescriptor.getAdapterType() != null) {
-					builder = builder.addMember("type", "$L", memberDescriptor.getAdapterType());
-				}
-
-				builders = builders.append(builder);
-
-			}
-
 			if (memberDescriptor.getTransientPresent()) {
 
 				AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlTransient.class);
 
 				builders = builders.append(builder);
 
-			}
+			} else {
 
-			if (memberDescriptor.getValuePresent()) {
+				if (memberDescriptor.getAdapterPresent()) {
 
-				AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlValue.class);
+					AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlJavaTypeAdapter.class);
 
-				builders = builders.append(builder);
-
-			}
-
-			if (memberDescriptor.getAttributePresent()) {
-
-				AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlAttribute.class);
-
-				if (operationIdentifier != null) {
-					if (operationIdentifier.getAttributeName() != null && !XML_DEFAULT_VALUE.equals(operationIdentifier.getAttributeName())) {
-						builder = builder.addMember("name", "$S", operationIdentifier.getAttributeName());
-					}
-				} else {
-					if (memberDescriptor.getAttributeName() != null && !XML_DEFAULT_VALUE.equals(memberDescriptor.getAttributeName())) {
-						builder = builder.addMember("name", "$S", memberDescriptor.getAttributeName());
-					}
-				}
-
-				if (memberDescriptor.getAttributeNamespace() != null && !XML_DEFAULT_VALUE.equals(memberDescriptor.getAttributeNamespace())) {
-					builder = builder.addMember("namespace", "$S", memberDescriptor.getAttributeNamespace());
-				}
-
-				if (memberDescriptor.getAttributeRequired() != null && !XML_FLAG_VALUE.equals(memberDescriptor.getAttributeRequired())) {
-					builder = builder.addMember("required", "$L", memberDescriptor.getAttributeRequired());
-				}
-
-				builders = builders.append(builder);
-
-			} else if (memberDescriptor.getElementWrapperPresent() || memberDescriptor.getElementPresent()) {
-
-				if (memberDescriptor.getElementPresent()) {
-
-					AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlElement.class);
-
-					if (operationIdentifier != null) {
-						if (operationIdentifier.getElementName() != null && !XML_DEFAULT_VALUE.equals(operationIdentifier.getElementName())) {
-							builder = builder.addMember("name", "$S", operationIdentifier.getElementName());
-						}
-					} else {
-						if (memberDescriptor.getElementName() != null && !XML_DEFAULT_VALUE.equals(memberDescriptor.getElementName())) {
-							builder = builder.addMember("name", "$S", memberDescriptor.getElementName());
-						}
+					if (memberDescriptor.getAdapterValue() != null) {
+						builder = builder.addMember("value", "$L", memberDescriptor.getAdapterValue());
 					}
 
-					if (memberDescriptor.getElementNamespace() != null && !XML_DEFAULT_VALUE.equals(memberDescriptor.getElementNamespace())) {
-						builder = builder.addMember("namespace", "$S", memberDescriptor.getElementNamespace());
-					}
-
-					if (memberDescriptor.getElementDefaultValue() != null && !XML_ZERO_VALUE.equals(memberDescriptor.getElementDefaultValue())) {
-						builder = builder.addMember("defaultValue", "$S", memberDescriptor.getElementDefaultValue());
-					}
-
-					if (memberDescriptor.getElementRequired() != null && !XML_FLAG_VALUE.equals(memberDescriptor.getElementRequired())) {
-						builder = builder.addMember("required", "$L", memberDescriptor.getElementRequired());
-					}
-
-					if (memberDescriptor.getElementNillable() != null && !XML_FLAG_VALUE.equals(memberDescriptor.getElementNillable())) {
-						builder = builder.addMember("nillable", "$L", memberDescriptor.getElementNillable());
-					}
-
-					if (memberDescriptor.getElementType() != null) {
-						builder = builder.addMember("type", "$L", memberDescriptor.getElementType());
+					if (memberDescriptor.getAdapterType() != null) {
+						builder = builder.addMember("type", "$L", memberDescriptor.getAdapterType());
 					}
 
 					builders = builders.append(builder);
 
 				}
 
-				if (memberDescriptor.getElementWrapperPresent()) {
+				if (memberDescriptor.getValuePresent()) {
 
-					AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlElementWrapper.class);
+					AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlValue.class);
+
+					builders = builders.append(builder);
+
+				}
+
+				if (memberDescriptor.getAttributePresent()) {
+
+					AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlAttribute.class);
 
 					if (operationIdentifier != null) {
-						if (operationIdentifier.getElementWrapperName() != null && !XML_DEFAULT_VALUE.equals(operationIdentifier.getElementWrapperName())) {
-							builder = builder.addMember("name", "$S", operationIdentifier.getElementWrapperName());
+						if (operationIdentifier.getAttributeName() != null && !XML_DEFAULT_VALUE.equals(operationIdentifier.getAttributeName())) {
+							builder = builder.addMember("name", "$S", operationIdentifier.getAttributeName());
 						}
 					} else {
-						if (memberDescriptor.getElementWrapperName() != null && !XML_DEFAULT_VALUE.equals(memberDescriptor.getElementWrapperName())) {
-							builder = builder.addMember("name", "$S", memberDescriptor.getElementWrapperName());
+						if (memberDescriptor.getAttributeName() != null && !XML_DEFAULT_VALUE.equals(memberDescriptor.getAttributeName())) {
+							builder = builder.addMember("name", "$S", memberDescriptor.getAttributeName());
 						}
 					}
 
-					if (memberDescriptor.getElementNamespace() != null && !XML_DEFAULT_VALUE.equals(memberDescriptor.getElementNamespace())) {
-						builder = builder.addMember("namespace", "$S", memberDescriptor.getElementNamespace());
+					if (memberDescriptor.getAttributeNamespace() != null && !XML_DEFAULT_VALUE.equals(memberDescriptor.getAttributeNamespace())) {
+						builder = builder.addMember("namespace", "$S", memberDescriptor.getAttributeNamespace());
 					}
 
-					if (memberDescriptor.getElementRequired() != null && !XML_FLAG_VALUE.equals(memberDescriptor.getElementRequired())) {
-						builder = builder.addMember("required", "$L", memberDescriptor.getElementRequired());
-					}
-
-					if (memberDescriptor.getElementNillable() != null && !XML_FLAG_VALUE.equals(memberDescriptor.getElementNillable())) {
-						builder = builder.addMember("nillable", "$L", memberDescriptor.getElementNillable());
+					if (memberDescriptor.getAttributeRequired() != null && !XML_FLAG_VALUE.equals(memberDescriptor.getAttributeRequired())) {
+						builder = builder.addMember("required", "$L", memberDescriptor.getAttributeRequired());
 					}
 
 					builders = builders.append(builder);
+
+				} else if (memberDescriptor.getElementWrapperPresent() || memberDescriptor.getElementPresent()) {
+
+					if (memberDescriptor.getElementPresent()) {
+
+						AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlElement.class);
+
+						if (operationIdentifier != null) {
+							if (operationIdentifier.getElementName() != null && !XML_DEFAULT_VALUE.equals(operationIdentifier.getElementName())) {
+								builder = builder.addMember("name", "$S", operationIdentifier.getElementName());
+							}
+						} else {
+							if (memberDescriptor.getElementName() != null && !XML_DEFAULT_VALUE.equals(memberDescriptor.getElementName())) {
+								builder = builder.addMember("name", "$S", memberDescriptor.getElementName());
+							}
+						}
+
+						if (memberDescriptor.getElementNamespace() != null && !XML_DEFAULT_VALUE.equals(memberDescriptor.getElementNamespace())) {
+							builder = builder.addMember("namespace", "$S", memberDescriptor.getElementNamespace());
+						}
+
+						if (memberDescriptor.getElementDefaultValue() != null && !XML_ZERO_VALUE.equals(memberDescriptor.getElementDefaultValue())) {
+							builder = builder.addMember("defaultValue", "$S", memberDescriptor.getElementDefaultValue());
+						}
+
+						if (memberDescriptor.getElementRequired() != null && !XML_FLAG_VALUE.equals(memberDescriptor.getElementRequired())) {
+							builder = builder.addMember("required", "$L", memberDescriptor.getElementRequired());
+						}
+
+						if (memberDescriptor.getElementNillable() != null && !XML_FLAG_VALUE.equals(memberDescriptor.getElementNillable())) {
+							builder = builder.addMember("nillable", "$L", memberDescriptor.getElementNillable());
+						}
+
+						if (memberDescriptor.getElementType() != null) {
+							builder = builder.addMember("type", "$L", memberDescriptor.getElementType());
+						}
+
+						builders = builders.append(builder);
+
+					}
+
+					if (memberDescriptor.getElementWrapperPresent()) {
+
+						AnnotationSpec.Builder builder = AnnotationSpec.builder(XmlElementWrapper.class);
+
+						if (operationIdentifier != null) {
+							if (operationIdentifier.getElementWrapperName() != null && !XML_DEFAULT_VALUE.equals(operationIdentifier.getElementWrapperName())) {
+								builder = builder.addMember("name", "$S", operationIdentifier.getElementWrapperName());
+							}
+						} else {
+							if (memberDescriptor.getElementWrapperName() != null && !XML_DEFAULT_VALUE.equals(memberDescriptor.getElementWrapperName())) {
+								builder = builder.addMember("name", "$S", memberDescriptor.getElementWrapperName());
+							}
+						}
+
+						if (memberDescriptor.getElementNamespace() != null && !XML_DEFAULT_VALUE.equals(memberDescriptor.getElementNamespace())) {
+							builder = builder.addMember("namespace", "$S", memberDescriptor.getElementNamespace());
+						}
+
+						if (memberDescriptor.getElementRequired() != null && !XML_FLAG_VALUE.equals(memberDescriptor.getElementRequired())) {
+							builder = builder.addMember("required", "$L", memberDescriptor.getElementRequired());
+						}
+
+						if (memberDescriptor.getElementNillable() != null && !XML_FLAG_VALUE.equals(memberDescriptor.getElementNillable())) {
+							builder = builder.addMember("nillable", "$L", memberDescriptor.getElementNillable());
+						}
+
+						builders = builders.append(builder);
+
+					}
 
 				}
 
