@@ -1320,12 +1320,12 @@ class WsIOGenerator {
 							.mapValues(propertyName -> {
 
 								/* Getter is the first element */
-								ExecutableElement getterExecutable = propertyToProperties.get(propertyName)
-										.map(Tuple4::_3)
+								ExecutableElement setterExecutable = propertyToProperties.get(propertyName)
+										.map(Tuple4::_4)
 										.getOrNull();
 
 								/* Get the forwarded and return */
-								return generateForwardAnnotations(getterExecutable, null, null);
+								return generateForwardAnnotations(setterExecutable, null, null);
 
 							});
 
