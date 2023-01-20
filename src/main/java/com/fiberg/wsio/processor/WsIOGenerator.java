@@ -32,6 +32,7 @@ import java.util.Comparator;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static com.fiberg.wsio.processor.WsIOConstant.*;
@@ -1391,7 +1392,7 @@ class WsIOGenerator {
 					List<AnnotationSpec> internalSetAnnotations = List.empty();
 
 					/* Generate and append the getter annotations */
-					internalGetAnnotations.appendAll(
+					internalGetAnnotations = internalGetAnnotations.appendAll(
 							generateXmlAnnotations(memberDescriptor, operationIdentifier)
 					);
 
