@@ -2,10 +2,7 @@ package com.fiberg.wsio.auto;
 
 import com.fiberg.wsio.annotation.WsIOAnnotate;
 import com.fiberg.wsio.enumerate.WsIOType;
-import com.fiberg.wsio.processor.WsIOConstant;
-import com.fiberg.wsio.processor.WsIODescriptor;
-import com.fiberg.wsio.processor.WsIOIdentifier;
-import com.fiberg.wsio.processor.WsIOWalker;
+import com.fiberg.wsio.processor.*;
 import com.fiberg.wsio.util.WsIOUtil;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfo;
@@ -38,11 +35,16 @@ import net.bytebuddy.jar.asm.Type;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.pool.TypePool;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.text.WordUtils;
 
+import javax.lang.model.element.Name;
 import java.lang.annotation.Annotation;
 import java.util.Objects;
 import java.util.function.Function;
+
+import static com.fiberg.wsio.processor.WsIOConstant.DEFAULT_RESULT;
+import static com.fiberg.wsio.processor.WsIOConstant.XML_EMPTY_VALUE;
 
 /**
  * Class used to annotate web service classes with response and request wrappers.
@@ -355,7 +357,7 @@ public final class WsIOAuto {
 
 		/* Check if annotate is defined and rename is enabled */
 		Option<WsIOAnnotate> annotate = descriptor.getSingle(WsIOAnnotate.class);
-		if (annotate.isDefined() && annotate.get().nameSwap()) {
+		if (annotate.isDefined() && !annotate.get().skipNameSwap()) {
 
 			/* Get annotation name and current web result annotation option */
 			Class<WebParam> paramAnnotationClass = WebParam.class;
@@ -367,8 +369,12 @@ public final class WsIOAuto {
 					.flatMap(loadable -> Try.of(loadable::load)
 							.toOption());
 
+			String methodName = method.getName();
+			String propertyName = WsIOUtil.getterToProperty(methodName);
+
+			String defaultName = ObjectUtils.firstNonNull(propertyName, DEFAULT_RESULT);
 			String resultName = resultValueOpt.map(WebResult::name)
-					.getOrElse(WsIOConstant.DEFAULT_RESULT);
+					.getOrElse(defaultName);
 
 			String resultContent = String.format("%s%s", resultName, WsIOConstant.SWAP_SEPARATOR);
 			Option<AnnotationDescription> resultAnnotationOpt = Option.of(resultAnnotationClass)

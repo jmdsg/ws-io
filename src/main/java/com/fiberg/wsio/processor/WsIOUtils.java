@@ -15,7 +15,6 @@ import jakarta.jws.WebResult;
 import jakarta.xml.bind.annotation.*;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.ArrayType;
@@ -23,7 +22,6 @@ import javax.lang.model.type.*;
 import java.lang.annotation.Annotation;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static com.fiberg.wsio.processor.WsIOConstant.*;
@@ -125,53 +123,61 @@ final class WsIOUtils {
 	/**
 	 * Method that extracts the method and additional descriptor.
 	 *
+	 * @param source declaring type of the executable element
 	 * @param executable executable element
 	 * @param descriptor object with all element annotations
 	 * @return object containing all the descriptor required for the generation of a wrapper element.
 	 */
-	static WsIOExecutable extractExecutableDescriptor(ExecutableElement executable,
+	static WsIOExecutable extractExecutableDescriptor(TypeElement source,
+													  ExecutableElement executable,
 													  WsIODescriptor descriptor) {
-		return extractExecutableDescriptor(executable, descriptor, null, null);
+		return extractExecutableDescriptor(source, executable, descriptor, null, null);
 	}
 
 	/**
 	 * Method that extracts the method and additional descriptor.
 	 *
+	 * @param source declaring type of the executable element
 	 * @param executable executable element
 	 * @param descriptor object with all element annotations
 	 * @param targetType target type of the io
 	 * @return object containing all the descriptor required for the generation of a wrapper element.
 	 */
-	static WsIOExecutable extractExecutableDescriptor(ExecutableElement executable,
+	static WsIOExecutable extractExecutableDescriptor(TypeElement source,
+													  ExecutableElement executable,
 													  WsIODescriptor descriptor,
 													  WsIOType targetType) {
-		return extractExecutableDescriptor(executable, descriptor, null, targetType);
+		return extractExecutableDescriptor(source, executable, descriptor, null, targetType);
 	}
 
 	/**
 	 * Method that extracts the method and additional descriptor.
 	 *
+	 * @param source declaring type of the executable element
 	 * @param executable executable element
 	 * @param descriptor object with all element annotations
 	 * @param identifier pair data to specify the target identifier
 	 * @return object containing all the descriptor required for the generation of a wrapper element.
 	 */
-	static WsIOExecutable extractExecutableDescriptor(ExecutableElement executable,
+	static WsIOExecutable extractExecutableDescriptor(TypeElement source,
+													  ExecutableElement executable,
 													  WsIODescriptor descriptor,
 													  WsIOIdentifier identifier) {
-		return extractExecutableDescriptor(executable, descriptor, identifier, null);
+		return extractExecutableDescriptor(source, executable, descriptor, identifier, null);
 	}
 
 	/**
 	 * Method that extracts the method and additional descriptor.
 	 *
+	 * @param source declaring type of the executable element
 	 * @param element executable element
 	 * @param descriptor object with all element annotations
 	 * @param identifier pair data to specify the target identifier
 	 * @param target target type of the io
 	 * @return object containing all the descriptor required for the generation of a wrapper element.
 	 */
-	static WsIOExecutable extractExecutableDescriptor(ExecutableElement element,
+	static WsIOExecutable extractExecutableDescriptor(TypeElement source,
+													  ExecutableElement element,
 													  WsIODescriptor descriptor,
 													  WsIOIdentifier identifier,
 													  WsIOType target) {
@@ -291,7 +297,7 @@ final class WsIOUtils {
 
 		/* Return the descriptor */
 		return WsIOExecutable.of(
-				element, type, name,
+				source, element, type, name,
 				methodPresent, methodOperationName, methodAction, methodExclude,
 				resultPresent, resultName, resultPartName, resultTargetNamespace, resultHeader,
 				elementPresent, elementName, elementNamespace, elementRequired, elementNillable, elementDefaultValue, elementType,

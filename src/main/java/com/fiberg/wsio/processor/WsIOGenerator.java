@@ -32,7 +32,6 @@ import java.util.Comparator;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static com.fiberg.wsio.processor.WsIOConstant.*;
@@ -318,11 +317,11 @@ class WsIOGenerator {
 				String packageName = descriptors._3();
 
 				WsIOExecutable requestDescriptor = WsIOUtils.extractExecutableDescriptor(
-						executableElement, operationDescriptor, WsIOType.REQUEST
+						element, executableElement, operationDescriptor, WsIOType.REQUEST
 				);
 
 				WsIOExecutable responseDescriptor = WsIOUtils.extractExecutableDescriptor(
-						executableElement, operationDescriptor, WsIOType.RESPONSE
+						element, executableElement, operationDescriptor, WsIOType.RESPONSE
 				);
 
 				/* Generate request and response type spec */
@@ -985,13 +984,13 @@ class WsIOGenerator {
 		ExecutableElement executableElement = executable.getExecutableElement();
 
 		/* Get annotate of the executable element and separator */
-		boolean nameSwap = Option.of(executableElement)
+		boolean skipNameSwap = Option.of(executableElement)
 				.map(WsIODescriptor::of)
 				.flatMap(desc -> desc.getSingle(WsIOAnnotate.class))
-				.filter(WsIOAnnotate::nameSwap)
+				.filter(WsIOAnnotate::skipNameSwap)
 				.isDefined();
 
-		String separator = nameSwap ? WsIOConstant.SWAP_SEPARATOR : WsIOConstant.NO_SWAP_SEPARATOR;
+		String separator = skipNameSwap ? WsIOConstant.NO_SWAP_SEPARATOR : WsIOConstant.SWAP_SEPARATOR;
 
 		/* Method and operation names */
 		String methodOperationName = executable.getMethodOperationName();
@@ -1170,8 +1169,8 @@ class WsIOGenerator {
 				String upperMainName = WordUtils.capitalize(mainName);
 
 				/* Internal and external chars */
-				String internalChar = Option.when(!nameSwap, separator).getOrElse("");
-				String externalChar  = Option.when(nameSwap, separator).getOrElse("");
+				String internalChar = Option.when(skipNameSwap, separator).getOrElse("");
+				String externalChar  = Option.when(!skipNameSwap, separator).getOrElse("");
 
 				/* Internal and external getter and setter names */
 				String internalGetName = String.format("get%s%s", upperMainName, internalChar);
@@ -1179,20 +1178,14 @@ class WsIOGenerator {
 				String externalGetName = String.format("get%s%s", upperMainName, externalChar);
 				String externalSetName = String.format("set%s%s", upperMainName, externalChar);
 
-				/* Internal parameter names */
-				String internalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerMainName)
-						? String.join(lowerMainName, separator)
-						: lowerMainName;
-
-				/* External parameter names */
-				String externalParameterName = WsIOConstant.DEFAULT_RESULT.equals(lowerMainName)
-						? String.join(lowerMainName, separator)
-						: lowerMainName;
-
 				/* Assign field name and add it to the fields */
 				String fieldName = WsIOConstant.DEFAULT_RESULT.equals(lowerMainName)
 						? String.join(lowerMainName, separator)
 						: lowerMainName;
+
+				/* Internal and external parameter names */
+				String internalParameterName = fieldName;
+				String externalParameterName = fieldName;
 
 				fieldNames = fieldNames.append(fieldName);
 
@@ -1291,7 +1284,7 @@ class WsIOGenerator {
 											String.join(propertyName, separator),
 											String.join(propertyNames._1(), separator),
 											String.join(propertyNames._2(), separator))))
-							.filter(tuple -> !nameSwap);
+							.filter(tuple -> skipNameSwap);
 
 					/* Getter annotations */
 					Map<String, List<AnnotationSpec>> getterAnnotations = propertyToProperties

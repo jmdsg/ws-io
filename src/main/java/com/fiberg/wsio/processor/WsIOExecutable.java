@@ -5,10 +5,13 @@ import io.vavr.collection.List;
 import io.vavr.collection.Set;
 
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.Objects;
 
 class WsIOExecutable {
+
+	private TypeElement sourceElement;
 
 	private ExecutableElement executableElement;
 
@@ -72,7 +75,8 @@ class WsIOExecutable {
 
 	private WsIODescriptor operationDescriptor;
 
-	public static WsIOExecutable of(ExecutableElement executableElement,
+	public static WsIOExecutable of(TypeElement sourceElement,
+									ExecutableElement executableElement,
 									TypeMirror executableMirror,
 									String executableName,
 									Boolean methodPresent,
@@ -105,6 +109,7 @@ class WsIOExecutable {
 									WsIODescriptor operationDescriptor) {
 
 		WsIOExecutable executable = new WsIOExecutable();
+		executable.sourceElement = sourceElement;
 		executable.executableElement = executableElement;
 		executable.executableMirror = executableMirror;
 		executable.executableName = executableName;
@@ -138,6 +143,14 @@ class WsIOExecutable {
 		executable.operationDescriptor = operationDescriptor;
 		return executable;
 
+	}
+
+	public TypeElement getSourceElement() {
+		return sourceElement;
+	}
+
+	public void setSourceElement(TypeElement sourceElement) {
+		this.sourceElement = sourceElement;
 	}
 
 	public ExecutableElement getExecutableElement() {
@@ -388,32 +401,24 @@ class WsIOExecutable {
 		this.operationDescriptor = operationDescriptor;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		WsIOExecutable that = (WsIOExecutable) o;
-		return Objects.equals(executableElement, that.executableElement) && Objects.equals(executableMirror, that.executableMirror) && Objects.equals(executableName, that.executableName) && Objects.equals(methodPresent, that.methodPresent) && Objects.equals(methodOperationName, that.methodOperationName) && Objects.equals(methodAction, that.methodAction) && Objects.equals(methodExclude, that.methodExclude) && Objects.equals(resultPresent, that.resultPresent) && Objects.equals(resultName, that.resultName) && Objects.equals(resultPartName, that.resultPartName) && Objects.equals(resultTargetNamespace, that.resultTargetNamespace) && Objects.equals(resultHeader, that.resultHeader) && Objects.equals(elementPresent, that.elementPresent) && Objects.equals(elementName, that.elementName) && Objects.equals(elementNamespace, that.elementNamespace) && Objects.equals(elementRequired, that.elementRequired) && Objects.equals(elementNillable, that.elementNillable) && Objects.equals(elementDefaultValue, that.elementDefaultValue) && Objects.equals(elementType, that.elementType) && Objects.equals(elementWrapperPresent, that.elementWrapperPresent) && Objects.equals(elementWrapperName, that.elementWrapperName) && Objects.equals(elementWrapperNamespace, that.elementWrapperNamespace) && Objects.equals(elementWrapperRequired, that.elementWrapperRequired) && Objects.equals(elementWrapperNillable, that.elementWrapperNillable) && Objects.equals(returnType, that.returnType) && Objects.equals(returnIdentifier, that.returnIdentifier) && Objects.equals(memberDescriptors, that.memberDescriptors) && Objects.equals(descriptorWrappers, that.descriptorWrappers) && Objects.equals(targetIdentifier, that.targetIdentifier) && targetType == that.targetType && Objects.equals(operationDescriptor, that.operationDescriptor);
+		return Objects.equals(sourceElement, that.sourceElement) && Objects.equals(executableElement, that.executableElement) && Objects.equals(executableMirror, that.executableMirror) && Objects.equals(executableName, that.executableName) && Objects.equals(methodPresent, that.methodPresent) && Objects.equals(methodOperationName, that.methodOperationName) && Objects.equals(methodAction, that.methodAction) && Objects.equals(methodExclude, that.methodExclude) && Objects.equals(resultPresent, that.resultPresent) && Objects.equals(resultName, that.resultName) && Objects.equals(resultPartName, that.resultPartName) && Objects.equals(resultTargetNamespace, that.resultTargetNamespace) && Objects.equals(resultHeader, that.resultHeader) && Objects.equals(elementPresent, that.elementPresent) && Objects.equals(elementName, that.elementName) && Objects.equals(elementNamespace, that.elementNamespace) && Objects.equals(elementRequired, that.elementRequired) && Objects.equals(elementNillable, that.elementNillable) && Objects.equals(elementDefaultValue, that.elementDefaultValue) && Objects.equals(elementType, that.elementType) && Objects.equals(elementWrapperPresent, that.elementWrapperPresent) && Objects.equals(elementWrapperName, that.elementWrapperName) && Objects.equals(elementWrapperNamespace, that.elementWrapperNamespace) && Objects.equals(elementWrapperRequired, that.elementWrapperRequired) && Objects.equals(elementWrapperNillable, that.elementWrapperNillable) && Objects.equals(returnType, that.returnType) && Objects.equals(returnIdentifier, that.returnIdentifier) && Objects.equals(memberDescriptors, that.memberDescriptors) && Objects.equals(descriptorWrappers, that.descriptorWrappers) && Objects.equals(targetIdentifier, that.targetIdentifier) && targetType == that.targetType && Objects.equals(operationDescriptor, that.operationDescriptor);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	@Override
 	public int hashCode() {
-		return Objects.hash(executableElement, executableMirror, executableName, methodPresent, methodOperationName, methodAction, methodExclude, resultPresent, resultName, resultPartName, resultTargetNamespace, resultHeader, elementPresent, elementName, elementNamespace, elementRequired, elementNillable, elementDefaultValue, elementType, elementWrapperPresent, elementWrapperName, elementWrapperNamespace, elementWrapperRequired, elementWrapperNillable, returnType, returnIdentifier, memberDescriptors, descriptorWrappers, targetIdentifier, targetType, operationDescriptor);
+		return Objects.hash(sourceElement, executableElement, executableMirror, executableName, methodPresent, methodOperationName, methodAction, methodExclude, resultPresent, resultName, resultPartName, resultTargetNamespace, resultHeader, elementPresent, elementName, elementNamespace, elementRequired, elementNillable, elementDefaultValue, elementType, elementWrapperPresent, elementWrapperName, elementWrapperNamespace, elementWrapperRequired, elementWrapperNillable, returnType, returnIdentifier, memberDescriptors, descriptorWrappers, targetIdentifier, targetType, operationDescriptor);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	@Override
 	public String toString() {
 		return "WsIOExecutable{" +
-				"executableElement=" + executableElement +
+				"sourceElement=" + sourceElement +
+				", executableElement=" + executableElement +
 				", executableMirror=" + executableMirror +
 				", executableName='" + executableName + '\'' +
 				", methodPresent=" + methodPresent +

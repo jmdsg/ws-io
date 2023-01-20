@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
 @Target({ ElementType.PACKAGE, ElementType.TYPE, ElementType.METHOD })
 public @interface WsIOAnnotate {
 
-	/** Indicates that web param and web result will be renamed */
-	boolean nameSwap() default true;
+	/** Indicates that web param and web result will be renamed or not */
+	boolean skipNameSwap() default false;
 
 }
