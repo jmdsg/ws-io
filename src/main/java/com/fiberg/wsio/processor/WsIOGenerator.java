@@ -1200,7 +1200,7 @@ class WsIOGenerator {
 				FieldSpec fieldSpec = !Boolean.TRUE.equals(initializePresent)
 						? FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE).build()
 						: FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE)
-								.initializer(WsIODelegator.generateFieldInitializer())
+								.initializer(WsIODelegator.generateFieldInitializer(mirror))
 								.build();
 				fields = fields.append(fieldSpec);
 
