@@ -151,7 +151,7 @@ class WsIODelegator {
 
 					/* Return first implementation */
 					return ParameterizedTypeName.get(parameterized.rawType,
-							internal.typeArguments.toArray(new TypeName[internal.typeArguments.size()]));
+							internal.typeArguments.toArray(TypeName[]::new));
 
 				} else {
 
@@ -734,6 +734,43 @@ class WsIODelegator {
 		/* Return the transform to external */
 		return generateRecursiveTransform(toMirror, fromTypeName, context,
 				accessor, 0, false, hideEmpties);
+
+	}
+
+	/**
+	 * Method that generates the field initializer.
+	 *
+	 * @param mirrorType mirror type
+	 * @return the field initializer.
+	 */
+	public static CodeBlock generateFieldInitializer(TypeMirror mirrorType) {
+
+		/* Check the type of mirror */
+		if (mirrorType instanceof DeclaredType) {
+
+			/* Get declared name, type element and name*/
+			DeclaredType declaredType = (DeclaredType) mirrorType;
+			TypeElement typeElement = (TypeElement) declaredType.asElement();
+			String elementName = typeElement.getQualifiedName().toString();
+
+			if (WsIOCollection.ALL.contains(elementName)) {
+
+				/* Get the implementation class name */
+				String implementationName = WsIOCollection.IMPLEMENTATIONS
+						.getOrDefault(elementName, elementName);
+				ClassName implementationClass = ClassName.bestGuess(implementationName);
+
+				return CodeBlock.builder()
+						.add("new $T<>()", implementationClass)
+						.build();
+
+			}
+
+		}
+
+		return CodeBlock.builder()
+				.add("null")
+				.build();
 
 	}
 

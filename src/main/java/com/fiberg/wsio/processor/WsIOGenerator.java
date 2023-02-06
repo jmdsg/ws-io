@@ -1131,6 +1131,7 @@ class WsIOGenerator {
 			/* Check mirror is not a no-type */
 			if (!(mirror instanceof NoType)) {
 
+				Boolean initializePresent = memberDescriptor.getInitializePresent();
 				WsIOIdentifier identifierDefault = WsIOIdentifier.of("", "");
 
 				/* Identifier, prefixes and suffixes */
@@ -1196,7 +1197,11 @@ class WsIOGenerator {
 
 				/* Create fiend and add it to the set */
 				TypeName fieldType = TypeName.get(mirror);
-				FieldSpec fieldSpec = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE).build();
+				FieldSpec fieldSpec = !Boolean.TRUE.equals(initializePresent)
+						? FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE).build()
+						: FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE)
+								.initializer(WsIODelegator.generateFieldInitializer())
+								.build();
 				fields = fields.append(fieldSpec);
 
 				/* Create return type name and get method and add it to the set */

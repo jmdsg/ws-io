@@ -64,6 +64,8 @@ class WsIOMember {
 
 	private Boolean transientPresent;
 
+	private Boolean initializePresent;
+
 	private Boolean valuePresent;
 
 	private WsIOIdentifier targetIdentifier;
@@ -98,6 +100,7 @@ class WsIOMember {
 								String adapterValue,
 								String adapterType,
 								Boolean transientPresent,
+								Boolean initializePresent,
 								Boolean valuePresent,
 								WsIOIdentifier targetIdentifier,
 								WsIOType targetType) {
@@ -131,6 +134,7 @@ class WsIOMember {
 		member.adapterValue = adapterValue;
 		member.adapterType = adapterType;
 		member.transientPresent = transientPresent;
+		member.initializePresent = initializePresent;
 		member.valuePresent = valuePresent;
 		member.targetIdentifier = targetIdentifier;
 		member.targetType = targetType;
@@ -362,6 +366,14 @@ class WsIOMember {
 		this.transientPresent = transientPresent;
 	}
 
+	public Boolean getInitializePresent() {
+		return initializePresent;
+	}
+
+	public void setInitializePresent(Boolean initializePresent) {
+		this.initializePresent = initializePresent;
+	}
+
 	public Boolean getValuePresent() {
 		return valuePresent;
 	}
@@ -394,7 +406,7 @@ class WsIOMember {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		WsIOMember that = (WsIOMember) o;
-		return Objects.equals(typeElement, that.typeElement) && Objects.equals(typeMirror, that.typeMirror) && Objects.equals(paramPresent, that.paramPresent) && Objects.equals(paramName, that.paramName) && Objects.equals(paramPartName, that.paramPartName) && Objects.equals(paramTargetNamespace, that.paramTargetNamespace) && Objects.equals(paramMode, that.paramMode) && Objects.equals(paramHeader, that.paramHeader) && Objects.equals(elementPresent, that.elementPresent) && Objects.equals(elementName, that.elementName) && Objects.equals(elementNamespace, that.elementNamespace) && Objects.equals(elementRequired, that.elementRequired) && Objects.equals(elementNillable, that.elementNillable) && Objects.equals(elementDefaultValue, that.elementDefaultValue) && Objects.equals(elementType, that.elementType) && Objects.equals(elementWrapperPresent, that.elementWrapperPresent) && Objects.equals(elementWrapperName, that.elementWrapperName) && Objects.equals(elementWrapperNamespace, that.elementWrapperNamespace) && Objects.equals(elementWrapperRequired, that.elementWrapperRequired) && Objects.equals(elementWrapperNillable, that.elementWrapperNillable) && Objects.equals(attributePresent, that.attributePresent) && Objects.equals(attributeName, that.attributeName) && Objects.equals(attributeNamespace, that.attributeNamespace) && Objects.equals(attributeRequired, that.attributeRequired) && Objects.equals(adapterPresent, that.adapterPresent) && Objects.equals(adapterValue, that.adapterValue) && Objects.equals(adapterType, that.adapterType) && Objects.equals(transientPresent, that.transientPresent) && Objects.equals(valuePresent, that.valuePresent) && Objects.equals(targetIdentifier, that.targetIdentifier) && targetType == that.targetType;
+		return Objects.equals(typeElement, that.typeElement) && Objects.equals(typeMirror, that.typeMirror) && Objects.equals(paramPresent, that.paramPresent) && Objects.equals(paramName, that.paramName) && Objects.equals(paramPartName, that.paramPartName) && Objects.equals(paramTargetNamespace, that.paramTargetNamespace) && Objects.equals(paramMode, that.paramMode) && Objects.equals(paramHeader, that.paramHeader) && Objects.equals(elementPresent, that.elementPresent) && Objects.equals(elementName, that.elementName) && Objects.equals(elementNamespace, that.elementNamespace) && Objects.equals(elementRequired, that.elementRequired) && Objects.equals(elementNillable, that.elementNillable) && Objects.equals(elementDefaultValue, that.elementDefaultValue) && Objects.equals(elementType, that.elementType) && Objects.equals(elementWrapperPresent, that.elementWrapperPresent) && Objects.equals(elementWrapperName, that.elementWrapperName) && Objects.equals(elementWrapperNamespace, that.elementWrapperNamespace) && Objects.equals(elementWrapperRequired, that.elementWrapperRequired) && Objects.equals(elementWrapperNillable, that.elementWrapperNillable) && Objects.equals(attributePresent, that.attributePresent) && Objects.equals(attributeName, that.attributeName) && Objects.equals(attributeNamespace, that.attributeNamespace) && Objects.equals(attributeRequired, that.attributeRequired) && Objects.equals(adapterPresent, that.adapterPresent) && Objects.equals(adapterValue, that.adapterValue) && Objects.equals(adapterType, that.adapterType) && Objects.equals(transientPresent, that.transientPresent) && Objects.equals(initializePresent, that.initializePresent) && Objects.equals(valuePresent, that.valuePresent) && Objects.equals(targetIdentifier, that.targetIdentifier) && targetType == that.targetType;
 	}
 
 	/**
@@ -402,7 +414,7 @@ class WsIOMember {
 	 */
 	@Override
 	public int hashCode() {
-		return Objects.hash(typeElement, typeMirror, paramPresent, paramName, paramPartName, paramTargetNamespace, paramMode, paramHeader, elementPresent, elementName, elementNamespace, elementRequired, elementNillable, elementDefaultValue, elementType, elementWrapperPresent, elementWrapperName, elementWrapperNamespace, elementWrapperRequired, elementWrapperNillable, attributePresent, attributeName, attributeNamespace, attributeRequired, adapterPresent, adapterValue, adapterType, transientPresent, valuePresent, targetIdentifier, targetType);
+		return Objects.hash(typeElement, typeMirror, paramPresent, paramName, paramPartName, paramTargetNamespace, paramMode, paramHeader, elementPresent, elementName, elementNamespace, elementRequired, elementNillable, elementDefaultValue, elementType, elementWrapperPresent, elementWrapperName, elementWrapperNamespace, elementWrapperRequired, elementWrapperNillable, attributePresent, attributeName, attributeNamespace, attributeRequired, adapterPresent, adapterValue, adapterType, transientPresent, initializePresent, valuePresent, targetIdentifier, targetType);
 	}
 
 	/**
@@ -439,6 +451,7 @@ class WsIOMember {
 				", adapterValue='" + adapterValue + '\'' +
 				", adapterType='" + adapterType + '\'' +
 				", transientPresent=" + transientPresent +
+				", initializePresent=" + initializePresent +
 				", valuePresent=" + valuePresent +
 				", targetIdentifier=" + targetIdentifier +
 				", targetType=" + targetType +
