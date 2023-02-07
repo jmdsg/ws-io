@@ -1131,8 +1131,10 @@ class WsIOGenerator {
 			/* Check mirror is not a no-type */
 			if (!(mirror instanceof NoType)) {
 
-				Boolean initializePresent = memberDescriptor.getInitializePresent();
 				WsIOIdentifier identifierDefault = WsIOIdentifier.of("", "");
+				Boolean initializePresent = memberDescriptor != null
+						? memberDescriptor.getInitializePresent()
+						: null;
 
 				/* Identifier, prefixes and suffixes */
 				String prefixClassName = ObjectUtils.firstNonNull(identifierDescriptor != null ? identifierDescriptor.getIdentifierPrefix() : null, "");
