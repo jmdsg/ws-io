@@ -1464,7 +1464,7 @@ class WsIOGenerator {
 					CodeBlock internalGetBlock = !inversePresent
 							? WsIODelegator.generateRecursiveTransformToInternal(mirror,
 								internalType, context, internalGetAccessor, methodHideEmpties)
-							: WsIODelegator.generateRecursiveTransformToExternal(internalType,
+							: WsIODelegator.generateRecursiveTransformToExternal(fieldType,
 								mirror, context, internalGetAccessor, methodHideEmpties);
 
 					/* Create the internal get method spec and add it to the methods set */
@@ -1498,7 +1498,7 @@ class WsIOGenerator {
 							? WsIODelegator.generateRecursiveTransformToExternal(internalType,
 								mirror, context, internalParameterName, methodHideEmpties)
 							: WsIODelegator.generateRecursiveTransformToInternal(mirror,
-								internalType, context, internalParameterName, methodHideEmpties);
+								fieldType, context, internalParameterName, methodHideEmpties);
 
 					/* Create parameter and method spec and add it to the methods */
 					ParameterSpec internalParameter = ParameterSpec.builder(internalType, internalParameterName).build();
