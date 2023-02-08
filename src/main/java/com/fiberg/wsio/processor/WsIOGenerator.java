@@ -1132,10 +1132,11 @@ class WsIOGenerator {
 			if (!(mirror instanceof NoType)) {
 
 				WsIOIdentifier identifierDefault = WsIOIdentifier.of("", "");
-				Boolean inversePresent = memberDescriptor != null ? memberDescriptor.getInversePresent() : null;
-				Boolean initializePresent = memberDescriptor != null
-						? memberDescriptor.getInitializePresent()
-						: null;
+				Boolean inversePresent = Boolean.TRUE.equals(memberDescriptor != null ? memberDescriptor.getInversePresent() : null);
+				Boolean initializePresent = Boolean.TRUE.equals(
+						memberDescriptor != null
+								? memberDescriptor.getInitializePresent()
+								: null);
 
 				/* Identifier, prefixes and suffixes */
 				String prefixClassName = ObjectUtils.firstNonNull(identifierDescriptor != null ? identifierDescriptor.getIdentifierPrefix() : null, "");
@@ -1168,8 +1169,8 @@ class WsIOGenerator {
 				TypeName recursiveType = context.getRecursiveFullTypeName(mirror, true, false, true);
 
 				/* Field and internal type names */
-				TypeName fieldType = !Boolean.TRUE.equals(inversePresent) ? regularType : recursiveType;
-				TypeName internalType = !Boolean.TRUE.equals(inversePresent) ? recursiveType : regularType;
+				TypeName fieldType = !inversePresent ? regularType : recursiveType;
+				TypeName internalType = !inversePresent ? recursiveType : regularType;
 
 				/* Lower and upper names */
 				String mainName = operationIdentifier.getMainName();
@@ -1181,8 +1182,8 @@ class WsIOGenerator {
 				String externalChar  = Option.when(!skipNameSwap, separator).getOrElse("");
 
 				/* Internal and external char name */
-				String internalCharName = !Boolean.TRUE.equals(inversePresent) ? internalChar : externalChar;
-				String externalCharName = !Boolean.TRUE.equals(inversePresent) ? externalChar : internalChar;
+				String internalCharName = !inversePresent ? internalChar : externalChar;
+				String externalCharName = !inversePresent ? externalChar : internalChar;
 
 				/* Internal and external getter and setter names */
 				String internalGetName = String.format("get%s%s", upperMainName, internalCharName);
@@ -1207,7 +1208,7 @@ class WsIOGenerator {
 				);
 
 				/* Create fiend and add it to the set */
-				FieldSpec fieldSpec = !Boolean.TRUE.equals(initializePresent)
+				FieldSpec fieldSpec = !initializePresent
 						? FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE).build()
 						: FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE)
 								.initializer(WsIODelegator.generateFieldInitializer(mirror))
@@ -1460,8 +1461,11 @@ class WsIOGenerator {
 
 					/* Create internal get accessor and code block */
 					String internalGetAccessor = String.format("%s()", externalGetName);
-					CodeBlock internalGetBlock = WsIODelegator.generateRecursiveTransformToInternal(mirror,
-							internalType, context, internalGetAccessor, methodHideEmpties);
+					CodeBlock internalGetBlock = !inversePresent
+							? WsIODelegator.generateRecursiveTransformToInternal(mirror,
+								internalType, context, internalGetAccessor, methodHideEmpties)
+							: WsIODelegator.generateRecursiveTransformToExternal(internalType,
+								mirror, context, internalGetAccessor, methodHideEmpties);
 
 					/* Create the internal get method spec and add it to the methods set */
 					MethodSpec.Builder internalGetBuilder = MethodSpec.methodBuilder(internalGetName)
@@ -1490,8 +1494,11 @@ class WsIOGenerator {
 					methods = methods.append(internalGetBuilder.build());
 
 					/* Create external set block code */
-					CodeBlock internalSetBlock = WsIODelegator.generateRecursiveTransformToExternal(internalType,
-							mirror, context, internalParameterName, methodHideEmpties);
+					CodeBlock internalSetBlock = !inversePresent
+							? WsIODelegator.generateRecursiveTransformToExternal(internalType,
+								mirror, context, internalParameterName, methodHideEmpties)
+							: WsIODelegator.generateRecursiveTransformToInternal(mirror,
+								internalType, context, internalParameterName, methodHideEmpties);
 
 					/* Create parameter and method spec and add it to the methods */
 					ParameterSpec internalParameter = ParameterSpec.builder(internalType, internalParameterName).build();
