@@ -1165,12 +1165,12 @@ class WsIOGenerator {
 				);
 
 				/* Regular and recursive type names */
-				TypeName regularType = TypeName.get(mirror);
-				TypeName recursiveType = context.getRecursiveFullTypeName(mirror, true, false, true);
+				TypeName externalType = TypeName.get(mirror);
+				TypeName internalType = context.getRecursiveFullTypeName(mirror, true, false, true);
 
 				/* Field and internal type names */
-				TypeName fieldType = !inversePresent ? regularType : recursiveType;
-				TypeName internalType = !inversePresent ? recursiveType : regularType;
+				TypeName externalAdjustedType = !inversePresent ? externalType : internalType;
+				TypeName internalAdjustedType = !inversePresent ? internalType : externalType;
 
 				/* Lower and upper names */
 				String mainName = operationIdentifier.getMainName();
@@ -1181,15 +1181,17 @@ class WsIOGenerator {
 				String internalChar = Option.when(skipNameSwap, separator).getOrElse("");
 				String externalChar  = Option.when(!skipNameSwap, separator).getOrElse("");
 
-				/* Internal and external char name */
-				String internalCharName = !inversePresent ? internalChar : externalChar;
-				String externalCharName = !inversePresent ? externalChar : internalChar;
+				/* Internal and external getter and setter names */
+				String internalGetName = String.format("get%s%s", upperMainName, internalChar);
+				String internalSetName = String.format("set%s%s", upperMainName, internalChar);
+				String externalGetName = String.format("get%s%s", upperMainName, externalChar);
+				String externalSetName = String.format("set%s%s", upperMainName, externalChar);
 
 				/* Internal and external getter and setter names */
-				String internalGetName = String.format("get%s%s", upperMainName, internalCharName);
-				String internalSetName = String.format("set%s%s", upperMainName, internalCharName);
-				String externalGetName = String.format("get%s%s", upperMainName, externalCharName);
-				String externalSetName = String.format("set%s%s", upperMainName, externalCharName);
+				String internalAdjustedGetName = !inversePresent ? internalGetName : externalGetName;
+				String internalAdjustedSetName = !inversePresent ? internalSetName : externalSetName;
+				String externalAdjustedGetName = !inversePresent ? externalGetName : internalGetName;
+				String externalAdjustedSetName = !inversePresent ? externalSetName : internalSetName;
 
 				/* Assign field name and add it to the fields */
 				String fieldName = WsIOConstant.DEFAULT_RESULT.equals(lowerMainName)
@@ -1203,35 +1205,31 @@ class WsIOGenerator {
 				fieldNames = fieldNames.append(fieldName);
 
 				/* List with the external get annotations */
+				List<AnnotationSpec> externalSetAnnotations = List.of();
 				List<AnnotationSpec> externalGetAnnotations = List.of(
 						AnnotationSpec.builder(XmlTransient.class).build()
 				);
 
 				/* Create fiend and add it to the set */
 				FieldSpec fieldSpec = !initializePresent
-						? FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE).build()
-						: FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE)
+						? FieldSpec.builder(externalAdjustedType, fieldName, Modifier.PRIVATE).build()
+						: FieldSpec.builder(externalAdjustedType, fieldName, Modifier.PRIVATE)
 								.initializer(WsIODelegator.generateFieldInitializer(mirror))
 								.build();
 				fields = fields.append(fieldSpec);
 
 				/* Create return type name and get method and add it to the set */
-				MethodSpec externalGet = MethodSpec.methodBuilder(externalGetName)
-						.returns(fieldType)
-						.addAnnotations(externalGetAnnotations)
+				MethodSpec.Builder externalGetBuilder = MethodSpec.methodBuilder(externalAdjustedGetName)
+						.returns(externalAdjustedType)
 						.addModifiers(Modifier.PUBLIC)
-						.addStatement("return $L", fieldName)
-						.build();
-				methods = methods.append(externalGet);
+						.addStatement("return $L", fieldName);
 
 				/* Create external parameter, build the method spec and add it to the set */
-				ParameterSpec externalParameter = ParameterSpec.builder(fieldType, externalParameterName).build();
-				MethodSpec externalSet = MethodSpec.methodBuilder(externalSetName)
+				ParameterSpec externalParameter = ParameterSpec.builder(externalAdjustedType, externalParameterName).build();
+				MethodSpec.Builder externalSetBuilder = MethodSpec.methodBuilder(externalAdjustedSetName)
 						.addParameter(externalParameter)
 						.addModifiers(Modifier.PUBLIC)
-						.addStatement("this.$L = $L", fieldName, externalParameterName)
-						.build();
-				methods = methods.append(externalSet);
+						.addStatement("this.$L = $L", fieldName, externalParameterName);
 
 				/* Predicate that checks that a mirror type is valid,
 				 * is not an array nor a java collection not a map */
@@ -1382,10 +1380,18 @@ class WsIOGenerator {
 
 						/* Return the methods generated recursively */
 						return WsIODelegator.generatePropertyDelegates(returnType, parameterType, getter, setter,
-								finalGetterName, finalSetterName, finalPropertyName, externalGetName, getterName, setterName,
+								finalGetterName, finalSetterName, finalPropertyName, externalAdjustedGetName, getterName, setterName,
 								getterListAnnotations, setterListAnnotations, level, hideEmpties, context, messager);
 
 					});
+
+					methods = methods.append(externalGetBuilder
+							.addAnnotations(externalGetAnnotations)
+							.build());
+
+					methods = methods.append(externalSetBuilder
+							.addAnnotations(externalSetAnnotations)
+							.build());
 
 					/* Add method of the property methods */
 					methods = methods.appendAll(propertyMethods);
@@ -1433,12 +1439,12 @@ class WsIOGenerator {
 
 						/* Get the executable of the getter only when properties match */
 						ExecutableElement getterExecutable = properties.map(Tuple3::_1)
-								.filter(exec -> internalGetName.equals(getExecutableName.apply(exec)))
+								.filter(exec -> internalAdjustedGetName.equals(getExecutableName.apply(exec)))
 								.getOrNull();
 
 						/* Get the executable of the setter only when properties match */
 						ExecutableElement setterExecutable = properties.map(Tuple3::_1)
-								.filter(exec -> internalSetName.equals(getExecutableName.apply(exec)))
+								.filter(exec -> internalAdjustedSetName.equals(getExecutableName.apply(exec)))
 								.getOrNull();
 
 						/* Get the forwarded annotations of the getter method */
@@ -1459,32 +1465,45 @@ class WsIOGenerator {
 
 					}
 
+					List<AnnotationSpec> internalAdjustedSetAnnotations = !inversePresent ? internalSetAnnotations : externalSetAnnotations;
+					List<AnnotationSpec> internalAdjustedGetAnnotations = !inversePresent ? internalGetAnnotations : externalGetAnnotations;
+					List<AnnotationSpec> externalAdjustedSetAnnotations = !inversePresent ? externalSetAnnotations : internalSetAnnotations;
+					List<AnnotationSpec> externalAdjustedGetAnnotations = !inversePresent ? externalGetAnnotations : internalGetAnnotations;
+
+					methods = methods.append(externalGetBuilder
+							.addAnnotations(externalAdjustedGetAnnotations)
+							.build());
+
+					methods = methods.append(externalSetBuilder
+							.addAnnotations(externalAdjustedSetAnnotations)
+							.build());
+
 					/* Create internal get accessor and code block */
-					String internalGetAccessor = String.format("%s()", externalGetName);
+					String internalGetAccessor = String.format("%s()", externalAdjustedGetName);
 					CodeBlock internalGetBlock = !inversePresent
 							? WsIODelegator.generateRecursiveTransformToInternal(mirror,
-								internalType, context, internalGetAccessor, methodHideEmpties)
-							: WsIODelegator.generateRecursiveTransformToExternal(fieldType,
+								internalAdjustedType, context, internalGetAccessor, methodHideEmpties)
+							: WsIODelegator.generateRecursiveTransformToExternal(externalAdjustedType,
 								mirror, context, internalGetAccessor, methodHideEmpties);
 
 					/* Create the internal get method spec and add it to the methods set */
-					MethodSpec.Builder internalGetBuilder = MethodSpec.methodBuilder(internalGetName)
-							.returns(internalType)
-							.addAnnotations(internalGetAnnotations)
+					MethodSpec.Builder internalGetBuilder = MethodSpec.methodBuilder(internalAdjustedGetName)
+							.returns(internalAdjustedType)
+							.addAnnotations(internalAdjustedGetAnnotations)
 							.addModifiers(Modifier.PUBLIC);
 
 					/* Check mirror is a primitive type or not */
 					if (mirror instanceof PrimitiveType) {
 
 						/* Add return statement of primitive type */
-						internalGetBuilder = internalGetBuilder.addCode("return ", externalGetName)
+						internalGetBuilder = internalGetBuilder.addCode("return ", externalAdjustedGetName)
 								.addCode(internalGetBlock)
 								.addCode(";").addCode("\n");
 
 					} else {
 
 						/* Add return statement of reference type */
-						internalGetBuilder = internalGetBuilder.addCode("return $L() != null ? ", externalGetName)
+						internalGetBuilder = internalGetBuilder.addCode("return $L() != null ? ", externalAdjustedGetName)
 								.addCode(internalGetBlock)
 								.addCode(" : null").addCode(";").addCode("\n");
 
@@ -1495,23 +1514,23 @@ class WsIOGenerator {
 
 					/* Create external set block code */
 					CodeBlock internalSetBlock = !inversePresent
-							? WsIODelegator.generateRecursiveTransformToExternal(internalType,
+							? WsIODelegator.generateRecursiveTransformToExternal(internalAdjustedType,
 								mirror, context, internalParameterName, methodHideEmpties)
 							: WsIODelegator.generateRecursiveTransformToInternal(mirror,
-								fieldType, context, internalParameterName, methodHideEmpties);
+								externalAdjustedType, context, internalParameterName, methodHideEmpties);
 
 					/* Create parameter and method spec and add it to the methods */
-					ParameterSpec internalParameter = ParameterSpec.builder(internalType, internalParameterName).build();
-					MethodSpec.Builder internalSetBuilder = MethodSpec.methodBuilder(internalSetName)
+					ParameterSpec internalParameter = ParameterSpec.builder(internalAdjustedType, internalParameterName).build();
+					MethodSpec.Builder internalSetBuilder = MethodSpec.methodBuilder(internalAdjustedSetName)
 							.addParameter(internalParameter)
-							.addAnnotations(internalSetAnnotations)
+							.addAnnotations(internalAdjustedSetAnnotations)
 							.addModifiers(Modifier.PUBLIC);
 
 					/* Check mirror is a primitive type or not */
 					if (mirror instanceof PrimitiveType) {
 
 						/* Add set statement of primitive type */
-						internalSetBuilder = internalSetBuilder.addCode("$L(", externalSetName)
+						internalSetBuilder = internalSetBuilder.addCode("$L(", externalAdjustedSetName)
 								.addCode(internalSetBlock)
 								.addCode(")").addCode(";").addCode("\n");
 
@@ -1519,7 +1538,7 @@ class WsIOGenerator {
 
 						/* Add set statement of reference type */
 						internalSetBuilder = internalSetBuilder.beginControlFlow("if ($L != null)", internalParameterName)
-								.addCode("$L(", externalSetName)
+								.addCode("$L(", externalAdjustedSetName)
 								.addCode(internalSetBlock)
 								.addCode(")").addCode(";").addCode("\n")
 								.endControlFlow();
