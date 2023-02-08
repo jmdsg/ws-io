@@ -1132,6 +1132,7 @@ class WsIOGenerator {
 			if (!(mirror instanceof NoType)) {
 
 				WsIOIdentifier identifierDefault = WsIOIdentifier.of("", "");
+				Boolean inversePresent = memberDescriptor != null ? memberDescriptor.getInversePresent() : null;
 				Boolean initializePresent = memberDescriptor != null
 						? memberDescriptor.getInitializePresent()
 						: null;
@@ -1162,9 +1163,13 @@ class WsIOGenerator {
 						identifier, wrapper, messageClasses, cloneClasses, cloneMessageClasses, typeByName, generate, type
 				);
 
-				/* Recursive full type name */
-				TypeName internalType = context.getRecursiveFullTypeName(mirror,
-						true, false, true);
+				/* Regular and recursive type names */
+				TypeName regularType = TypeName.get(mirror);
+				TypeName recursiveType = context.getRecursiveFullTypeName(mirror, true, false, true);
+
+				/* Field and internal type names */
+				TypeName fieldType = !Boolean.TRUE.equals(inversePresent) ? regularType : recursiveType;
+				TypeName internalType = !Boolean.TRUE.equals(inversePresent) ? recursiveType : regularType;
 
 				/* Lower and upper names */
 				String mainName = operationIdentifier.getMainName();
@@ -1175,11 +1180,15 @@ class WsIOGenerator {
 				String internalChar = Option.when(skipNameSwap, separator).getOrElse("");
 				String externalChar  = Option.when(!skipNameSwap, separator).getOrElse("");
 
+				/* Internal and external char name */
+				String internalCharName = !Boolean.TRUE.equals(inversePresent) ? internalChar : externalChar;
+				String externalCharName = !Boolean.TRUE.equals(inversePresent) ? externalChar : internalChar;
+
 				/* Internal and external getter and setter names */
-				String internalGetName = String.format("get%s%s", upperMainName, internalChar);
-				String internalSetName = String.format("set%s%s", upperMainName, internalChar);
-				String externalGetName = String.format("get%s%s", upperMainName, externalChar);
-				String externalSetName = String.format("set%s%s", upperMainName, externalChar);
+				String internalGetName = String.format("get%s%s", upperMainName, internalCharName);
+				String internalSetName = String.format("set%s%s", upperMainName, internalCharName);
+				String externalGetName = String.format("get%s%s", upperMainName, externalCharName);
+				String externalSetName = String.format("set%s%s", upperMainName, externalCharName);
 
 				/* Assign field name and add it to the fields */
 				String fieldName = WsIOConstant.DEFAULT_RESULT.equals(lowerMainName)
@@ -1198,7 +1207,6 @@ class WsIOGenerator {
 				);
 
 				/* Create fiend and add it to the set */
-				TypeName fieldType = TypeName.get(mirror);
 				FieldSpec fieldSpec = !Boolean.TRUE.equals(initializePresent)
 						? FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE).build()
 						: FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE)

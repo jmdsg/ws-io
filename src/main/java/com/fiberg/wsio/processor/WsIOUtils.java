@@ -767,6 +767,18 @@ final class WsIOUtils {
 				.filter(Objects::nonNull)
 				.flatMap(Function.identity());
 
+		Tuple2<List<AnnotationMirror>, List<AnnotationMirror>> internalTupleInverseMirrors = WsIOUtils.getQualifiedAnnotationMirrors(
+				element, WsIOInverse.class, WsIOInverses.class, targetIdentifier, targetType
+		);
+
+		List<AnnotationMirror> internalQualifiedInverseMirrors = Option.of(internalTupleInverseMirrors).map(Tuple2::_1).getOrElse(List::of);
+		List<AnnotationMirror> internalDefaultInverseMirrors = Option.of(internalTupleInverseMirrors).map(Tuple2::_2).getOrElse(List::of);
+
+		List<AnnotationMirror> inverseMirrors = List
+				.of(internalQualifiedInverseMirrors, internalDefaultInverseMirrors)
+				.filter(Objects::nonNull)
+				.flatMap(Function.identity());
+
 		AnnotationMirror externalValueMirror = WsIOUtils.getAnnotationMirror(element, XmlValue.class);
 		Tuple2<List<AnnotationMirror>, List<AnnotationMirror>> internalTupleValueMirrors = WsIOUtils.getQualifiedAnnotationMirrors(
 				element, WsIOValue.class, WsIOValues.class, targetIdentifier, targetType
@@ -878,6 +890,7 @@ final class WsIOUtils {
 		boolean attributePresent = attributeMirrors != null && attributeMirrors.size() > 0;
 		boolean transientPresent = transientMirrors != null && transientMirrors.size() > 0;
 		boolean initializePresent = initializeMirrors != null && initializeMirrors.size() > 0;
+		boolean inversePresent = inverseMirrors != null && inverseMirrors.size() > 0;
 		boolean valuePresent = valueMirrors != null && valueMirrors.size() > 0;
 		boolean adapterPresent = adapterMirrors != null && adapterMirrors.size() > 0;
 
@@ -911,6 +924,7 @@ final class WsIOUtils {
 				adapterType,
 				transientPresent,
 				initializePresent,
+				inversePresent,
 				valuePresent,
 				targetIdentifier,
 				targetType
