@@ -18,7 +18,7 @@
         <commons.version>3.12.0</commons.version>
         <commons-text.version>1.10.0</commons-text.version>
         <commons-io.version>2.11.0</commons-io.version>
-        <guava.version>31.1-jre</guava.version>
+        <guava.version>32.0.0-jre</guava.version>
         <vavr.version>0.10.4</vavr.version>
 	    <byte.buddy.version>1.12.20</byte.buddy.version>
 	    <fast-classpath.version>4.8.154</fast-classpath.version>
